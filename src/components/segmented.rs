@@ -1,0 +1,138 @@
+//! Segmented controls: a row of mutually exclusive options, as text or icons.
+
+use super::text;
+use crate::config::theme::{colors, typography};
+use eframe::egui::{Color32, CornerRadius, CursorIcon, Rect, Sense, Ui, Vec2};
+
+/// What each segment shows.
+pub enum Segments<'a> {
+    /// Text labels.
+    Text(&'a [&'a str]),
+    /// Icon glyphs.
+    Icons(&'a [char]),
+}
+
+/// A segmented control.
+pub struct Segmented<'a> {
+    segments: Segments<'a>,
+    height: f32,
+    width: Option<f32>,
+    inactive_ink: Color32,
+}
+
+impl<'a> Segmented<'a> {
+    /// A control of text options that fills the available width.
+    pub fn text(options: &'a [&'a str]) -> Self {
+        Self {
+            segments: Segments::Text(options),
+            height: 28.0,
+            width: None,
+            inactive_ink: colors::OUTLINE,
+        }
+    }
+
+    /// A compact control of icon options (24 px per segment).
+    pub fn icons(glyphs: &'a [char]) -> Self {
+        Self {
+            segments: Segments::Icons(glyphs),
+            height: 28.0,
+            width: Some(glyphs.len() as f32 * 24.0 + 4.0 + (glyphs.len() as f32 - 1.0) * 4.0),
+            inactive_ink: colors::OUTLINE,
+        }
+    }
+
+    /// Sets the control height.
+    pub fn height(mut self, height: f32) -> Self {
+        self.height = height;
+        self
+    }
+
+    /// Sets a fixed total width.
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = Some(width);
+        self
+    }
+
+    /// Draws the control; returns true when the selection changed.
+    pub fn show(self, ui: &mut Ui, selected: &mut usize) -> bool {
+        let count = match &self.segments {
+            Segments::Text(options) => options.len(),
+            Segments::Icons(glyphs) => glyphs.len(),
+        };
+        let width = self.width.unwrap_or_else(|| ui.available_width());
+        let (outer, _) = ui.allocate_exact_size(Vec2::new(width, self.height), Sense::hover());
+        ui.painter()
+            .rect_filled(outer, CornerRadius::same(2), colors::SURFACE_LOW);
+        let inner = outer.shrink(2.0);
+        let gap = if matches!(self.segments, Segments::Icons(_)) {
+            4.0
+        } else {
+            0.0
+        };
+        let cell_width = (inner.width() - gap * (count as f32 - 1.0)) / count as f32;
+        let mut changed = false;
+        for index in 0..count {
+            let rect = Rect::from_min_size(
+                inner.min + Vec2::new(index as f32 * (cell_width + gap), 0.0),
+                Vec2::new(cell_width, inner.height()),
+            );
+            let response = ui
+                .interact(
+                    rect,
+                    ui.id().with(("segment", index, rect.min.x as i32)),
+                    Sense::click(),
+                )
+                .on_hover_cursor(CursorIcon::PointingHand);
+            let active = index == *selected;
+            let painter = ui.painter();
+            if active {
+                let fill = if matches!(self.segments, Segments::Icons(_)) {
+                    colors::SURFACE
+                } else {
+                    colors::SECONDARY_CONTAINER
+                };
+                painter.rect_filled(rect, CornerRadius::same(2), fill);
+            } else if response.hovered() {
+                painter.rect_filled(rect, CornerRadius::same(2), colors::SURFACE_HIGH);
+            }
+            match &self.segments {
+                Segments::Text(options) => {
+                    let ink = if active {
+                        Color32::WHITE
+                    } else if response.hovered() {
+                        colors::ON_SURFACE
+                    } else {
+                        self.inactive_ink
+                    };
+                    let font = if active {
+                        typography::label_md()
+                    } else {
+                        typography::label_sm()
+                    };
+                    let font = typography::mono(font.size);
+                    text::paint_text(
+                        painter,
+                        rect.center(),
+                        eframe::egui::Align2::CENTER_CENTER,
+                        options[index],
+                        font,
+                        ink,
+                    );
+                }
+                Segments::Icons(glyphs) => {
+                    let ink = if active {
+                        colors::PRIMARY
+                    } else {
+                        self.inactive_ink
+                    };
+                    text::paint_icon(painter, rect.center(), glyphs[index], 15.0, ink);
+                }
+            }
+            if response.clicked() && !active {
+                *selected = index;
+                changed = true;
+            }
+        }
+        changed
+    }
+}

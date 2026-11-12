@@ -1,0 +1,24 @@
+[package]
+name = "guanacaste-render-rust"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Guanacaste Render: desktop interface for real-time architectural visualization."
+
+[lib]
+name = "guanacaste_render_rust"
+path = "src/lib.rs"
+
+[[bin]]
+name = "guanacaste-render-rust"
+path = "src/main.rs"
+
+[dependencies]
+eframe = { version = "0.36", default-features = false, features = ["wgpu", "default_fonts"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[profile.release]
+opt-level = 3

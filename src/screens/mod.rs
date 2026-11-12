@@ -1,0 +1,32 @@
+//! Screen composition and navigation. Each screen lives in its own flow folder and only composes components.
+
+mod projects;
+mod render;
+
+use crate::models::navigation::Screen;
+use crate::services::textures::Textures;
+use eframe::egui::Ui;
+
+/// What a screen may use while it draws.
+pub struct ScreenContext<'a> {
+    /// Placeholder image cache.
+    pub textures: &'a mut Textures,
+    /// Set by a screen to request navigation to another screen.
+    pub navigate: &'a mut Option<Screen>,
+}
+
+/// State of every screen.
+#[derive(Default)]
+pub struct Screens {
+    projects: projects::ProjectsScreen,
+}
+
+impl Screens {
+    /// Draws `screen` into `ui`.
+    pub fn show(&mut self, ui: &mut Ui, screen: Screen, context: &mut ScreenContext) {
+        match screen {
+            Screen::Projects => self.projects.show(ui, context),
+            _ => render::show(ui, context),
+        }
+    }
+}
