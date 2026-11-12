@@ -17,13 +17,34 @@ pub enum Value {
     Enum(String),
     /// Reference `#123`.
     Ref(u32),
-    /// List.
+    /// List of mixed values.
     List(Vec<Value>),
+    /// Compact list made only of references (much smaller than `List`).
+    Refs(Vec<u32>),
+    /// Compact list made only of numbers.
+    Reals(Vec<f64>),
     /// Typed value such as `IFCLENGTHMEASURE(1.5)`.
     Typed(String, Vec<Value>),
 }
 
 impl Value {
+    /// Builds a list, packing it when every item is a reference or every item a number.
+    pub fn from_items(items: Vec<Value>) -> Value {
+        if items.is_empty() {
+            return Value::List(items);
+        }
+        if items.iter().all(|item| matches!(item, Value::Ref(_))) {
+            return Value::Refs(items.iter().filter_map(Value::as_ref).collect());
+        }
+        if items
+            .iter()
+            .all(|item| matches!(item, Value::Real(_) | Value::Int(_)))
+        {
+            return Value::Reals(items.iter().filter_map(Value::as_f64).collect());
+        }
+        Value::List(items)
+    }
+
     /// The referenced entity id.
     pub fn as_ref(&self) -> Option<u32> {
         match self {
@@ -67,11 +88,14 @@ impl Value {
         }
     }
 
-    /// The items of a list (empty for anything else).
-    pub fn items(&self) -> &[Value] {
+    /// The items of a list (empty for anything else). Compact lists are expanded on the fly.
+    pub fn items(&self) -> std::borrow::Cow<'_, [Value]> {
+        use std::borrow::Cow;
         match self {
-            Value::List(items) => items,
-            _ => &[],
+            Value::List(items) => Cow::Borrowed(items),
+            Value::Refs(ids) => Cow::Owned(ids.iter().map(|id| Value::Ref(*id)).collect()),
+            Value::Reals(numbers) => Cow::Owned(numbers.iter().map(|n| Value::Real(*n)).collect()),
+            _ => Cow::Borrowed(&[]),
         }
     }
 
@@ -79,7 +103,17 @@ impl Value {
     pub fn refs(&self) -> Vec<u32> {
         match self {
             Value::Ref(id) => vec![*id],
+            Value::Refs(ids) => ids.clone(),
             Value::List(items) => items.iter().filter_map(Value::as_ref).collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// Every number of a list, in order.
+    pub fn numbers(&self) -> Vec<f64> {
+        match self {
+            Value::Reals(numbers) => numbers.clone(),
+            Value::List(items) => items.iter().filter_map(Value::as_f64).collect(),
             _ => Vec::new(),
         }
     }
@@ -216,7 +250,7 @@ fn parse_inner(cursor: &mut Cursor, depth: usize) -> Result<Value, String> {
         }
         b'(' => {
             cursor.pos += 1;
-            parse_list(cursor, depth).map(Value::List)
+            parse_list(cursor, depth).map(Value::from_items)
         }
         b'+' | b'-' | b'0'..=b'9' => {
             let start = cursor.pos;

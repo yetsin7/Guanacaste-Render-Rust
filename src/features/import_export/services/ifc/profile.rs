@@ -85,8 +85,8 @@ fn arc_points(ctx: &mut Context, entity: &Entity) -> Option<Vec<[f64; 2]>> {
     }
     let (center, x_dir) = ctx.axis2_of_placement(basis.arg(0).as_ref());
     let radius = basis.arg(1).as_f64()? * ctx.length;
-    let start = trim_angle(ctx, entity.arg(1).items(), center, x_dir)?;
-    let end = trim_angle(ctx, entity.arg(2).items(), center, x_dir)?;
+    let start = trim_angle(ctx, &entity.arg(1).items(), center, x_dir)?;
+    let end = trim_angle(ctx, &entity.arg(2).items(), center, x_dir)?;
     let forward = entity.arg(3).as_enum() != Some("F");
     let mut sweep = end - start;
     if forward && sweep <= 0.0 {

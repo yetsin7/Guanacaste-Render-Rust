@@ -114,7 +114,7 @@ pub fn face_set(ctx: &Context, id: u32) -> Option<Piece> {
     let valid = |i: usize| i < base.len();
     match entity.ty.as_str() {
         "IFCTRIANGULATEDFACESET" => {
-            for row in entity.arg(3).items() {
+            for row in entity.arg(3).items().iter() {
                 let t = indices(row);
                 if t.len() == 3 && t.iter().all(|i| valid(*i)) {
                     piece.triangle(base[t[0]], base[t[1]], base[t[2]]);

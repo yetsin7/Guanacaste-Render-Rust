@@ -88,8 +88,8 @@ impl Reader<'_> {
             "HEADER" => self.in_header = true,
             "DATA" | "ENDSEC" => self.in_header = false,
             "FILE_SCHEMA" | "FILE_NAME" if name_end < text.len() => {
-                if let Ok(Value::List(args)) = parse_value(&text[name_end..]) {
-                    self.header_statement(&name, &args);
+                if let Ok(list) = parse_value(&text[name_end..]) {
+                    self.header_statement(&name, &list.items());
                 }
             }
             _ => {}
@@ -150,7 +150,8 @@ impl Reader<'_> {
             return;
         }
         match parse_value(&rest[name_end..]) {
-            Ok(Value::List(args)) => {
+            Ok(list @ (Value::List(_) | Value::Refs(_) | Value::Reals(_))) => {
+                let args = list.items().into_owned();
                 self.file.entities.insert(id, Entity { ty, args });
             }
             _ => self.file.malformed += 1,
