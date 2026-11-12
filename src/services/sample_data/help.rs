@@ -145,7 +145,7 @@ pub fn placement_shortcuts() -> Vec<Shortcut> {
             keys: "R",
         },
         Shortcut {
-            action: "Estampar múltiples instancias",
+            action: "Estampar instancias",
             keys: "Espacio + clic",
         },
         Shortcut {
@@ -163,7 +163,7 @@ pub fn transform_shortcuts() -> Vec<Shortcut> {
             keys: "Ctrl + clic",
         },
         Shortcut {
-            action: "Clonar de forma interactiva",
+            action: "Clonar interactivo",
             keys: "Alt + arrastrar",
         },
         Shortcut {
