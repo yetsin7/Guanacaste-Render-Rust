@@ -5,4 +5,6 @@ pub mod library;
 pub mod materials;
 pub mod movie;
 pub mod projects;
+pub mod rendering;
+pub mod settings;
 pub mod viewport;

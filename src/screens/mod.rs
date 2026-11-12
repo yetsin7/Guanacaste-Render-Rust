@@ -6,6 +6,7 @@ mod materials;
 mod movie;
 mod projects;
 mod render;
+mod settings;
 
 use crate::models::navigation::Screen;
 use crate::services::textures::Textures;
@@ -28,6 +29,7 @@ pub struct Screens {
     inspector: library::InspectorScreen,
     materials: materials::MaterialScreen,
     movie: movie::MovieScreen,
+    settings: settings::SettingsScreen,
 }
 
 impl Screens {
@@ -40,6 +42,7 @@ impl Screens {
             Screen::AssetInspector => self.inspector.show(ui, context),
             Screen::MaterialEditor => self.materials.show(ui, context),
             Screen::MovieStudio => self.movie.show(ui, context),
+            Screen::Settings => self.settings.show(ui, context),
             _ => render::show(ui, context),
         }
     }

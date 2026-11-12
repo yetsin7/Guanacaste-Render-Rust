@@ -5,4 +5,5 @@ pub mod build;
 pub mod inspector;
 pub mod library;
 pub mod projects;
+pub mod settings;
 pub mod shell;

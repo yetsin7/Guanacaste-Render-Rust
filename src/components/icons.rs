@@ -244,3 +244,15 @@ pub const VISIBILITY: char = '\u{e8f4}';
 
 /// Stands in for `visibility_off`.
 pub const VISIBILITY_OFF: char = '\u{e8f5}';
+
+/// Stands in for `linear_scale`.
+pub const SCRUB: char = '\u{e260}';
+
+/// Stands in for `bolt`.
+pub const BOLT: char = '\u{e3e7}';
+
+/// Stands in for `account_circle`.
+pub const ACCOUNT: char = '\u{e853}';
+
+/// Stands in for `save`.
+pub const SAVE: char = '\u{e161}';
