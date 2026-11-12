@@ -2,6 +2,7 @@
 
 pub mod build;
 pub mod help;
+pub mod import_export;
 pub mod library;
 pub mod materials;
 pub mod movie;

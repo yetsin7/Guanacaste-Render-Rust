@@ -4,6 +4,7 @@
 mod common;
 mod dialogs;
 mod help;
+mod import_export;
 mod library;
 mod materials;
 mod movie;
@@ -19,6 +20,7 @@ use std::sync::OnceLock;
 const TABLES: &[&[(&str, &str)]] = &[
     common::ENTRIES,
     dialogs::ENTRIES,
+    import_export::ENTRIES,
     projects::ENTRIES,
     viewport::ENTRIES,
     library::ENTRIES,

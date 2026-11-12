@@ -48,10 +48,13 @@ pub fn show(ctx: &Context, state: &mut OpenState, recent: &[RecentFile]) -> Dial
                 form::caption(ui, tr("open.path"));
                 ui.horizontal(|ui| {
                     form::text_field(ui, &mut state.path, "C:/Proyectos/escena.grproj", 400.0);
-                    Button::new(tr("open.browse"), ButtonStyle::Container)
+                    if Button::new(tr("open.browse"), ButtonStyle::Container)
                         .padding(12.0, 6.0)
-                        .disabled(tr("dialog.no_engine"))
-                        .show(ui);
+                        .show(ui)
+                        .clicked()
+                    {
+                        outcome = DialogOutcome::Open(Dialog::Import);
+                    }
                 });
                 notice::show(
                     ui,

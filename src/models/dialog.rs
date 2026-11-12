@@ -20,6 +20,8 @@ pub enum Dialog {
     OpenProject,
     /// Save the project.
     SaveProject,
+    /// Import a model exported from Revit or another program.
+    Import,
     /// Export the current view as an image.
     ExportImage,
     /// Application preferences.

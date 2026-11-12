@@ -4,6 +4,7 @@ use crate::commands;
 use crate::components::{icons, menu};
 use crate::features::help::components::notifications_panel::{self, Notice};
 use crate::features::help::components::{about_dialog, error_dialog, shortcuts_dialog};
+use crate::features::import_export::ui::{import_dialog, state::ImportDialogState};
 use crate::features::projects::components::{new_scene_dialog, open_dialog, save_dialog};
 use crate::features::projects::models::{NewSceneState, OpenState, RecentFile, SaveState};
 use crate::features::rendering::components::export_dialog;
@@ -16,7 +17,8 @@ use crate::services::sample_data::files;
 use eframe::egui::{Context, Key, KeyboardShortcut, Modifiers, Pos2};
 
 /// Keyboard shortcuts of the shell and the dialogs they open.
-const SHORTCUTS: [(Key, Dialog); 6] = [
+const SHORTCUTS: [(Key, Dialog); 7] = [
+    (Key::I, Dialog::Import),
     (Key::N, Dialog::NewScene),
     (Key::O, Dialog::OpenProject),
     (Key::S, Dialog::SaveProject),
@@ -26,7 +28,8 @@ const SHORTCUTS: [(Key, Dialog); 6] = [
 ];
 
 /// Menu entries: icon, label key, shortcut hint and the dialog each opens.
-const MENU: [(char, &str, &str, Dialog); 7] = [
+const MENU: [(char, &str, &str, Dialog); 8] = [
+    (icons::UPLOAD, "menu.import", "Ctrl+I", Dialog::Import),
     (icons::ADD_BOX, "menu.new", "Ctrl+N", Dialog::NewScene),
     (
         icons::FOLDER_OPEN,
@@ -63,6 +66,7 @@ pub struct DialogHost {
     shortcuts_search: String,
     notices: Vec<Notice>,
     recent: Vec<RecentFile>,
+    import: ImportDialogState,
 }
 
 impl Default for DialogHost {
@@ -78,6 +82,7 @@ impl Default for DialogHost {
             shortcuts_search: String::new(),
             notices: notifications_panel::initial_notices(),
             recent: files::recent_files(),
+            import: ImportDialogState::default(),
         }
     }
 }
@@ -110,6 +115,7 @@ impl DialogHost {
         let outcome = match dialog {
             Dialog::NewScene => new_scene_dialog::show(ctx, &mut self.new_scene),
             Dialog::OpenProject => open_dialog::show(ctx, &mut self.open, &self.recent),
+            Dialog::Import => import_dialog::show(ctx, &mut self.import),
             Dialog::SaveProject => save_dialog::show(ctx, &mut self.save),
             Dialog::ExportImage => export_dialog::show(ctx, &mut self.export),
             Dialog::Preferences => {

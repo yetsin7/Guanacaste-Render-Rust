@@ -60,6 +60,7 @@ fn dialog_from_slug(slug: &str) -> Option<Dialog> {
     Some(match slug {
         "new" => Dialog::NewScene,
         "open" => Dialog::OpenProject,
+        "import" => Dialog::Import,
         "save" => Dialog::SaveProject,
         "export" => Dialog::ExportImage,
         "preferences" => Dialog::Preferences,
