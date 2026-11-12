@@ -1,4 +1,4 @@
-//! Multi-part text layouts: clamped paragraphs and justified rows.
+//! Multi-part text layouts: clamped paragraphs, rich paragraphs and justified rows.
 
 use eframe::egui::{
     text::{LayoutJob, TextFormat},
@@ -34,6 +34,30 @@ pub fn clamped(
     response
 }
 
+/// A wrapping paragraph made of differently colored spans, as wide as the available width.
+pub fn rich(ui: &mut Ui, spans: &[(&str, Color32)], font: FontId, line_height: f32) -> Response {
+    let width = ui.available_width();
+    let mut job = LayoutJob::default();
+    job.wrap.max_width = width;
+    for (text, color) in spans {
+        job.append(
+            text,
+            0.0,
+            TextFormat {
+                font_id: font.clone(),
+                color: *color,
+                line_height: Some(line_height),
+                ..Default::default()
+            },
+        );
+    }
+    let galley = ui.painter().layout_job(job);
+    let (rect, response) =
+        ui.allocate_exact_size(Vec2::new(width, galley.size().y), Sense::hover());
+    ui.painter().galley(rect.min, galley, Color32::WHITE);
+    response
+}
+
 /// Paints `parts` on one line inside `rect` with equal gaps between them (CSS `justify-content: space-between`).
 pub fn paint_space_between(painter: &Painter, rect: Rect, parts: &[(&str, FontId, Color32)]) {
     let galleys: Vec<_> = parts
@@ -55,13 +79,13 @@ pub fn paint_space_between(painter: &Painter, rect: Rect, parts: &[(&str, FontId
     }
 }
 
-/// Paints a single run of text anchored left-center at `pos`.
-pub fn paint_left(painter: &Painter, pos: Pos2, text: &str, font: FontId, color: Color32) -> Rect {
-    painter.text(pos, Align2::LEFT_CENTER, text, font, color)
-}
-
 /// Allocates a row of `height` and lays `parts` out across it with equal gaps.
 pub fn space_between_row(ui: &mut Ui, height: f32, parts: &[(&str, FontId, Color32)]) {
     let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), height), Sense::hover());
     paint_space_between(ui.painter(), rect, parts);
+}
+
+/// Paints a single run of text anchored left-center at `pos`.
+pub fn paint_left(painter: &Painter, pos: Pos2, text: &str, font: FontId, color: Color32) -> Rect {
+    painter.text(pos, Align2::LEFT_CENTER, text, font, color)
 }

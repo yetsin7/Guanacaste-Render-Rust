@@ -57,6 +57,7 @@ pub struct Button {
     height: Option<f32>,
     fill_width: bool,
     custom: Option<(Color32, Color32)>,
+    disabled: Option<String>,
 }
 
 impl Button {
@@ -73,6 +74,7 @@ impl Button {
             height: None,
             fill_width: false,
             custom: None,
+            disabled: None,
         }
     }
 
@@ -119,6 +121,12 @@ impl Button {
         self
     }
 
+    /// Disables the button: it is drawn dimmed, never reports clicks and explains `reason` on hover.
+    pub fn disabled(mut self, reason: impl Into<String>) -> Self {
+        self.disabled = Some(reason.into());
+        self
+    }
+
     /// Lays out, paints and returns the click response.
     pub fn show(self, ui: &mut Ui) -> Response {
         let color_probe = Color32::WHITE;
@@ -140,13 +148,26 @@ impl Button {
                 .max(self.icon.map_or(0.0, |_| self.icon_size))
                 + self.padding.y * 2.0,
         );
-        let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
-        let response = response.on_hover_cursor(CursorIcon::PointingHand);
-        let (mut fill, ink) = self
-            .custom
-            .unwrap_or_else(|| self.style.colors(response.hovered()));
-        if self.custom.is_some() && response.hovered() {
+        let enabled = self.disabled.is_none();
+        let sense = if enabled {
+            Sense::click()
+        } else {
+            Sense::hover()
+        };
+        let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), sense);
+        let mut response = if enabled {
+            response.on_hover_cursor(CursorIcon::PointingHand)
+        } else {
+            response
+        };
+        let hovered = enabled && response.hovered();
+        let (mut fill, mut ink) = self.custom.unwrap_or_else(|| self.style.colors(hovered));
+        if self.custom.is_some() && hovered {
             fill = super::paint::mix(fill, Color32::WHITE, 0.08);
+        }
+        if let Some(reason) = &self.disabled {
+            ink = super::paint::mix(ink, fill, 0.55);
+            response = response.on_hover_text(reason.as_str());
         }
         let painter = ui.painter();
         painter.rect_filled(rect, CornerRadius::same(2), fill);

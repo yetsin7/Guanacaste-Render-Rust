@@ -256,3 +256,24 @@ pub const ACCOUNT: char = '\u{e853}';
 
 /// Stands in for `save`.
 pub const SAVE: char = '\u{e161}';
+
+/// Stands in for `sports_esports`.
+pub const GAMEPAD: char = '\u{e338}';
+
+/// Stands in for `forum`.
+pub const FORUM: char = '\u{e0bf}';
+
+/// Stands in for `mouse`.
+pub const MOUSE: char = '\u{e323}';
+
+/// Stands in for `keyboard`.
+pub const KEYBOARD: char = '\u{e312}';
+
+/// Stands in for `grid_4x4`.
+pub const GRID_ON: char = '\u{e3ec}';
+
+/// Stands in for `arrow_outward`.
+pub const OPEN_IN_NEW: char = '\u{e89e}';
+
+/// Stands in for `arrow_back`.
+pub const ARROW_BACK: char = '\u{e5c4}';

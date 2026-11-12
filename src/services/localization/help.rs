@@ -1,4 +1,61 @@
 //! Strings of the help screen.
 
 /// `(key, text)` pairs.
-pub const ENTRIES: &[(&str, &str)] = &[];
+pub const ENTRIES: &[(&str, &str)] = &[
+    ("help.title", "Ayuda y diagnóstico"),
+    ("help.close", "Cerrar la ayuda"),
+    ("help.scene", "Villa Moderna L26"),
+    ("help.status", "37 FPS RT activo"),
+    ("help.search_hint", "Buscar comandos, teclas, temas..."),
+    ("help.step", "Paso {0} de {1}"),
+    ("help.live_buffer", "Búfer en vivo"),
+    ("help.prev", "Anterior"),
+    ("help.next", "Siguiente paso"),
+    ("help.knowledge", "Base de conocimiento y flujos"),
+    ("help.docs_version", "Docs v2026.1"),
+    ("help.kb_rt", "Configuración de guiado de rutas RTX"),
+    (
+        "help.kb_rt_note",
+        "Configura los rebotes indirectos de los voladizos de concreto",
+    ),
+    (
+        "help.kb_veg",
+        "Buenas prácticas de dispersión de vegetación",
+    ),
+    (
+        "help.kb_veg_note",
+        "Optimiza biomas de pinos y geometría de cobertura del suelo",
+    ),
+    ("help.mapping", "Mapeo de entrada del dispositivo"),
+    ("help.telemetry", "Telemetría espacial táctil"),
+    ("help.peripherals", "Mouse 3D / periféricos: activo"),
+    ("help.pointer", "Puntero ergonómico CAD"),
+    ("help.select", "Elegir"),
+    ("help.orbit", "Orbitar"),
+    ("help.laser", "Láser de precisión"),
+    ("help.pan", "Desplazar con MMB"),
+    ("help.cluster", "Grupo de vuelo espacial"),
+    ("help.descend", "Descender"),
+    ("help.forward", "Avanzar"),
+    ("help.ascend", "Ascender"),
+    ("help.strafe_l", "Lateral I"),
+    ("help.backward", "Retroceder"),
+    ("help.strafe_r", "Lateral D"),
+    ("help.shift", "MAYÚS (Sprint x4)"),
+    ("help.space", "ESPACIO (Subir Z+)"),
+    ("help.group_placement", "Colocación de activos"),
+    ("help.group_transform", "Transformar y seleccionar"),
+    (
+        "help.no_shortcuts",
+        "Ningún atajo coincide con la búsqueda.",
+    ),
+    ("help.gpu", "Acelerador de rayos GPU: RTX 5090 activo"),
+    ("help.vram_status", "VRAM: 14.8 / 32 GB dedicada"),
+    ("help.buffer", "Búfer objetivo: 4096 × 2304 @ 37 FPS"),
+    ("help.support", "Soporte de arquitectos en vivo"),
+    ("help.pdf", "Exportar hoja PDF"),
+    (
+        "help.unavailable",
+        "Disponible cuando exista el servicio correspondiente.",
+    ),
+];

@@ -1,6 +1,7 @@
 //! Screen composition and navigation. Each screen lives in its own flow folder and only composes components.
 
 mod build;
+mod help;
 mod library;
 mod materials;
 mod movie;
@@ -30,6 +31,7 @@ pub struct Screens {
     materials: materials::MaterialScreen,
     movie: movie::MovieScreen,
     settings: settings::SettingsScreen,
+    help: help::HelpScreen,
 }
 
 impl Screens {
@@ -43,6 +45,7 @@ impl Screens {
             Screen::MaterialEditor => self.materials.show(ui, context),
             Screen::MovieStudio => self.movie.show(ui, context),
             Screen::Settings => self.settings.show(ui, context),
+            Screen::Help => self.help.show(ui, context),
             _ => render::show(ui, context),
         }
     }

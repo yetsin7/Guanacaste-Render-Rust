@@ -1,6 +1,7 @@
 //! Domain modules. Each domain owns its models, logic, services and domain-specific components.
 
 pub mod build;
+pub mod help;
 pub mod library;
 pub mod materials;
 pub mod movie;
