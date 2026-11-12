@@ -56,6 +56,7 @@ pub struct Button {
     width: Option<f32>,
     height: Option<f32>,
     fill_width: bool,
+    custom: Option<(Color32, Color32)>,
 }
 
 impl Button {
@@ -71,6 +72,7 @@ impl Button {
             width: None,
             height: None,
             fill_width: false,
+            custom: None,
         }
     }
 
@@ -111,6 +113,12 @@ impl Button {
         self
     }
 
+    /// Overrides the style with explicit `(fill, text)` colors; hovering brightens the fill.
+    pub fn colors(mut self, fill: Color32, ink: Color32) -> Self {
+        self.custom = Some((fill, ink));
+        self
+    }
+
     /// Lays out, paints and returns the click response.
     pub fn show(self, ui: &mut Ui) -> Response {
         let color_probe = Color32::WHITE;
@@ -134,7 +142,12 @@ impl Button {
         );
         let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
         let response = response.on_hover_cursor(CursorIcon::PointingHand);
-        let (fill, ink) = self.style.colors(response.hovered());
+        let (mut fill, ink) = self
+            .custom
+            .unwrap_or_else(|| self.style.colors(response.hovered()));
+        if self.custom.is_some() && response.hovered() {
+            fill = super::paint::mix(fill, Color32::WHITE, 0.08);
+        }
         let painter = ui.painter();
         painter.rect_filled(rect, CornerRadius::same(2), fill);
         let mut x = rect.center().x - content / 2.0;

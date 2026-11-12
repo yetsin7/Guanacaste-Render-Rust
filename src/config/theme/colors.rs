@@ -37,6 +37,8 @@ pub const PRIMARY_CONTAINER: Color32 = hex(0x75a4ff);
 pub const ON_PRIMARY_CONTAINER: Color32 = hex(0x00387d);
 /// Electric blue of pressed toggles and primary buttons (`secondary-container`).
 pub const SECONDARY_CONTAINER: Color32 = hex(0x0671d7);
+/// Text drawn on a `SECONDARY_CONTAINER` fill (`on-secondary-container`).
+pub const ON_SECONDARY_CONTAINER: Color32 = hex(0xf7f8ff);
 /// Lighter blue for secondary emphasis (`secondary`).
 pub const SECONDARY: Color32 = hex(0xa8c8ff);
 /// Telemetry green for live readouts (`tertiary`).

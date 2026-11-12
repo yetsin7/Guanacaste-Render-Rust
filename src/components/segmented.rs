@@ -2,7 +2,7 @@
 
 use super::text;
 use crate::config::theme::{colors, typography};
-use eframe::egui::{Color32, CornerRadius, CursorIcon, Rect, Sense, Ui, Vec2};
+use eframe::egui::{Align2, Color32, CornerRadius, CursorIcon, Rect, Sense, Ui, Vec2};
 
 /// What each segment shows.
 pub enum Segments<'a> {
@@ -17,27 +17,42 @@ pub struct Segmented<'a> {
     segments: Segments<'a>,
     height: f32,
     width: Option<f32>,
-    inactive_ink: Color32,
+    container: Color32,
+    padding: f32,
+    gap: f32,
+    selected_fill: Color32,
+    selected_ink: Color32,
+    idle_ink: Color32,
 }
 
 impl<'a> Segmented<'a> {
-    /// A control of text options that fills the available width.
+    /// A control of text options filling the available width: recessed container, blue selected segment.
     pub fn text(options: &'a [&'a str]) -> Self {
         Self {
             segments: Segments::Text(options),
             height: 28.0,
             width: None,
-            inactive_ink: colors::OUTLINE,
+            container: colors::SURFACE_LOWEST,
+            padding: 4.0,
+            gap: 4.0,
+            selected_fill: colors::SECONDARY_CONTAINER,
+            selected_ink: colors::ON_SECONDARY_CONTAINER,
+            idle_ink: colors::OUTLINE,
         }
     }
 
-    /// A compact control of icon options (24 px per segment).
+    /// A compact control of icon options (24 px per segment) with a raised container.
     pub fn icons(glyphs: &'a [char]) -> Self {
         Self {
             segments: Segments::Icons(glyphs),
             height: 28.0,
             width: Some(glyphs.len() as f32 * 24.0 + 4.0 + (glyphs.len() as f32 - 1.0) * 4.0),
-            inactive_ink: colors::OUTLINE,
+            container: colors::SURFACE_HIGH,
+            padding: 2.0,
+            gap: 4.0,
+            selected_fill: colors::SURFACE,
+            selected_ink: colors::PRIMARY,
+            idle_ink: colors::OUTLINE,
         }
     }
 
@@ -53,6 +68,21 @@ impl<'a> Segmented<'a> {
         self
     }
 
+    /// Sets container fill, inner padding and the gap between segments.
+    pub fn container(mut self, fill: Color32, padding: f32, gap: f32) -> Self {
+        self.container = fill;
+        self.padding = padding;
+        self.gap = gap;
+        self
+    }
+
+    /// Sets the colors of the selected segment.
+    pub fn selected(mut self, fill: Color32, ink: Color32) -> Self {
+        self.selected_fill = fill;
+        self.selected_ink = ink;
+        self
+    }
+
     /// Draws the control; returns true when the selection changed.
     pub fn show(self, ui: &mut Ui, selected: &mut usize) -> bool {
         let count = match &self.segments {
@@ -62,69 +92,50 @@ impl<'a> Segmented<'a> {
         let width = self.width.unwrap_or_else(|| ui.available_width());
         let (outer, _) = ui.allocate_exact_size(Vec2::new(width, self.height), Sense::hover());
         ui.painter()
-            .rect_filled(outer, CornerRadius::same(2), colors::SURFACE_LOW);
-        let inner = outer.shrink(2.0);
-        let gap = if matches!(self.segments, Segments::Icons(_)) {
-            4.0
-        } else {
-            0.0
-        };
-        let cell_width = (inner.width() - gap * (count as f32 - 1.0)) / count as f32;
+            .rect_filled(outer, CornerRadius::same(2), self.container);
+        let inner = outer.shrink(self.padding);
+        let cell_width = (inner.width() - self.gap * (count as f32 - 1.0)) / count as f32;
         let mut changed = false;
         for index in 0..count {
             let rect = Rect::from_min_size(
-                inner.min + Vec2::new(index as f32 * (cell_width + gap), 0.0),
+                inner.min + Vec2::new(index as f32 * (cell_width + self.gap), 0.0),
                 Vec2::new(cell_width, inner.height()),
             );
+            let id = ui.id().with(("segment", index, rect.min.x as i32));
             let response = ui
-                .interact(
-                    rect,
-                    ui.id().with(("segment", index, rect.min.x as i32)),
-                    Sense::click(),
-                )
+                .interact(rect, id, Sense::click())
                 .on_hover_cursor(CursorIcon::PointingHand);
             let active = index == *selected;
             let painter = ui.painter();
             if active {
-                let fill = if matches!(self.segments, Segments::Icons(_)) {
-                    colors::SURFACE
-                } else {
-                    colors::SECONDARY_CONTAINER
-                };
-                painter.rect_filled(rect, CornerRadius::same(2), fill);
+                painter.rect_filled(rect, CornerRadius::same(2), self.selected_fill);
             } else if response.hovered() {
                 painter.rect_filled(rect, CornerRadius::same(2), colors::SURFACE_HIGH);
             }
+            let ink = if active {
+                self.selected_ink
+            } else if response.hovered() {
+                colors::ON_SURFACE
+            } else {
+                self.idle_ink
+            };
             match &self.segments {
                 Segments::Text(options) => {
-                    let ink = if active {
-                        Color32::WHITE
-                    } else if response.hovered() {
-                        colors::ON_SURFACE
-                    } else {
-                        self.inactive_ink
-                    };
                     let font = if active {
-                        typography::label_md()
+                        typography::mono_medium(11.0)
                     } else {
                         typography::label_sm()
                     };
-                    let font = typography::mono(font.size);
                     text::paint_text(
                         painter,
                         rect.center(),
-                        eframe::egui::Align2::CENTER_CENTER,
+                        Align2::CENTER_CENTER,
                         options[index],
                         font,
                         ink,
                     );
                 }
                 Segments::Icons(glyphs) => {
-                    let ink = if active {
-                        colors::PRIMARY
-                    } else {
-                        self.inactive_ink
-                    };
                     text::paint_icon(painter, rect.center(), glyphs[index], 15.0, ink);
                 }
             }

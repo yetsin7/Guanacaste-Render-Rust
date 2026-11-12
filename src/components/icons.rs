@@ -3,12 +3,12 @@
 //! The prototype uses the newer Material Symbols set, which has a few icons this font lacks. Where that happens the
 //! closest available glyph stands in; the comment on each constant names the symbol it replaces.
 
-/// Stands in for `deployed_code`.
-pub const LOGO: char = '\u{e9fe}';
+/// Stands in for `deployed_code`: `3d_rotation`.
+pub const LOGO: char = '\u{e84d}';
 /// `folder_open`.
 pub const FOLDER_OPEN: char = '\u{e2c8}';
-/// Stands in for `architecture`.
-pub const BUILD: char = '\u{e41c}';
+/// Stands in for `architecture`: `build` (wrench).
+pub const BUILD: char = '\u{e869}';
 /// Stands in for `category`.
 pub const LIBRARY: char = '\u{e1bd}';
 /// `movie`.
@@ -71,3 +71,56 @@ pub const QUEUE: char = '\u{e03c}';
 pub const LAUNCH: char = '\u{e895}';
 /// Stands in for `hdr_on`.
 pub const HDR: char = '\u{e3ee}';
+
+/// `add`.
+pub const ADD: char = '\u{e145}';
+/// Stands in for `view_in_ar`: `3d_rotation`.
+pub const VIEW_IN_AR: char = '\u{e84d}';
+/// `texture`.
+pub const TEXTURE: char = '\u{e421}';
+/// `terrain`.
+pub const TERRAIN: char = '\u{e564}';
+/// `file_upload`.
+pub const UPLOAD: char = '\u{e2c6}';
+/// Stands in for `park`.
+pub const NATURE: char = '\u{e406}';
+/// `group`.
+pub const PEOPLE: char = '\u{e7ef}';
+/// `directions_car`.
+pub const CAR: char = '\u{e531}';
+/// Stands in for `chair`.
+pub const SEAT: char = '\u{e16b}';
+/// Stands in for `deck`.
+pub const OUTDOOR: char = '\u{e7f1}';
+/// Stands in for `lightbulb`.
+pub const LIGHT: char = '\u{e90f}';
+/// Stands in for `auto_fix_high`.
+pub const EFFECTS: char = '\u{e3e4}';
+/// `touch_app`.
+pub const TOUCH: char = '\u{e913}';
+/// Stands in for `highlight_alt`.
+pub const SELECT: char = '\u{e3c2}';
+/// `delete`.
+pub const DELETE: char = '\u{e872}';
+/// Stands in for `drag_pan`.
+pub const MOVE: char = '\u{e89f}';
+/// `refresh`.
+pub const ROTATE: char = '\u{e5d5}';
+/// `straighten`.
+pub const SCALE: char = '\u{e41c}';
+/// Stands in for `restart_alt`.
+pub const RESTORE: char = '\u{e8ba}';
+/// `videocam`.
+pub const VIDEOCAM: char = '\u{e04b}';
+/// `fullscreen`.
+pub const FULLSCREEN: char = '\u{e5d0}';
+/// `tune`.
+pub const TUNE: char = '\u{e429}';
+/// `lock`.
+pub const LOCK: char = '\u{e897}';
+/// `content_copy`.
+pub const COPY: char = '\u{e14d}';
+/// `my_location`.
+pub const TARGET: char = '\u{e55c}';
+/// `wb_sunny`.
+pub const SUN: char = '\u{e430}';
