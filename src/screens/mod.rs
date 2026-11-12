@@ -1,6 +1,7 @@
 //! Screen composition and navigation. Each screen lives in its own flow folder and only composes components.
 
 mod build;
+mod library;
 mod projects;
 mod render;
 
@@ -21,6 +22,8 @@ pub struct ScreenContext<'a> {
 pub struct Screens {
     projects: projects::ProjectsScreen,
     build: build::BuildScreen,
+    library: library::LibraryScreen,
+    inspector: library::InspectorScreen,
 }
 
 impl Screens {
@@ -29,6 +32,8 @@ impl Screens {
         match screen {
             Screen::Projects => self.projects.show(ui, context),
             Screen::Build => self.build.show(ui, context),
+            Screen::Library => self.library.show(ui, context),
+            Screen::AssetInspector => self.inspector.show(ui, context),
             _ => render::show(ui, context),
         }
     }

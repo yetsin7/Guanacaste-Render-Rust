@@ -56,7 +56,6 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("build.tool_rotate", "Rotar"),
     ("build.tool_scale", "Escalar"),
     ("build.cursor", "Cursor XYZ:"),
-    ("build.reset_cursor", "Restablecer cursor"),
     ("build.shortcuts", "Atajos:"),
     ("build.key_shift", "MAYÚS"),
     ("build.key_alt", "ALT"),

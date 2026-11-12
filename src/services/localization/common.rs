@@ -4,6 +4,8 @@
 pub const ENTRIES: &[(&str, &str)] = &[
     ("common.product", "GUANACASTE RENDER"),
     ("common.layer", "Capa 1"),
+    ("common.prev", "ANT."),
+    ("common.next", "SIG."),
     ("rail.projects", "Proyectos"),
     ("rail.build", "Construcción"),
     ("rail.library", "Biblioteca de contenido"),

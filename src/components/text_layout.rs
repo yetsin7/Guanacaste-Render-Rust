@@ -59,3 +59,9 @@ pub fn paint_space_between(painter: &Painter, rect: Rect, parts: &[(&str, FontId
 pub fn paint_left(painter: &Painter, pos: Pos2, text: &str, font: FontId, color: Color32) -> Rect {
     painter.text(pos, Align2::LEFT_CENTER, text, font, color)
 }
+
+/// Allocates a row of `height` and lays `parts` out across it with equal gaps.
+pub fn space_between_row(ui: &mut Ui, height: f32, parts: &[(&str, FontId, Color32)]) {
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), height), Sense::hover());
+    paint_space_between(ui.painter(), rect, parts);
+}

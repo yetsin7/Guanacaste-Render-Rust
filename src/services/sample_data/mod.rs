@@ -2,5 +2,7 @@
 //! from project files is defined here, so replacing it with real data touches only this module.
 
 pub mod build;
+pub mod inspector;
+pub mod library;
 pub mod projects;
 pub mod shell;

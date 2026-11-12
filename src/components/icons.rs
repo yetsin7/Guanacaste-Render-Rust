@@ -124,3 +124,75 @@ pub const COPY: char = '\u{e14d}';
 pub const TARGET: char = '\u{e55c}';
 /// `wb_sunny`.
 pub const SUN: char = '\u{e430}';
+
+/// `filter_list`.
+pub const FILTER_LIST: char = '\u{e152}';
+
+/// `unfold_more`.
+pub const UNFOLD_MORE: char = '\u{e5d7}';
+
+/// `public`.
+pub const PUBLIC: char = '\u{e80b}';
+
+/// `check`.
+pub const CHECK: char = '\u{e5ca}';
+
+/// `star`.
+pub const STAR: char = '\u{e838}';
+
+/// `accessibility`.
+pub const ACCESSIBILITY: char = '\u{e84e}';
+
+/// `add_circle`.
+pub const ADD_CIRCLE: char = '\u{e147}';
+
+/// `scatter_plot`.
+pub const SCATTER: char = '\u{e6dd}';
+
+/// `chevron_left`.
+pub const CHEVRON_LEFT: char = '\u{e5cb}';
+
+/// `chevron_right`.
+pub const CHEVRON_RIGHT: char = '\u{e5cc}';
+
+/// Stands in for `download`.
+pub const DOWNLOAD: char = '\u{e884}';
+
+/// Stands in for `share`.
+pub const SHARE: char = '\u{e80d}';
+
+/// Stands in for `edit_note`.
+pub const EDIT_NOTE: char = '\u{e254}';
+
+/// Stands in for `verified`.
+pub const VERIFIED: char = '\u{e8e8}';
+
+/// Stands in for `air`.
+pub const WIND: char = '\u{e332}';
+
+/// Stands in for `energy_savings_leaf`.
+pub const LEAF: char = '\u{e545}';
+
+/// Stands in for `ac_unit`.
+pub const SNOW: char = '\u{eb3b}';
+
+/// Stands in for `spa`.
+pub const SPA: char = '\u{eb4c}';
+
+/// Stands in for `height`.
+pub const SWAP_VERT: char = '\u{e8d5}';
+
+/// Stands in for `arrows_outward`.
+pub const SWAP_HORIZ: char = '\u{e8d4}';
+
+/// Stands in for `polyline`.
+pub const TIMELINE: char = '\u{e922}';
+
+/// Stands in for `multiline_chart`.
+pub const SHOW_CHART: char = '\u{e6df}';
+
+/// Stands in for `refresh`.
+pub const REFRESH: char = '\u{e5d5}';
+
+/// Stands in for `favorite`.
+pub const FAVORITE: char = '\u{e87d}';

@@ -9,6 +9,7 @@ pub mod icons;
 pub mod key_cap;
 pub mod label_value;
 pub mod layout;
+pub mod pagination;
 pub mod paint;
 pub mod scene_art;
 pub mod search_field;

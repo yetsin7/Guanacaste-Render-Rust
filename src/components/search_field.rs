@@ -3,8 +3,8 @@
 use super::{icons, key_cap::KeyCap, text};
 use crate::config::theme::{colors, typography};
 use eframe::egui::{
-    self, Align, Color32, CornerRadius, Layout, Margin, Rect, RichText, Sense, TextEdit, Ui,
-    UiBuilder, Vec2,
+    self, Align, Color32, CornerRadius, FontId, Layout, Margin, Rect, RichText, Sense, TextEdit,
+    Ui, UiBuilder, Vec2,
 };
 
 /// A single-line search box.
@@ -13,7 +13,10 @@ pub struct SearchField<'a> {
     width: f32,
     height: f32,
     shortcut: Option<&'a str>,
+    badges: &'a [(&'a str, Color32, Color32)],
     fill: Color32,
+    font: FontId,
+    icon_size: f32,
 }
 
 impl<'a> SearchField<'a> {
@@ -24,7 +27,10 @@ impl<'a> SearchField<'a> {
             width: 288.0,
             height: 32.0,
             shortcut: None,
+            badges: &[],
             fill: colors::SURFACE_CONTAINER,
+            font: typography::body_sm(),
+            icon_size: 16.0,
         }
     }
 
@@ -46,6 +52,19 @@ impl<'a> SearchField<'a> {
         self
     }
 
+    /// Shows small `(text, fill, ink)` badges at the right edge, last one rightmost.
+    pub fn badges(mut self, badges: &'a [(&'a str, Color32, Color32)]) -> Self {
+        self.badges = badges;
+        self
+    }
+
+    /// Sets the text font and the icon size.
+    pub fn font(mut self, font: FontId, icon_size: f32) -> Self {
+        self.font = font;
+        self.icon_size = icon_size;
+        self
+    }
+
     /// Sets the background fill.
     pub fn fill(mut self, fill: Color32) -> Self {
         self.fill = fill;
@@ -59,14 +78,19 @@ impl<'a> SearchField<'a> {
             .rect_filled(rect, CornerRadius::same(2), self.fill);
         text::paint_icon(
             ui.painter(),
-            egui::pos2(rect.left() + 8.0 + 8.0, rect.center().y),
+            egui::pos2(rect.left() + 8.0 + self.icon_size / 2.0, rect.center().y),
             icons::SEARCH,
-            16.0,
+            self.icon_size,
             colors::OUTLINE,
         );
-        let right_reserved = if self.shortcut.is_some() { 44.0 } else { 8.0 };
+        let badge_width: f32 = self
+            .badges
+            .iter()
+            .map(|(label, _, _)| label.chars().count() as f32 * 6.6 + 16.0)
+            .sum();
+        let right_reserved = if self.shortcut.is_some() { 44.0 } else { 8.0 } + badge_width;
         let edit_rect = Rect::from_min_max(
-            egui::pos2(rect.left() + 32.0, rect.top()),
+            egui::pos2(rect.left() + 16.0 + self.icon_size + 8.0, rect.top()),
             egui::pos2(rect.right() - right_reserved, rect.bottom()),
         );
         let mut edit_ui = ui.new_child(
@@ -76,7 +100,7 @@ impl<'a> SearchField<'a> {
         );
         let edit = TextEdit::singleline(value)
             .frame(egui::Frame::NONE)
-            .font(typography::body_sm())
+            .font(self.font.clone())
             .text_color(colors::ON_SURFACE)
             .hint_text(RichText::new(self.hint).color(colors::OUTLINE))
             .margin(Margin::ZERO)
@@ -93,6 +117,24 @@ impl<'a> SearchField<'a> {
                     .layout(Layout::right_to_left(Align::Center)),
             );
             KeyCap::new(shortcut).small().show(&mut key_ui);
+        }
+        if !self.badges.is_empty() {
+            let area = Rect::from_min_max(
+                egui::pos2(rect.right() - badge_width - 8.0, rect.top()),
+                egui::pos2(rect.right() - 8.0, rect.bottom()),
+            );
+            let mut badge_ui = ui.new_child(
+                UiBuilder::new()
+                    .max_rect(area)
+                    .layout(Layout::left_to_right(Align::Center)),
+            );
+            badge_ui.spacing_mut().item_spacing.x = 4.0;
+            for (label, fill, ink) in self.badges {
+                super::tag::Tag::new(*label, *ink)
+                    .fill(*fill)
+                    .padding(6.0, 2.0)
+                    .show(&mut badge_ui);
+            }
         }
         changed
     }
