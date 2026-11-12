@@ -1,6 +1,7 @@
 //! Sample guide and readouts of the build screen (placeholder data).
 
-use crate::features::build::models::{BuildGuide, SliderSpec};
+use crate::features::build::models::BuildGuide;
+use crate::models::slider_spec::SliderSpec;
 
 /// The guided step shown in build mode.
 pub fn guide() -> BuildGuide {

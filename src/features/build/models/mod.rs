@@ -23,19 +23,6 @@ impl BuildTab {
     ];
 }
 
-/// How a slider's normalized value maps to a displayed measure.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SliderSpec {
-    /// Value at the left end.
-    pub min: f32,
-    /// Value at the right end.
-    pub max: f32,
-    /// Unit suffix, e.g. `" m"`.
-    pub unit: &'static str,
-    /// Digits after the decimal point.
-    pub decimals: usize,
-}
-
 /// The guided placement step shown in the step card.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BuildGuide {

@@ -1,6 +1,7 @@
 //! Reusable interface components. Domain-specific controls live in `features/<domain>/components/`.
 
 pub mod button;
+pub mod checkbox;
 pub mod chip;
 pub mod choice_row;
 pub mod frames;

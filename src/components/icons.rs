@@ -196,3 +196,18 @@ pub const REFRESH: char = '\u{e5d5}';
 
 /// Stands in for `favorite`.
 pub const FAVORITE: char = '\u{e87d}';
+
+/// `pan_tool`.
+pub const PAN_TOOL: char = '\u{e925}';
+
+/// `colorize`.
+pub const COLORIZE: char = '\u{e3b8}';
+
+/// `filter_center_focus`.
+pub const FOCUS: char = '\u{e3b4}';
+
+/// `bookmark`.
+pub const BOOKMARK: char = '\u{e866}';
+
+/// `sync`.
+pub const SYNC: char = '\u{e627}';

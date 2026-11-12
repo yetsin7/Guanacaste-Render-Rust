@@ -5,7 +5,6 @@ use crate::components::{
     segmented::Segmented, slider::Slider, tag::Tag, text, toggle,
 };
 use crate::config::theme::{colors, typography};
-use crate::features::build::logic;
 use crate::features::build::models::BuildState;
 use crate::services::localization::tr;
 use crate::services::sample_data::build as sample;
@@ -193,7 +192,7 @@ fn sliders(ui: &mut Ui, state: &mut BuildState) {
                     |ui| {
                         text::label(
                             ui,
-                            logic::format_value(&spec, state.sliders[index]),
+                            spec.format(state.sliders[index]),
                             typography::mono_medium(11.0),
                             colors::ON_SURFACE,
                         );

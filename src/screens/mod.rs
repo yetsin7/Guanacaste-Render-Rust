@@ -2,6 +2,7 @@
 
 mod build;
 mod library;
+mod materials;
 mod projects;
 mod render;
 
@@ -24,6 +25,7 @@ pub struct Screens {
     build: build::BuildScreen,
     library: library::LibraryScreen,
     inspector: library::InspectorScreen,
+    materials: materials::MaterialScreen,
 }
 
 impl Screens {
@@ -34,6 +36,7 @@ impl Screens {
             Screen::Build => self.build.show(ui, context),
             Screen::Library => self.library.show(ui, context),
             Screen::AssetInspector => self.inspector.show(ui, context),
+            Screen::MaterialEditor => self.materials.show(ui, context),
             _ => render::show(ui, context),
         }
     }
