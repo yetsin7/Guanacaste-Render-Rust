@@ -27,7 +27,7 @@ pub struct MovieState {
     pub playing: bool,
     /// Loop toggle.
     pub looping: bool,
-    /// Focal length, normalized over 18..85 mm.
+    /// Focal length, normalized over 18..85 mm on a logarithmic scale.
     pub focal: f32,
     /// Selected aperture index.
     pub aperture: usize,
@@ -53,7 +53,7 @@ impl Default for MovieState {
             time: 4.4,
             playing: false,
             looping: false,
-            focal: (28.0 - 18.0) / (85.0 - 18.0),
+            focal: crate::features::movie::logic::focal_position(28.0),
             aperture: 1,
             motion_blur: 0.65,
             depth_of_field: true,

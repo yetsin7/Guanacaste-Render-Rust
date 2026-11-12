@@ -36,9 +36,14 @@ pub fn fraction(state: &MovieState) -> f32 {
     (state.time / DURATION).clamp(0.0, 1.0)
 }
 
-/// Focal length in millimeters for a normalized slider value over 18..85 mm.
+/// Focal length in millimeters for a normalized slider value over 18..85 mm (logarithmic).
 pub fn focal_length(normalized: f32) -> f32 {
-    18.0 + (85.0 - 18.0) * normalized.clamp(0.0, 1.0)
+    18.0 * (85.0_f32 / 18.0).powf(normalized.clamp(0.0, 1.0))
+}
+
+/// Normalized slider value of a focal length (the scale is logarithmic, like real zoom lenses).
+pub fn focal_position(millimeters: f32) -> f32 {
+    (millimeters / 18.0).ln() / (85.0_f32 / 18.0).ln()
 }
 
 /// Cinema label for the motion-blur value.

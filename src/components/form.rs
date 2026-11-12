@@ -43,18 +43,25 @@ pub fn text_field(ui: &mut Ui, value: &mut String, hint: &str, width: f32) -> Re
 /// A dropdown over `options` showing the selected one; returns true when the selection changed.
 pub fn dropdown(ui: &mut Ui, id: &str, selected: &mut usize, options: &[&str], width: f32) -> bool {
     let before = *selected;
-    egui::ComboBox::from_id_salt(id)
-        .selected_text(RichText::new(options[*selected]).font(typography::body_md()))
-        .width(width)
-        .show_ui(ui, |ui| {
-            for (index, option) in options.iter().enumerate() {
-                ui.selectable_value(
-                    selected,
-                    index,
-                    RichText::new(*option).font(typography::body_md()),
-                );
-            }
-        });
+    ui.scope(|ui| {
+        let visuals = ui.visuals_mut();
+        visuals.widgets.inactive.weak_bg_fill = colors::SURFACE_LOWEST;
+        visuals.widgets.inactive.bg_stroke = egui::Stroke::NONE;
+        visuals.widgets.hovered.weak_bg_fill = colors::SURFACE_CONTAINER;
+        visuals.widgets.hovered.bg_stroke = egui::Stroke::NONE;
+        egui::ComboBox::from_id_salt(id)
+            .selected_text(RichText::new(options[*selected]).font(typography::body_md()))
+            .width(width)
+            .show_ui(ui, |ui| {
+                for (index, option) in options.iter().enumerate() {
+                    ui.selectable_value(
+                        selected,
+                        index,
+                        RichText::new(*option).font(typography::body_md()),
+                    );
+                }
+            });
+    });
     *selected != before
 }
 

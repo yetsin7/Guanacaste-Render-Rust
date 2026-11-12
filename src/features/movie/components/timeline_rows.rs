@@ -274,7 +274,7 @@ fn lane_rows(ui: &mut Ui, rows: Rect, content: Rect, state: &MovieState) {
         CornerRadius::same(2),
         colors::SURFACE_HIGH,
     );
-    let node = Rect::from_min_size(pos2(x_of(0.30) + 4.0, sun_mid - 10.0), vec2(124.0, 20.0));
+    let node = Rect::from_min_size(pos2(x_of(0.30) + 4.0, sun_mid - 10.0), vec2(160.0, 20.0));
     painter.rect_filled(node, CornerRadius::same(2), colors::PRIMARY_CONTAINER);
     text::paint_icon(
         painter,

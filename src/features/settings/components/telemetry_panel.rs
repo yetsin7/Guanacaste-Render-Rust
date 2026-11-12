@@ -147,7 +147,7 @@ pub fn show(ui: &mut Ui) {
                     ],
                 );
             });
-            ui.horizontal(|ui| {
+            ui.horizontal_top(|ui| {
                 ui.spacing_mut().item_spacing.x = 8.0;
                 let width = (ui.available_width() - 8.0) / 2.0;
                 for (caption, value, limit, fraction, color, value_color) in [
