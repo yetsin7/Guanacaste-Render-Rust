@@ -97,7 +97,7 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("about.licenses", "Licencias de las fuentes"),
     ("about.license_inter", "Inter: SIL Open Font License 1.1"),
     ("about.license_mono", "JetBrains Mono: SIL Open Font License 1.1"),
-    ("about.license_icons", "Material Icons: Apache License 2.0"),
+    ("about.license_icons", "Material Symbols: Apache License 2.0"),
     ("about.placeholders", "Las imágenes de assets/placeholders son marcadores de posición del prototipo."),
     ("shortcuts.title", "Atajos de teclado"),
     ("shortcuts.search", "Buscar atajos..."),

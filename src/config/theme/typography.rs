@@ -1,5 +1,5 @@
 //! Fonts of the design system: Inter for interface text, JetBrains Mono for numbers and technical labels, and
-//! Material Icons for glyphs. All three are openly licensed (see `assets/fonts/NOTICE.md`).
+//! Material Symbols for glyphs. All three are openly licensed (see `assets/fonts/NOTICE.md`).
 
 use eframe::egui::{self, FontDefinitions, FontFamily, FontId};
 use std::sync::Arc;
@@ -105,7 +105,7 @@ pub fn install_fonts(context: &egui::Context) {
     );
     add(
         ICONS,
-        include_bytes!("../../../assets/fonts/MaterialIcons-Regular.ttf"),
+        include_bytes!("../../../assets/fonts/MaterialSymbolsOutlined.ttf"),
         FontFamily::Name(ICONS.into()),
     );
     // Named families fall back to the base fonts for characters they lack (accents, symbols).

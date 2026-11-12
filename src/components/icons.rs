@@ -1,127 +1,183 @@
-//! Material icon glyphs by name, as code points of the bundled `MaterialIcons-Regular.ttf`.
-//!
-//! The prototype uses the newer Material Symbols set, which has a few icons this font lacks. Where that happens the
-//! closest available glyph stands in; the comment on each constant names the symbol it replaces.
+//! Material Symbols (Outlined) glyphs by name, as code points of the bundled `MaterialSymbolsOutlined.ttf`.
+//! Every constant uses the exact symbol the prototype names.
 
-/// Stands in for `deployed_code`: `3d_rotation`.
-pub const LOGO: char = '\u{e84d}';
+/// `deployed_code`.
+pub const LOGO: char = '\u{f720}';
+
 /// `folder_open`.
 pub const FOLDER_OPEN: char = '\u{e2c8}';
-/// Stands in for `architecture`: `build` (wrench).
-pub const BUILD: char = '\u{e869}';
-/// Stands in for `category`.
-pub const LIBRARY: char = '\u{e1bd}';
+
+/// `architecture`.
+pub const BUILD: char = '\u{ea3b}';
+
+/// `category`.
+pub const LIBRARY: char = '\u{e72c}';
+
 /// `movie`.
-pub const MOVIE: char = '\u{e02c}';
+pub const MOVIE: char = '\u{e404}';
+
 /// `camera`.
 pub const CAMERA: char = '\u{e3af}';
-/// Stands in for `speed`.
-pub const SPEED: char = '\u{e01b}';
+
+/// `speed`.
+pub const SPEED: char = '\u{e9e4}';
+
 /// `settings`.
 pub const SETTINGS: char = '\u{e8b8}';
+
 /// `help`.
 pub const HELP: char = '\u{e8fd}';
+
 /// `close`.
 pub const CLOSE: char = '\u{e5cd}';
-/// `minimize` (drawn as a horizontal bar).
-pub const MINIMIZE: char = '\u{e15b}';
+
+/// `minimize`.
+pub const MINIMIZE: char = '\u{e931}';
+
 /// `crop_square`.
 pub const MAXIMIZE: char = '\u{e3c6}';
-/// `filter_none`, the restore-window glyph.
+
+/// `filter_none`.
 pub const RESTORE_WINDOW: char = '\u{e3e0}';
+
 /// `layers`.
 pub const LAYERS: char = '\u{e53b}';
+
 /// `expand_more`.
 pub const EXPAND_MORE: char = '\u{e5cf}';
+
 /// `person`.
-pub const PERSON: char = '\u{e7fd}';
+pub const PERSON: char = '\u{f0d3}';
+
 /// `search`.
-pub const SEARCH: char = '\u{e8b6}';
+pub const SEARCH: char = '\u{ef7a}';
+
 /// `notifications`.
-pub const NOTIFICATIONS: char = '\u{e7f4}';
+pub const NOTIFICATIONS: char = '\u{e7f5}';
+
 /// `add_box`.
 pub const ADD_BOX: char = '\u{e146}';
+
 /// `check_circle`.
-pub const CHECK_CIRCLE: char = '\u{e86c}';
+pub const CHECK_CIRCLE: char = '\u{f0be}';
+
 /// `cloud`.
-pub const CLOUD: char = '\u{e2bd}';
+pub const CLOUD: char = '\u{f15c}';
+
 /// `archive`.
 pub const ARCHIVE: char = '\u{e149}';
+
 /// `memory`.
 pub const MEMORY: char = '\u{e322}';
-/// Stands in for `hard_drive`.
-pub const STORAGE: char = '\u{e1db}';
-/// Stands in for `grid_view`.
-pub const GRID_VIEW: char = '\u{e8f0}';
+
+/// `hard_drive`.
+pub const STORAGE: char = '\u{f80e}';
+
+/// `grid_view`.
+pub const GRID_VIEW: char = '\u{e9b0}';
+
 /// `view_list`.
 pub const VIEW_LIST: char = '\u{e8ef}';
+
 /// `arrow_forward`.
 pub const ARROW_FORWARD: char = '\u{e5c8}';
+
 /// `more_vert`.
 pub const MORE_VERT: char = '\u{e5d4}';
+
 /// `more_horiz`.
 pub const MORE_HORIZ: char = '\u{e5d3}';
+
 /// `play_arrow`.
 pub const PLAY_ARROW: char = '\u{e037}';
-/// Stands in for `hub`.
-pub const HUB: char = '\u{e335}';
+
+/// `hub`.
+pub const HUB: char = '\u{e9f4}';
+
 /// `queue`.
 pub const QUEUE: char = '\u{e03c}';
-/// Stands in for `rocket_launch`.
-pub const LAUNCH: char = '\u{e895}';
-/// Stands in for `hdr_on`.
+
+/// `rocket_launch`.
+pub const LAUNCH: char = '\u{eb9b}';
+
+/// `hdr_on`.
 pub const HDR: char = '\u{e3ee}';
 
 /// `add`.
 pub const ADD: char = '\u{e145}';
-/// Stands in for `view_in_ar`: `3d_rotation`.
-pub const VIEW_IN_AR: char = '\u{e84d}';
+
+/// `view_in_ar`.
+pub const VIEW_IN_AR: char = '\u{efc9}';
+
 /// `texture`.
 pub const TEXTURE: char = '\u{e421}';
+
 /// `terrain`.
 pub const TERRAIN: char = '\u{e564}';
+
 /// `file_upload`.
-pub const UPLOAD: char = '\u{e2c6}';
-/// Stands in for `park`.
-pub const NATURE: char = '\u{e406}';
+pub const UPLOAD: char = '\u{f09b}';
+
+/// `park`.
+pub const NATURE: char = '\u{ea63}';
+
 /// `group`.
-pub const PEOPLE: char = '\u{e7ef}';
+pub const PEOPLE: char = '\u{ea21}';
+
 /// `directions_car`.
-pub const CAR: char = '\u{e531}';
-/// Stands in for `chair`.
-pub const SEAT: char = '\u{e16b}';
-/// Stands in for `deck`.
-pub const OUTDOOR: char = '\u{e7f1}';
-/// Stands in for `lightbulb`.
+pub const CAR: char = '\u{eff7}';
+
+/// `chair`.
+pub const SEAT: char = '\u{efed}';
+
+/// `deck`.
+pub const OUTDOOR: char = '\u{ea42}';
+
+/// `lightbulb`.
 pub const LIGHT: char = '\u{e90f}';
-/// Stands in for `auto_fix_high`.
-pub const EFFECTS: char = '\u{e3e4}';
+
+/// `auto_fix_high`.
+pub const EFFECTS: char = '\u{e663}';
+
 /// `touch_app`.
 pub const TOUCH: char = '\u{e913}';
-/// Stands in for `highlight_alt`.
-pub const SELECT: char = '\u{e3c2}';
+
+/// `highlight_alt`.
+pub const SELECT: char = '\u{ef52}';
+
 /// `delete`.
-pub const DELETE: char = '\u{e872}';
-/// Stands in for `drag_pan`.
-pub const MOVE: char = '\u{e89f}';
+pub const DELETE: char = '\u{e92e}';
+
+/// `drag_pan`.
+pub const MOVE: char = '\u{f71e}';
+
 /// `refresh`.
 pub const ROTATE: char = '\u{e5d5}';
+
 /// `straighten`.
 pub const SCALE: char = '\u{e41c}';
-/// Stands in for `restart_alt`.
-pub const RESTORE: char = '\u{e8ba}';
+
+/// `restart_alt`.
+pub const RESTORE: char = '\u{f053}';
+
 /// `videocam`.
 pub const VIDEOCAM: char = '\u{e04b}';
+
 /// `fullscreen`.
 pub const FULLSCREEN: char = '\u{e5d0}';
+
 /// `tune`.
 pub const TUNE: char = '\u{e429}';
+
 /// `lock`.
-pub const LOCK: char = '\u{e897}';
+pub const LOCK: char = '\u{e899}';
+
 /// `content_copy`.
 pub const COPY: char = '\u{e14d}';
+
 /// `my_location`.
 pub const TARGET: char = '\u{e55c}';
+
 /// `wb_sunny`.
 pub const SUN: char = '\u{e430}';
 
@@ -135,19 +191,19 @@ pub const UNFOLD_MORE: char = '\u{e5d7}';
 pub const PUBLIC: char = '\u{e80b}';
 
 /// `check`.
-pub const CHECK: char = '\u{e5ca}';
+pub const CHECK: char = '\u{e668}';
 
 /// `star`.
-pub const STAR: char = '\u{e838}';
+pub const STAR: char = '\u{f09a}';
 
 /// `accessibility`.
 pub const ACCESSIBILITY: char = '\u{e84e}';
 
 /// `add_circle`.
-pub const ADD_CIRCLE: char = '\u{e147}';
+pub const ADD_CIRCLE: char = '\u{e990}';
 
 /// `scatter_plot`.
-pub const SCATTER: char = '\u{e6dd}';
+pub const SCATTER: char = '\u{e268}';
 
 /// `chevron_left`.
 pub const CHEVRON_LEFT: char = '\u{e5cb}';
@@ -155,47 +211,47 @@ pub const CHEVRON_LEFT: char = '\u{e5cb}';
 /// `chevron_right`.
 pub const CHEVRON_RIGHT: char = '\u{e5cc}';
 
-/// Stands in for `download`.
-pub const DOWNLOAD: char = '\u{e884}';
+/// `download`.
+pub const DOWNLOAD: char = '\u{f090}';
 
-/// Stands in for `share`.
+/// `share`.
 pub const SHARE: char = '\u{e80d}';
 
-/// Stands in for `edit_note`.
-pub const EDIT_NOTE: char = '\u{e254}';
+/// `edit_note`.
+pub const EDIT_NOTE: char = '\u{e745}';
 
-/// Stands in for `verified`.
-pub const VERIFIED: char = '\u{e8e8}';
+/// `verified`.
+pub const VERIFIED: char = '\u{ef76}';
 
-/// Stands in for `air`.
-pub const WIND: char = '\u{e332}';
+/// `air`.
+pub const WIND: char = '\u{efd8}';
 
-/// Stands in for `energy_savings_leaf`.
-pub const LEAF: char = '\u{e545}';
+/// `energy_savings_leaf`.
+pub const LEAF: char = '\u{ec1a}';
 
-/// Stands in for `ac_unit`.
+/// `ac_unit`.
 pub const SNOW: char = '\u{eb3b}';
 
-/// Stands in for `spa`.
+/// `spa`.
 pub const SPA: char = '\u{eb4c}';
 
-/// Stands in for `height`.
-pub const SWAP_VERT: char = '\u{e8d5}';
+/// `height`.
+pub const SWAP_VERT: char = '\u{ea16}';
 
-/// Stands in for `arrows_outward`.
-pub const SWAP_HORIZ: char = '\u{e8d4}';
+/// `arrows_outward`.
+pub const SWAP_HORIZ: char = '\u{f72c}';
 
-/// Stands in for `polyline`.
-pub const TIMELINE: char = '\u{e922}';
+/// `polyline`.
+pub const TIMELINE: char = '\u{ebbb}';
 
-/// Stands in for `multiline_chart`.
+/// `multiline_chart`.
 pub const SHOW_CHART: char = '\u{e6df}';
 
-/// Stands in for `refresh`.
+/// `refresh`.
 pub const REFRESH: char = '\u{e5d5}';
 
-/// Stands in for `favorite`.
-pub const FAVORITE: char = '\u{e87d}';
+/// `favorite`.
+pub const FAVORITE: char = '\u{e87e}';
 
 /// `pan_tool`.
 pub const PAN_TOOL: char = '\u{e925}';
@@ -204,88 +260,88 @@ pub const PAN_TOOL: char = '\u{e925}';
 pub const COLORIZE: char = '\u{e3b8}';
 
 /// `filter_center_focus`.
-pub const FOCUS: char = '\u{e3b4}';
+pub const FOCUS: char = '\u{e3dc}';
 
 /// `bookmark`.
-pub const BOOKMARK: char = '\u{e866}';
+pub const BOOKMARK: char = '\u{e8e7}';
 
 /// `sync`.
 pub const SYNC: char = '\u{e627}';
 
-/// Stands in for `first_page`.
+/// `first_page`.
 pub const FIRST_PAGE: char = '\u{e5dc}';
 
-/// Stands in for `skip_previous`.
+/// `skip_previous`.
 pub const SKIP_PREVIOUS: char = '\u{e045}';
 
-/// Stands in for `skip_next`.
+/// `skip_next`.
 pub const SKIP_NEXT: char = '\u{e044}';
 
-/// Stands in for `last_page`.
+/// `last_page`.
 pub const LAST_PAGE: char = '\u{e5dd}';
 
-/// Stands in for `repeat`.
+/// `repeat`.
 pub const REPEAT: char = '\u{e040}';
 
-/// Stands in for `pause`.
+/// `pause`.
 pub const PAUSE: char = '\u{e034}';
 
-/// Stands in for `schedule`.
-pub const SCHEDULE: char = '\u{e8b5}';
+/// `schedule`.
+pub const SCHEDULE: char = '\u{efd6}';
 
-/// Stands in for `auto_stories`.
-pub const BOOK: char = '\u{e0e0}';
+/// `auto_stories`.
+pub const BOOK: char = '\u{e666}';
 
-/// Stands in for `lock_open`.
+/// `lock_open`.
 pub const LOCK_OPEN: char = '\u{e898}';
 
-/// Stands in for `visibility`.
+/// `visibility`.
 pub const VISIBILITY: char = '\u{e8f4}';
 
-/// Stands in for `visibility_off`.
+/// `visibility_off`.
 pub const VISIBILITY_OFF: char = '\u{e8f5}';
 
-/// Stands in for `linear_scale`.
+/// `linear_scale`.
 pub const SCRUB: char = '\u{e260}';
 
-/// Stands in for `bolt`.
-pub const BOLT: char = '\u{e3e7}';
+/// `bolt`.
+pub const BOLT: char = '\u{ea0b}';
 
-/// Stands in for `account_circle`.
-pub const ACCOUNT: char = '\u{e853}';
+/// `account_circle`.
+pub const ACCOUNT: char = '\u{f20b}';
 
-/// Stands in for `save`.
+/// `save`.
 pub const SAVE: char = '\u{e161}';
 
-/// Stands in for `sports_esports`.
-pub const GAMEPAD: char = '\u{e338}';
+/// `sports_esports`.
+pub const GAMEPAD: char = '\u{ea28}';
 
-/// Stands in for `forum`.
-pub const FORUM: char = '\u{e0bf}';
+/// `forum`.
+pub const FORUM: char = '\u{e8af}';
 
-/// Stands in for `mouse`.
+/// `mouse`.
 pub const MOUSE: char = '\u{e323}';
 
-/// Stands in for `keyboard`.
+/// `keyboard`.
 pub const KEYBOARD: char = '\u{e312}';
 
-/// Stands in for `grid_4x4`.
-pub const GRID_ON: char = '\u{e3ec}';
+/// `grid_4x4`.
+pub const GRID_ON: char = '\u{f016}';
 
-/// Stands in for `arrow_outward`.
-pub const OPEN_IN_NEW: char = '\u{e89e}';
+/// `arrow_outward`.
+pub const OPEN_IN_NEW: char = '\u{f8ce}';
 
-/// Stands in for `arrow_back`.
+/// `arrow_back`.
 pub const ARROW_BACK: char = '\u{e5c4}';
 
 /// `info`.
 pub const INFO: char = '\u{e88e}';
 
 /// `warning`.
-pub const WARNING: char = '\u{e002}';
+pub const WARNING: char = '\u{f083}';
 
 /// `error`.
-pub const ERROR: char = '\u{e000}';
+pub const ERROR: char = '\u{f8b6}';
 
 /// `image`.
 pub const IMAGE: char = '\u{e3f4}';

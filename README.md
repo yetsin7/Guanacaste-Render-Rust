@@ -40,4 +40,4 @@ Las fuentes incluidas en `assets/fonts/` tienen licencias abiertas (detalle en `
 
 - Inter: SIL Open Font License 1.1.
 - JetBrains Mono: SIL Open Font License 1.1.
-- Material Icons: Apache License 2.0.
+- Material Symbols: Apache License 2.0 (fuente variable oficial de Google, 10.7 MB).
