@@ -19,8 +19,8 @@ fn tutorial_navigation_stays_in_range() {
 #[test]
 fn shortcut_search_checks_action_and_keys() {
     let list = sample::placement_shortcuts();
-    assert_eq!(filter_shortcuts(&list, "terrain").len(), 1);
-    assert_eq!(filter_shortcuts(&list, "space").len(), 1);
+    assert_eq!(filter_shortcuts(&list, "terreno").len(), 1);
+    assert_eq!(filter_shortcuts(&list, "espacio").len(), 1);
     assert_eq!(filter_shortcuts(&list, "").len(), list.len());
     assert!(filter_shortcuts(&list, "zzz").is_empty());
 }
