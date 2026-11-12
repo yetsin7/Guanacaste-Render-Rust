@@ -211,3 +211,36 @@ pub const BOOKMARK: char = '\u{e866}';
 
 /// `sync`.
 pub const SYNC: char = '\u{e627}';
+
+/// Stands in for `first_page`.
+pub const FIRST_PAGE: char = '\u{e5dc}';
+
+/// Stands in for `skip_previous`.
+pub const SKIP_PREVIOUS: char = '\u{e045}';
+
+/// Stands in for `skip_next`.
+pub const SKIP_NEXT: char = '\u{e044}';
+
+/// Stands in for `last_page`.
+pub const LAST_PAGE: char = '\u{e5dd}';
+
+/// Stands in for `repeat`.
+pub const REPEAT: char = '\u{e040}';
+
+/// Stands in for `pause`.
+pub const PAUSE: char = '\u{e034}';
+
+/// Stands in for `schedule`.
+pub const SCHEDULE: char = '\u{e8b5}';
+
+/// Stands in for `auto_stories`.
+pub const BOOK: char = '\u{e0e0}';
+
+/// Stands in for `lock_open`.
+pub const LOCK_OPEN: char = '\u{e898}';
+
+/// Stands in for `visibility`.
+pub const VISIBILITY: char = '\u{e8f4}';
+
+/// Stands in for `visibility_off`.
+pub const VISIBILITY_OFF: char = '\u{e8f5}';

@@ -3,6 +3,7 @@
 mod build;
 mod library;
 mod materials;
+mod movie;
 mod projects;
 mod render;
 
@@ -26,6 +27,7 @@ pub struct Screens {
     library: library::LibraryScreen,
     inspector: library::InspectorScreen,
     materials: materials::MaterialScreen,
+    movie: movie::MovieScreen,
 }
 
 impl Screens {
@@ -37,6 +39,7 @@ impl Screens {
             Screen::Library => self.library.show(ui, context),
             Screen::AssetInspector => self.inspector.show(ui, context),
             Screen::MaterialEditor => self.materials.show(ui, context),
+            Screen::MovieStudio => self.movie.show(ui, context),
             _ => render::show(ui, context),
         }
     }
