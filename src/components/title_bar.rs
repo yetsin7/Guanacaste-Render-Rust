@@ -15,10 +15,13 @@ pub struct TitleBarInfo<'a> {
     pub fps: &'a str,
     /// Resolution readout, e.g. `"| 4.2K"`.
     pub resolution: &'a str,
+    /// Whether the frame-rate pill is shown.
+    pub show_fps: bool,
 }
 
 /// Draws the title bar inside `ui`, which must be exactly [`HEIGHT`] tall.
-pub fn show(ui: &mut Ui, info: &TitleBarInfo) {
+pub fn show(ui: &mut Ui, info: &TitleBarInfo) -> Option<eframe::egui::Pos2> {
+    let mut menu = None;
     let bar = ui.max_rect();
     let drag = ui.interact(bar, ui.id().with("title-drag"), Sense::click_and_drag());
     let context = ui.ctx().clone();
@@ -57,11 +60,16 @@ pub fn show(ui: &mut Ui, info: &TitleBarInfo) {
             let (rect, _) = ui.allocate_exact_size(Vec2::new(1.0, HEIGHT), Sense::hover());
             ui.painter().rect_filled(rect, 0.0, colors::SURFACE_HIGHEST);
             ui.add_space(8.0);
-            avatar(ui);
+            if let Some(corner) = avatar(ui) {
+                menu = Some(corner);
+            }
             ui.add_space(8.0);
-            tag::fps_pill(ui, info.fps, info.resolution);
+            if info.show_fps {
+                tag::fps_pill(ui, info.fps, info.resolution);
+            }
         });
     });
+    menu
 }
 
 fn toggle_maximized(context: &eframe::egui::Context) {
@@ -74,10 +82,18 @@ fn divider(ui: &mut Ui) {
     ui.painter().rect_filled(rect, 0.0, colors::OUTLINE_VARIANT);
 }
 
-fn avatar(ui: &mut Ui) {
-    let (rect, _) = ui.allocate_exact_size(Vec2::splat(20.0), Sense::hover());
-    ui.painter()
-        .circle_filled(rect.center(), 10.0, colors::PRIMARY);
+/// The avatar opens the application menu; returns the menu anchor (bottom-right of the avatar) when clicked.
+fn avatar(ui: &mut Ui) -> Option<eframe::egui::Pos2> {
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(20.0), Sense::click());
+    let response = response
+        .on_hover_cursor(eframe::egui::CursorIcon::PointingHand)
+        .on_hover_text(tr("menu.account"));
+    let fill = if response.hovered() {
+        colors::PRIMARY_CONTAINER
+    } else {
+        colors::PRIMARY
+    };
+    ui.painter().circle_filled(rect.center(), 10.0, fill);
     text::paint_icon(
         ui.painter(),
         rect.center(),
@@ -85,6 +101,9 @@ fn avatar(ui: &mut Ui) {
         14.0,
         colors::ON_PRIMARY,
     );
+    response
+        .clicked()
+        .then(|| rect.right_bottom() + Vec2::new(6.0, 6.0))
 }
 
 /// Minimize, maximize/restore and close, laid out right to left.

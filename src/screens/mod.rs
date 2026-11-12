@@ -30,6 +30,7 @@ pub struct Screens {
     inspector: library::InspectorScreen,
     materials: materials::MaterialScreen,
     movie: movie::MovieScreen,
+    render: render::RenderScreen,
     settings: settings::SettingsScreen,
     help: help::HelpScreen,
 }
@@ -44,9 +45,9 @@ impl Screens {
             Screen::AssetInspector => self.inspector.show(ui, context),
             Screen::MaterialEditor => self.materials.show(ui, context),
             Screen::MovieStudio => self.movie.show(ui, context),
+            Screen::Render => self.render.show(ui, context),
             Screen::Settings => self.settings.show(ui, context),
             Screen::Help => self.help.show(ui, context),
-            _ => render::show(ui, context),
         }
     }
 }

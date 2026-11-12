@@ -45,7 +45,7 @@ pub fn show(ui: &mut Ui, search: &mut String) -> bool {
                 },
                 |ui| {
                     ui.spacing_mut().item_spacing.x = 8.0;
-                    IconButton::new(icons::NOTIFICATIONS)
+                    IconButton::bell()
                         .sizes(16.0, 28.0)
                         .badge(true)
                         .tooltip(tr("library.notifications"))

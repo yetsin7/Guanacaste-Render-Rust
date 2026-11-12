@@ -45,7 +45,7 @@ impl ProjectsScreen {
     pub fn show(&mut self, ui: &mut Ui, context: &mut ScreenContext) {
         ui.spacing_mut().item_spacing.y = 0.0;
         if projects_ui::command_bar::show(ui, &mut self.state) {
-            *context.navigate = Some(Screen::Build);
+            crate::commands::request_dialog(ui.ctx(), crate::models::dialog::Dialog::NewScene);
         }
         projects_ui::filter_strip::show(ui, &mut self.state, &self.projects);
         ScrollArea::vertical()

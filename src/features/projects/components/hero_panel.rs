@@ -131,6 +131,9 @@ fn details(ui: &mut Ui, area: Rect, project: &ActiveProject) -> Option<HeroActio
             );
         },
         |ui| {
+            if area.width() < 360.0 {
+                return;
+            }
             text::label(
                 ui,
                 trf("projects.modified", &[project.modified]),

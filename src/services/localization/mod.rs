@@ -2,11 +2,13 @@
 //! sibling files so no table grows too large.
 
 mod common;
+mod dialogs;
 mod help;
 mod library;
 mod materials;
 mod movie;
 mod projects;
+mod rendering;
 mod settings;
 mod viewport;
 
@@ -16,11 +18,13 @@ use std::sync::OnceLock;
 /// Every table of the catalog.
 const TABLES: &[&[(&str, &str)]] = &[
     common::ENTRIES,
+    dialogs::ENTRIES,
     projects::ENTRIES,
     viewport::ENTRIES,
     library::ENTRIES,
     materials::ENTRIES,
     movie::ENTRIES,
+    rendering::ENTRIES,
     settings::ENTRIES,
     help::ENTRIES,
 ];

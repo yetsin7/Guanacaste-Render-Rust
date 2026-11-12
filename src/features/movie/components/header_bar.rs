@@ -81,7 +81,7 @@ pub fn show(ui: &mut Ui, state: &mut MovieState) -> Option<HeaderAction> {
                         .font(typography::label_sm())
                         .padding(12.0, 4.0)
                         .show(ui);
-                    IconButton::new(icons::NOTIFICATIONS)
+                    IconButton::bell()
                         .sizes(16.0, 28.0)
                         .badge(true)
                         .tooltip(tr("library.notifications"))

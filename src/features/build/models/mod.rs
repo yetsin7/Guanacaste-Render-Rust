@@ -63,6 +63,20 @@ pub struct BuildState {
     pub scale_variation: usize,
     /// Selected LOD quality option.
     pub lod: usize,
+    /// Selected terrain tool.
+    pub terrain_tool: usize,
+    /// Brush size, normalized.
+    pub brush: f32,
+    /// Brush strength, normalized.
+    pub strength: f32,
+    /// Selected weather preset.
+    pub weather: usize,
+    /// Time of day, normalized over 06:00..20:00.
+    pub hour: f32,
+    /// Cloud density, normalized.
+    pub clouds: f32,
+    /// Fog density, normalized.
+    pub fog: f32,
 }
 
 impl Default for BuildState {
@@ -78,6 +92,13 @@ impl Default for BuildState {
             sliders: [0.65, 0.4796, 0.7209],
             scale_variation: 2,
             lod: 1,
+            terrain_tool: 0,
+            brush: 0.3,
+            strength: 0.5,
+            weather: 0,
+            hour: 0.75,
+            clouds: 0.25,
+            fog: 0.1,
         }
     }
 }

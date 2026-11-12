@@ -176,3 +176,63 @@ pub fn transform_shortcuts() -> Vec<Shortcut> {
         },
     ]
 }
+
+/// Shortcuts handled by the application shell.
+pub fn app_shortcuts() -> Vec<Shortcut> {
+    vec![
+        Shortcut {
+            action: "Nueva escena",
+            keys: "Ctrl + N",
+        },
+        Shortcut {
+            action: "Abrir proyecto",
+            keys: "Ctrl + O",
+        },
+        Shortcut {
+            action: "Guardar proyecto",
+            keys: "Ctrl + S",
+        },
+        Shortcut {
+            action: "Exportar imagen",
+            keys: "Ctrl + E",
+        },
+        Shortcut {
+            action: "Preferencias",
+            keys: "Ctrl + ,",
+        },
+        Shortcut {
+            action: "Atajos de teclado",
+            keys: "Ctrl + /",
+        },
+        Shortcut {
+            action: "Cerrar diálogo",
+            keys: "Esc",
+        },
+    ]
+}
+
+/// Navigation shortcuts of the 3D view.
+pub fn navigation_shortcuts() -> Vec<Shortcut> {
+    vec![
+        Shortcut {
+            action: "Orbitar",
+            keys: "RMB",
+        },
+        Shortcut {
+            action: "Volar adelante / atrás",
+            keys: "W / S",
+        },
+        Shortcut {
+            action: "Desplazarse a los lados",
+            keys: "A / D",
+        },
+        Shortcut {
+            action: "Subir / bajar",
+            keys: "E / Q",
+        },
+        Shortcut {
+            action: "Sprint x4",
+            keys: "Mayús",
+        },
+    ]
+}

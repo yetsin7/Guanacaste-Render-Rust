@@ -1,8 +1,10 @@
 //! Developer launch options: `--screen=<slug>` opens a given screen at start-up and `--size=<W>x<H>` opens a
 //! fixed-size window in interface points (useful to compare against the prototype screenshots); `--zoom=<f>`
-//! scales the whole interface. The `GR_SCREEN` environment variable
+//! scales the whole interface; `--dialog=<name>` opens a dialog. The `GR_SCREEN` environment variable
 //! is an alternative to `--screen`.
 
+use crate::features::projects::components::open_dialog::OPEN_ERROR;
+use crate::models::dialog::Dialog;
 use crate::models::navigation::Screen;
 
 /// Options read from the command line.
@@ -14,6 +16,8 @@ pub struct LaunchOptions {
     pub size: Option<(f32, f32)>,
     /// Interface zoom factor (e.g. `0.7` to see tall screens whole in a screenshot).
     pub zoom: Option<f32>,
+    /// Dialog to open at start-up.
+    pub dialog: Option<Dialog>,
 }
 
 impl LaunchOptions {
@@ -30,6 +34,8 @@ impl LaunchOptions {
                 options.screen = Screen::from_slug(slug);
             } else if let Some(size) = arg.strip_prefix("--size=") {
                 options.size = parse_size(size);
+            } else if let Some(slug) = arg.strip_prefix("--dialog=") {
+                options.dialog = dialog_from_slug(slug);
             } else if let Some(zoom) = arg.strip_prefix("--zoom=") {
                 options.zoom = zoom.parse().ok();
             }
@@ -49,6 +55,22 @@ impl LaunchOptions {
     }
 }
 
+/// Finds a dialog by its launch slug.
+fn dialog_from_slug(slug: &str) -> Option<Dialog> {
+    Some(match slug {
+        "new" => Dialog::NewScene,
+        "open" => Dialog::OpenProject,
+        "save" => Dialog::SaveProject,
+        "export" => Dialog::ExportImage,
+        "preferences" => Dialog::Preferences,
+        "shortcuts" => Dialog::Shortcuts,
+        "about" => Dialog::About,
+        "notifications" => Dialog::Notifications,
+        "error" => Dialog::Error(OPEN_ERROR),
+        _ => return None,
+    })
+}
+
 /// Parses `"1333x1067"` into a size.
 fn parse_size(text: &str) -> Option<(f32, f32)> {
     let (width, height) = text.split_once('x')?;
@@ -65,6 +87,10 @@ mod tests {
         assert_eq!(options.screen, Some(Screen::Library));
         assert_eq!(options.size, Some((1333.0, 1067.0)));
         assert_eq!(LaunchOptions::parse(["--zoom=0.7"]).zoom, Some(0.7));
+        assert_eq!(
+            LaunchOptions::parse(["--dialog=about"]).dialog,
+            Some(Dialog::About)
+        );
     }
 
     #[test]

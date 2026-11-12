@@ -277,3 +277,21 @@ pub const OPEN_IN_NEW: char = '\u{e89e}';
 
 /// Stands in for `arrow_back`.
 pub const ARROW_BACK: char = '\u{e5c4}';
+
+/// `info`.
+pub const INFO: char = '\u{e88e}';
+
+/// `warning`.
+pub const WARNING: char = '\u{e002}';
+
+/// `error`.
+pub const ERROR: char = '\u{e000}';
+
+/// `image`.
+pub const IMAGE: char = '\u{e3f4}';
+
+/// `blur_on`.
+pub const BLUR: char = '\u{e3a5}';
+
+/// `palette`.
+pub const PALETTE: char = '\u{e40a}';

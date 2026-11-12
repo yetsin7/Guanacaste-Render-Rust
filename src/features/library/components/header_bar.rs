@@ -62,7 +62,7 @@ pub fn show(ui: &mut Ui) {
                         .fill(colors::SURFACE_CONTAINER)
                         .padding(8.0, 4.0)
                         .show(ui);
-                    IconButton::new(icons::NOTIFICATIONS)
+                    IconButton::bell()
                         .sizes(16.0, 28.0)
                         .badge(true)
                         .tooltip(tr("library.notifications"))

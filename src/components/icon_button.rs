@@ -1,7 +1,9 @@
 //! Square icon-only buttons, optionally with a notification dot.
 
-use super::text;
+use super::{icons, text};
 use crate::config::theme::colors;
+use crate::models::dialog::Dialog;
+use crate::services::localization::tr;
 use eframe::egui::{Color32, CornerRadius, CursorIcon, Pos2, Response, Sense, Ui, Vec2};
 
 /// A square button showing one icon.
@@ -13,6 +15,7 @@ pub struct IconButton {
     active: bool,
     badge: bool,
     tooltip: Option<&'static str>,
+    opens: Option<Dialog>,
 }
 
 impl IconButton {
@@ -26,7 +29,23 @@ impl IconButton {
             active: false,
             badge: false,
             tooltip: None,
+            opens: None,
         }
+    }
+
+    /// A notification bell that opens the notifications panel.
+    pub fn bell() -> Self {
+        let mut button = Self::new(icons::NOTIFICATIONS);
+        button.opens = Some(Dialog::Notifications);
+        button.tooltip = Some(tr("notices.title"));
+        button.badge = true;
+        button
+    }
+
+    /// Makes a click request the given dialog.
+    pub fn opens(mut self, dialog: Dialog) -> Self {
+        self.opens = Some(dialog);
+        self
     }
 
     /// Sets the icon size and the button side.
@@ -89,6 +108,11 @@ impl IconButton {
             let center = Pos2::new(rect.right() - 7.0, rect.top() + 7.0);
             painter.circle_filled(center, 5.0, colors::SURFACE_LOW);
             painter.circle_filled(center, 4.0, colors::PRIMARY);
+        }
+        if response.clicked() {
+            if let Some(dialog) = self.opens {
+                crate::commands::request_dialog(ui.ctx(), dialog);
+            }
         }
         response
     }

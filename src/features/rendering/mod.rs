@@ -1,6 +1,8 @@
-//! Rendering domain: quality levels of the future render engine. Only the vocabulary exists for now; the
-//! controls that use it are interface-only until the engine is built.
+//! Rendering domain: quality vocabulary, the render queue, export settings and the render studio panels. The
+//! render engine does not exist yet, so actions that would start real work are disabled with their reason.
 
+pub mod components;
+pub mod logic;
 pub mod models;
 
 #[cfg(test)]

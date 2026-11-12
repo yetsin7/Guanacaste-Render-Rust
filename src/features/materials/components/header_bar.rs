@@ -40,7 +40,7 @@ pub fn show(ui: &mut Ui, filter: &mut String) {
                         .sizes(16.0, 28.0)
                         .tooltip(tr("material.sync"))
                         .show(ui);
-                    IconButton::new(icons::NOTIFICATIONS)
+                    IconButton::bell()
                         .sizes(16.0, 28.0)
                         .tooltip(tr("library.notifications"))
                         .show(ui);

@@ -70,7 +70,7 @@ pub fn show(ui: &mut Ui, state: &mut SettingsState) -> Option<HeaderAction> {
                         .padding(12.0, 6.0)
                         .show(ui)
                         .clicked();
-                    IconButton::new(icons::NOTIFICATIONS)
+                    IconButton::bell()
                         .sizes(18.0, 28.0)
                         .badge(true)
                         .tooltip(tr("library.notifications"))

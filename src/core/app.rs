@@ -3,7 +3,9 @@
 use crate::components::{title_bar, tool_rail};
 use crate::config::launch::LaunchOptions;
 use crate::config::theme::{self, colors};
+use crate::core::dialogs::DialogHost;
 use crate::models::navigation::Screen;
+use crate::models::preferences::Preferences;
 use crate::screens::{ScreenContext, Screens};
 use crate::services::sample_data::shell;
 use crate::services::textures::Textures;
@@ -14,6 +16,10 @@ pub struct StudioApp {
     screen: Screen,
     screens: Screens,
     textures: Textures,
+    dialogs: DialogHost,
+    preferences: Preferences,
+    applied_scale: usize,
+    pending_dialog: Option<crate::models::dialog::Dialog>,
 }
 
 impl StudioApp {
@@ -27,6 +33,10 @@ impl StudioApp {
             screen: options.screen.unwrap_or_default(),
             screens: Screens::default(),
             textures: Textures::default(),
+            dialogs: DialogHost::default(),
+            preferences: Preferences::default(),
+            applied_scale: Preferences::default().scale_index,
+            pending_dialog: options.dialog,
         }
     }
 
@@ -48,8 +58,11 @@ impl eframe::App for StudioApp {
                 let info = title_bar::TitleBarInfo {
                     fps: shell::FPS_LABEL,
                     resolution: shell::RESOLUTION_LABEL,
+                    show_fps: self.preferences.show_fps,
                 };
-                title_bar::show(ui, &info);
+                if let Some(anchor) = title_bar::show(ui, &info) {
+                    self.dialogs.open_menu(anchor);
+                }
             });
         let mut requested = None;
         egui::Panel::left("tool-rail")
@@ -72,6 +85,14 @@ impl eframe::App for StudioApp {
             });
         if let Some(target) = requested {
             self.screen = target;
+        }
+        if let Some(dialog) = self.pending_dialog.take() {
+            crate::commands::request_dialog(ui.ctx(), dialog);
+        }
+        self.dialogs.show(ui.ctx(), &mut self.preferences);
+        if self.preferences.scale_index != self.applied_scale {
+            self.applied_scale = self.preferences.scale_index;
+            ui.ctx().set_zoom_factor(self.preferences.zoom());
         }
         crate::core::window_frame::resize_edges(ui.ctx());
     }

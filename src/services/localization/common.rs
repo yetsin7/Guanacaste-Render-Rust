@@ -18,9 +18,4 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("window.maximize", "Maximizar"),
     ("window.restore", "Restaurar"),
     ("window.close", "Cerrar"),
-    ("render.title", "Estudio de render"),
-    (
-        "render.empty",
-        "Esta pantalla estará disponible cuando exista el motor de render.",
-    ),
 ];

@@ -81,22 +81,24 @@ pub fn show(ui: &mut Ui, state: &mut ProjectsState, projects: &[ProjectSummary])
                             ProjectLayout::List
                         };
                     }
-                    readout(
-                        ui,
-                        icons::STORAGE,
-                        colors::PRIMARY,
-                        "projects.cache",
-                        "projects.cache_value",
-                        colors::ON_SURFACE_VARIANT,
-                    );
-                    readout(
-                        ui,
-                        icons::MEMORY,
-                        colors::TERTIARY,
-                        "projects.vram",
-                        "projects.vram_value",
-                        colors::TERTIARY,
-                    );
+                    if ui.max_rect().width() > 1300.0 {
+                        readout(
+                            ui,
+                            icons::STORAGE,
+                            colors::PRIMARY,
+                            "projects.cache",
+                            "projects.cache_value",
+                            colors::ON_SURFACE_VARIANT,
+                        );
+                        readout(
+                            ui,
+                            icons::MEMORY,
+                            colors::TERTIARY,
+                            "projects.vram",
+                            "projects.vram_value",
+                            colors::TERTIARY,
+                        );
+                    }
                 },
             );
         });

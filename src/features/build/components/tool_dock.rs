@@ -1,5 +1,6 @@
 //! The bottom-left dock: mode tabs, object categories, placement tools and the cursor readout.
 
+use super::environment_tools;
 use crate::components::{
     choice_row::{self, Choice},
     frames, icons,
@@ -72,8 +73,14 @@ pub fn show(ui: &mut Ui, corner: Pos2, max_width: f32, state: &mut BuildState) -
             frames::overlay(10).show(ui, |ui| {
                 ui.set_width(width - 20.0);
                 ui.spacing_mut().item_spacing.y = 10.0;
-                categories(ui, state);
-                tools(ui, state);
+                match state.tab {
+                    2 => environment_tools::landscape(ui, state),
+                    3 => environment_tools::weather(ui, state),
+                    _ => {
+                        categories(ui, state);
+                        tools(ui, state);
+                    }
+                }
             });
         });
     opened_materials

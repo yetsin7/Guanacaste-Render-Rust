@@ -39,6 +39,9 @@ pub fn show(ui: &mut Ui, state: &mut ProjectsState) -> bool {
                         colors::OUTLINE,
                     );
                     ui.add_space(8.0);
+                    if ui.max_rect().width() < 1150.0 {
+                        return;
+                    }
                     Tag::new(tr("projects.session"), colors::ON_SURFACE)
                         .part(" / ", colors::OUTLINE)
                         .part(tr("projects.version"), colors::TERTIARY)
@@ -57,7 +60,7 @@ pub fn show(ui: &mut Ui, state: &mut ProjectsState) -> bool {
                             .padding(8.0, 6.0)
                             .show(ui)
                             .clicked();
-                    IconButton::new(icons::NOTIFICATIONS)
+                    IconButton::bell()
                         .badge(true)
                         .tooltip(tr("projects.notifications"))
                         .show(ui);
