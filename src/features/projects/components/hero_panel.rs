@@ -164,6 +164,9 @@ fn details(ui: &mut Ui, area: Rect, project: &ActiveProject) -> Option<HeroActio
         &mut column,
         14.0,
         |ui| {
+            if area.width() < 380.0 {
+                return;
+            }
             text::label(
                 ui,
                 tr("projects.frametime"),

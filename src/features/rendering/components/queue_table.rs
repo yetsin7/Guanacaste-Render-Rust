@@ -179,8 +179,12 @@ fn row(ui: &mut Ui, job: &RenderJob) {
         .padding(6.0, 2.0)
         .show(&mut chip);
     x += width * COLUMNS[4].1;
+    let eta_clip = Rect::from_min_max(
+        pos2(x, rect.top()),
+        pos2(rect.right() - 64.0, rect.bottom()),
+    );
     crate::components::text_layout::paint_left(
-        ui.painter(),
+        &ui.painter().with_clip_rect(eta_clip),
         pos2(x, rect.center().y),
         job.eta,
         typography::mono(10.0),

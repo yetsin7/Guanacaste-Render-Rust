@@ -23,8 +23,8 @@ muestra sale de `src/services/sample_data/` y las imágenes de `assets/placehold
 
 ## Dominios
 
-`src/features/` contiene `projects/`, `viewport/`, `library/`, `materials/`, `movie/`, `rendering/`, `settings/` y
-`help/`. Cada dominio crea solo las carpetas que necesita:
+`src/features/` contiene `projects/`, `build/`, `viewport/`, `library/`, `materials/`, `movie/`, `rendering/`,
+`settings/` y `help/`. Cada dominio crea solo las carpetas que necesita:
 
 - `ui/`: presentadores propios del dominio; no aloja navegación global.
 - `components/`: controles de interfaz exclusivos de ese dominio.
@@ -33,8 +33,9 @@ muestra sale de `src/services/sample_data/` y las imágenes de `assets/placehold
 - `services/`: persistencia, motores o integraciones detrás de interfaces explícitas.
 - `tests/`: pruebas unitarias del dominio.
 
-`viewport/` es la envoltura de la vista 3D (fondo, brújula, superposiciones de navegación) y `rendering/` reserva el
-lugar de las futuras funciones del motor (vista previa y render).
+`build/` es la colocación de objetos sobre la vista 3D; `viewport/` es la envoltura de la vista 3D (fondo y retícula);
+`rendering/` contiene el vocabulario de calidad, la cola de render, la exportación de imágenes y el estudio de render,
+y es el lugar de las futuras funciones del motor.
 
 ## Pantallas
 
@@ -47,7 +48,16 @@ lugar de las futuras funciones del motor (vista previa y render).
 | Estudio de película | `src/screens/movie/` | `movie` |
 | Ajustes | `src/screens/settings/` | `settings` |
 | Ayuda y diagnóstico | `src/screens/help/` | `help` |
-| Estudio de render (vacío) | `src/screens/render/` | `render` |
+| Estudio de render (vista previa y cola) | `src/screens/render/` | `render` |
+
+## Diálogos y avisos
+
+Los diálogos (abrir, guardar, nueva escena, exportar imagen, preferencias, atajos, acerca de, errores) y el panel de
+notificaciones se alojan en `src/core/dialogs.rs`. Cualquier pantalla pide uno con
+`commands::request_dialog(ctx, Dialog::...)`; el menú de la aplicación se abre desde el avatar de la barra de título y
+los atajos `Ctrl+N/O/S/E/,/` los abren directamente. Los controles que requieren un motor o un formato de proyecto que
+aún no existen se muestran desactivados con su motivo (`Button::disabled`, `form::disabled`). Opción de desarrollo:
+`--dialog=<new|open|save|export|preferences|shortcuts|about|notifications|error>`.
 
 ## Dónde añadir cada cosa
 
