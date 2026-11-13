@@ -3,8 +3,9 @@
 use crate::features::import_export::logic::formats::{detect, Detected};
 use crate::features::import_export::models::ImportOptions;
 use crate::features::import_export::services::job::{ImportJob, JobResult};
+use crate::features::import_export::services::last_model;
 use crate::features::import_export::services::picker::FilePicker;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Meters per unit of the unit choices offered for files without declared units.
 pub const UNIT_CHOICES: [(&str, f64); 5] = [
@@ -38,15 +39,29 @@ pub struct ImportDialogState {
     pub picker: FilePicker,
     /// The user asked to use the finished import as the open project.
     pub adopt: bool,
+    /// Where the last imported model is remembered.
+    pub data_dir: Option<PathBuf>,
+    /// The last model imported successfully, offered for reopening.
+    pub last_model: Option<PathBuf>,
 }
 
 impl ImportDialogState {
+    /// A state that remembers the last imported model inside `dir`.
+    pub fn with_data_dir(dir: &Path) -> Self {
+        Self {
+            last_model: last_model::load(dir),
+            data_dir: Some(dir.to_path_buf()),
+            ..Self::default()
+        }
+    }
+
     /// Chooses `path`, classifies it and starts importing when the format is supported.
     pub fn choose(&mut self, path: PathBuf) {
         self.detected = Some(detect(&path));
         self.path = Some(path);
         self.result = None;
-        if matches!(self.detected, Some(Detected::Supported(_))) {
+        if let Some(Detected::Supported(format)) = self.detected {
+            self.options.y_up = format.default_y_up();
             self.start();
         }
     }
@@ -77,6 +92,12 @@ impl ImportDialogState {
         }
         if let Some(result) = self.job.as_ref().and_then(ImportJob::poll) {
             self.job = None;
+            if let (Ok(_), Some(path)) = (&result, &self.path) {
+                if let Some(dir) = &self.data_dir {
+                    let _ = last_model::save(dir, path);
+                }
+                self.last_model = Some(path.clone());
+            }
             self.result = Some(Box::new(result));
         }
     }

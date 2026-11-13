@@ -1,5 +1,13 @@
 //! Application use cases that coordinate several domains: requests that any screen can raise and the shell serves.
 
+pub mod camera_link;
+pub mod ground;
+pub mod pointer;
+pub mod rendering;
+pub mod sample_model;
+pub mod scene;
+pub mod sync;
+pub mod viewport;
 pub mod workspace;
 
 use crate::models::dialog::Dialog;

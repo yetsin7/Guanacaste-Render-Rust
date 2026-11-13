@@ -21,7 +21,8 @@ serde_json = { version = "1", features = ["float_roundtrip"] }
 sha2 = "0.10"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 miniz_oxide = "0.8"
-image = { version = "0.25", default-features = false, features = ["png"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+roxmltree = "0.20"
 
 [lints.rust]
 unsafe_code = "forbid"

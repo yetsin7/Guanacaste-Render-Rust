@@ -1,7 +1,7 @@
 //! Running an import on a background thread with progress and cancellation; panics become errors.
 
 use super::progress::Progress;
-use super::{fbx, gltf, ifc, legacy, obj};
+use super::{dae, fbx, gltf, ifc, legacy, obj, ply, stl, tds};
 use crate::features::import_export::logic::formats::{detect, sniff, Detected, Signature};
 use crate::features::import_export::models::{
     ImportError, ImportOptions, ImportOutcome, SourceFormat,
@@ -18,9 +18,16 @@ pub type JobResult = Result<ImportOutcome, ImportError>;
 pub fn run(path: &Path, options: &ImportOptions, progress: &Progress) -> JobResult {
     let format = match detect(path) {
         Detected::Supported(format) => format,
-        _ => {
+        Detected::Proprietary(_) => {
             return Err(ImportError::Invalid(
-                "Formato de archivo no soportado.".into(),
+                "Es un formato cerrado de otro programa: expórtalo a IFC, FBX, glTF, Collada (.dae) u OBJ y vuelve a importarlo."
+                    .into(),
+            ))
+        }
+        Detected::Unknown => {
+            return Err(ImportError::Invalid(
+                "Formato no reconocido: usa .ifc, .gltf, .glb, .fbx, .dae, .obj, .3ds, .stl, .ply o .g3d."
+                    .into(),
             ))
         }
     };
@@ -44,6 +51,10 @@ pub fn run(path: &Path, options: &ImportOptions, progress: &Progress) -> JobResu
         SourceFormat::Gltf => gltf::import(path, progress),
         SourceFormat::Fbx => fbx::import(path, progress),
         SourceFormat::Legacy => legacy::import(path, progress),
+        SourceFormat::Stl => stl::import(path, options, progress),
+        SourceFormat::Ply => ply::import(path, options, progress),
+        SourceFormat::Collada => dae::import(path, progress),
+        SourceFormat::ThreeDs => tds::import(path, options, progress),
     }));
     outcome.unwrap_or_else(|payload| {
         let text = payload

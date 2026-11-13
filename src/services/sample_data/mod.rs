@@ -6,6 +6,5 @@ pub mod help;
 pub mod inspector;
 pub mod library;
 pub mod projects;
-pub mod rendering;
 pub mod settings;
 pub mod shell;

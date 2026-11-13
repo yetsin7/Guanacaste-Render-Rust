@@ -1,5 +1,9 @@
 //! Unit tests of the build domain.
 
+mod objects_tests;
+mod persistence_tests;
+mod pointer_tests;
+
 use super::logic::*;
 use super::models::BuildState;
 use crate::services::sample_data::build as sample;
@@ -13,11 +17,4 @@ fn placing_advances_and_wraps_the_guide() {
         place_next(&mut state, &guide);
     }
     assert_eq!((state.step, state.placed), (2, 0));
-}
-
-#[test]
-fn time_of_day_spans_six_to_twenty() {
-    assert_eq!(format_hour(0.0), "06:00");
-    assert_eq!(format_hour(1.0), "20:00");
-    assert_eq!(format_hour(0.75), "16:30");
 }

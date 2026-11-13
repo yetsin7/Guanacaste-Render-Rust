@@ -1,25 +1,4 @@
-//! Unit tests of the materials domain.
+//! Cross-module tests of the materials domain: sampling the whole pipeline and the `.gr` project round trip.
 
-use super::logic::*;
-use super::models::MaterialState;
-
-#[test]
-fn reset_restores_defaults_but_keeps_the_tool() {
-    let mut state = MaterialState {
-        tool: 2,
-        weathering: 0.9,
-        ambient_occlusion: false,
-        ..Default::default()
-    };
-    reset(&mut state);
-    assert_eq!(state.tool, 2);
-    assert_eq!(state.weathering, MaterialState::default().weathering);
-    assert!(state.ambient_occlusion);
-}
-
-#[test]
-fn filter_matches_substrings_ignoring_case() {
-    assert!(matches_filter("Weathering Patina", "patina"));
-    assert!(matches_filter("anything", "  "));
-    assert!(!matches_filter("Metallic", "rough"));
-}
+mod project_tests;
+mod sample_tests;

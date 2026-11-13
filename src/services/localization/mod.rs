@@ -1,18 +1,24 @@
 //! Spanish text catalog. Every user-visible string is looked up by key with [`tr`]; per-domain tables live in
 //! sibling files so no table grows too large.
 
+mod camera;
 mod common;
 mod dialogs;
+mod environment;
 mod help;
 mod import_export;
+mod landscape;
 mod library;
+mod lighting;
 mod materials;
 mod movie;
+mod objects;
 mod projects;
 mod rendering;
 mod settings;
 mod shell;
 mod store;
+mod view3d;
 mod viewport;
 
 use std::collections::HashMap;
@@ -21,14 +27,20 @@ use std::sync::OnceLock;
 /// Every table of the catalog.
 const TABLES: &[&[(&str, &str)]] = &[
     common::ENTRIES,
+    camera::ENTRIES,
     dialogs::ENTRIES,
+    environment::ENTRIES,
     import_export::ENTRIES,
     projects::ENTRIES,
     store::ENTRIES,
     viewport::ENTRIES,
+    view3d::ENTRIES,
+    landscape::ENTRIES,
     library::ENTRIES,
+    lighting::ENTRIES,
     materials::ENTRIES,
     movie::ENTRIES,
+    objects::ENTRIES,
     rendering::ENTRIES,
     settings::ENTRIES,
     shell::ENTRIES,

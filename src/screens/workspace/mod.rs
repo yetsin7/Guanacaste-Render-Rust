@@ -1,11 +1,12 @@
-//! The scene workspace: the 3D view fills the whole area and the active mode docks a right panel and a bottom
-//! drawer over it. Every mode is described by a [`ModeSlots`] entry; each slot is a plain
-//! `fn(&mut Ui, &mut AppState)` that draws into the space the shell gives it. To fill a slot with a new feature,
-//! replace the function in that mode's file (`build.rs`, `photo.rs`, `movie.rs`, `export.rs`) or in `viewport.rs`
-//! for the 3D view; nothing else in the shell has to change.
+//! The scene workspace: the real 3D view fills the whole area and the active mode docks a right panel and a
+//! bottom drawer over it. Every mode is described by a [`ModeSlots`] entry; each slot is a plain
+//! `fn(&mut Ui, &mut AppState)` that draws into the space the shell gives it. To change what a mode shows, replace
+//! the function in that mode's file (`build.rs`, `photo.rs`, `movie.rs`, `export.rs`); the 3D view itself is the
+//! same for every mode (`viewport.rs`).
 
 mod build;
 mod export;
+mod ground_section;
 mod movie;
 mod photo;
 mod viewport;
@@ -23,12 +24,24 @@ pub type Panel = fn(&mut Ui, &mut AppState);
 /// An overlay painted over the 3D view (`rect`), under the panels.
 pub type Overlay = fn(&mut Ui, Rect, &mut AppState);
 
+/// One docked panel: localization key of its title, icon, size and content.
+pub struct Slot {
+    /// Localization key of the header title.
+    pub title: &'static str,
+    /// Header icon.
+    pub glyph: char,
+    /// Width (right panel) or height (bottom drawer) in points, given the current state.
+    pub extent: fn(&AppState) -> f32,
+    /// The content.
+    pub body: Panel,
+}
+
 /// Everything the shell needs to lay out one mode.
 pub struct ModeSlots {
-    /// Right panel: localization key of its title, icon, width and content.
-    pub side: (&'static str, char, f32, Panel),
-    /// Bottom drawer: localization key of its title, icon, height and content.
-    pub bottom: (&'static str, char, f32, Panel),
+    /// Right panel.
+    pub side: Slot,
+    /// Bottom drawer.
+    pub bottom: Slot,
     /// Mode-specific drawing over the 3D view.
     pub overlay: Overlay,
     /// Whether the shortcut strip offers the Space (play) hint.
@@ -49,36 +62,44 @@ pub fn slots(mode: Mode) -> ModeSlots {
 pub fn show(ui: &mut Ui, app: &mut AppState, mode: Mode) {
     let rect = ui.max_rect();
     let slots = slots(mode);
-    viewport::panel(ui, rect, app);
-    (slots.overlay)(ui, rect, app);
-    if mode == Mode::Movie {
-        movie::advance(ui, app);
+    match mode {
+        Mode::Movie => movie::follow(ui, app),
+        Mode::Export => export::update(ui, app),
+        _ => {}
     }
-    let (side_title, side_glyph, side_width, side_body) = slots.side;
-    let (bottom_title, bottom_glyph, bottom_height, bottom_body) = slots.bottom;
-    let side_extent = DockPanel::extent(Edge::Right, app.panels.side_open, side_width);
-    let bottom_extent = DockPanel::extent(Edge::Bottom, app.panels.bottom_open, bottom_height);
+    let side_extent =
+        DockPanel::extent(Edge::Right, app.panels.side_open, (slots.side.extent)(app));
+    let bottom_extent = DockPanel::extent(
+        Edge::Bottom,
+        app.panels.bottom_open,
+        (slots.bottom.extent)(app),
+    );
     let side = Rect::from_min_max(pos2(rect.right() - side_extent, rect.top()), rect.max);
     let bottom = Rect::from_min_max(
         pos2(rect.left(), rect.bottom() - bottom_extent),
         pos2(side.left(), rect.bottom()),
     );
+    viewport::panel(ui, rect, side.left() / 2.0 + rect.left() / 2.0, app);
+    (slots.overlay)(ui, rect, app);
     hints(ui, bottom, app, slots.plays);
     let mut open = app.panels.side_open;
-    DockPanel::new("side", tr(side_title), side_glyph, Edge::Right).show(
+    let body = slots.side.body;
+    DockPanel::new("side", tr(slots.side.title), slots.side.glyph, Edge::Right).show(
         ui,
         side,
         &mut open,
-        |ui| side_body(ui, app),
+        |ui| body(ui, app),
     );
     app.panels.side_open = open;
     let mut open = app.panels.bottom_open;
-    DockPanel::new("bottom", tr(bottom_title), bottom_glyph, Edge::Bottom).show(
-        ui,
-        bottom,
-        &mut open,
-        |ui| bottom_body(ui, app),
-    );
+    let body = slots.bottom.body;
+    DockPanel::new(
+        "bottom",
+        tr(slots.bottom.title),
+        slots.bottom.glyph,
+        Edge::Bottom,
+    )
+    .show(ui, bottom, &mut open, |ui| body(ui, app));
     app.panels.bottom_open = open;
 }
 

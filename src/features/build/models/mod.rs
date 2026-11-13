@@ -1,5 +1,16 @@
 //! Build-mode entities and UI state.
 
+use crate::features::environment::EnvironmentSettings;
+mod drag;
+mod history;
+mod objects;
+mod state;
+
+pub use drag::*;
+pub use history::*;
+pub use objects::*;
+pub use state::*;
+
 /// Tabs of the build dock.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildTab {
@@ -69,14 +80,8 @@ pub struct BuildState {
     pub brush: f32,
     /// Brush strength, normalized.
     pub strength: f32,
-    /// Selected weather preset.
-    pub weather: usize,
-    /// Time of day, normalized over 06:00..20:00.
-    pub hour: f32,
-    /// Cloud density, normalized.
-    pub clouds: f32,
-    /// Fog density, normalized.
-    pub fog: f32,
+    /// Sun, sky, clouds and weather of the scene.
+    pub environment: EnvironmentSettings,
 }
 
 impl Default for BuildState {
@@ -95,10 +100,7 @@ impl Default for BuildState {
             terrain_tool: 0,
             brush: 0.3,
             strength: 0.5,
-            weather: 0,
-            hour: 0.75,
-            clouds: 0.25,
-            fog: 0.1,
+            environment: EnvironmentSettings::default(),
         }
     }
 }

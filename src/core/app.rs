@@ -1,15 +1,18 @@
 //! The eframe application: frameless shell (title bar, mode bar) around the active screen.
 
+use crate::commands::sync;
 use crate::components::{mode_bar, title_bar};
 use crate::config::launch::LaunchOptions;
 use crate::config::theme::{self, colors};
 use crate::core::dialogs::DialogHost;
 use crate::core::shortcuts;
+use crate::features::rendering::logic::plan::plan_from_export;
+use crate::features::viewport::services::gpu;
 use crate::models::navigation::Screen;
 use crate::models::preferences::Preferences;
 use crate::models::AppState;
 use crate::screens::Screens;
-use crate::services::sample_data::shell;
+use crate::services::localization::tr;
 use eframe::egui;
 
 /// Application state.
@@ -22,7 +25,9 @@ pub struct StudioApp {
     applied_scale: usize,
     pending_dialog: Option<crate::models::dialog::Dialog>,
     window_title: String,
-    last_project: Option<[u8; 16]>,
+    last_project: Option<([u8; 16], u64)>,
+    /// Smoothed frames per second while the view is animating, from the real frame time.
+    fps: f32,
 }
 
 impl StudioApp {
@@ -37,6 +42,10 @@ impl StudioApp {
         if let Some(path) = &options.open {
             dialogs.open_at_start(&mut app.workspace, path);
         }
+        if let Some(render_state) = &creation.wgpu_render_state {
+            gpu::install(render_state);
+            app.viewport.gpu_available = true;
+        }
         let screen = options.screen.unwrap_or_default();
         if let Some(mode) = screen.mode() {
             app.mode = mode;
@@ -44,7 +53,8 @@ impl StudioApp {
         Self {
             screen,
             screens: Screens::default(),
-            last_project: app.workspace.project.as_ref().map(|p| p.id),
+            last_project: None,
+            fps: 0.0,
             app,
             dialogs,
             preferences: Preferences::default(),
@@ -69,7 +79,12 @@ impl StudioApp {
 
     /// Leaves the start screen when a different project was just created, opened or imported.
     fn follow_project(&mut self) {
-        let id = self.app.workspace.project.as_ref().map(|p| p.id);
+        let id = self
+            .app
+            .workspace
+            .project
+            .as_ref()
+            .map(|p| (p.id, self.app.workspace.generation));
         if id != self.last_project {
             self.last_project = id;
             if id.is_some() && self.screen == Screen::Home {
@@ -77,10 +92,67 @@ impl StudioApp {
             }
         }
     }
+
+    /// Queues the render the export dialog asked for and tells the user how it went.
+    fn queue_export_request(&mut self) {
+        let Some(request) = self.dialogs.render_request.take() else {
+            return;
+        };
+        let plan = plan_from_export(&request);
+        let app = &mut self.app;
+        match app.render.enqueue(&app.workspace, &plan, &[plan.view]) {
+            Ok(_) => {
+                app.workspace.notify(tr("render.queued").to_owned(), false);
+                self.go(Screen::Workspace(crate::models::navigation::Mode::Export));
+            }
+            Err(reason) => app.workspace.notify(tr(reason).to_owned(), true),
+        }
+    }
+
+    /// Updates the frame-rate readout from the time the last frame took. Frames far apart (nothing was
+    /// animating) are not counted, so the number only moves while something is moving.
+    fn measure_frame(&mut self, ctx: &egui::Context) {
+        let dt = ctx.input(|input| input.unstable_dt);
+        if dt > 0.0 && dt < 0.2 {
+            let now = 1.0 / dt;
+            self.fps = if self.fps == 0.0 {
+                now
+            } else {
+                self.fps * 0.9 + now * 0.1
+            };
+        }
+    }
+
+    fn fps_label(&self) -> String {
+        if self.fps > 0.0 {
+            format!("{:.0} FPS", self.fps)
+        } else {
+            "— FPS".to_owned()
+        }
+    }
+
+    fn resolution_label(&self, ctx: &egui::Context) -> String {
+        let size = ctx.content_rect().size() * ctx.pixels_per_point();
+        format!("| {}×{}", size.x.round(), size.y.round())
+    }
+
+    /// Brings the project, the domain states and the 3D view's scene up to date for this frame.
+    fn prepare_scene(&mut self) {
+        sync::step(&mut self.app);
+        let app = &mut self.app;
+        let source = app.composer.compose(
+            app.workspace.project.as_ref(),
+            &app.landscape,
+            &mut app.objects,
+        );
+        app.viewport.sync(source);
+    }
 }
 
 impl eframe::App for StudioApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.measure_frame(ui.ctx());
+        self.prepare_scene();
         let bar = egui::Frame::NONE
             .fill(colors::SURFACE_LOW)
             .stroke(egui::Stroke::new(1.0, colors::SURFACE_HIGHEST));
@@ -89,9 +161,10 @@ impl eframe::App for StudioApp {
             .exact_size(title_bar::HEIGHT)
             .show(ui, |ui| {
                 let workspace = &self.app.workspace;
+                let (fps, resolution) = (self.fps_label(), self.resolution_label(ui.ctx()));
                 let info = title_bar::TitleBarInfo {
-                    fps: shell::FPS_LABEL,
-                    resolution: shell::RESOLUTION_LABEL,
+                    fps: &fps,
+                    resolution: &resolution,
                     show_fps: self.preferences.show_fps,
                     project: workspace.name().map(|name| (name, workspace.dirty())),
                 };
@@ -132,6 +205,7 @@ impl eframe::App for StudioApp {
         }
         self.dialogs
             .show(&ctx, &mut self.app.workspace, &mut self.preferences);
+        self.queue_export_request();
         self.follow_project();
         let title = self.app.workspace.window_title();
         if title != self.window_title {

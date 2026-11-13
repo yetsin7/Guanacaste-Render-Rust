@@ -2,4 +2,5 @@
 
 pub mod localization;
 pub mod sample_data;
+pub mod texture_cache;
 pub mod textures;

@@ -1,6 +1,7 @@
 //! Native file pickers (rfd) running on their own thread so the interface keeps drawing.
 
-use crate::features::import_export::logic::formats::PICKER_EXTENSIONS;
+use crate::features::import_export::logic::formats::{GUIDE_EXTENSIONS, PICKER_EXTENSIONS};
+use crate::services::localization::tr;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 
@@ -38,15 +39,13 @@ impl FilePicker {
         }
     }
 
-    /// Opens the model picker (IFC, OBJ, glTF, FBX and Guanacaste 3D projects).
+    /// Opens the model picker (every readable format, plus closed formats that show a conversion guide).
     pub fn open(&mut self) {
         self.spawn(|| {
             rfd::FileDialog::new()
-                .add_filter(
-                    "Modelos 3D (IFC, OBJ, glTF, FBX, Guanacaste 3D)",
-                    &PICKER_EXTENSIONS,
-                )
-                .add_filter("Todos los archivos", &["*"])
+                .add_filter(tr("import.filter_models"), &PICKER_EXTENSIONS)
+                .add_filter(tr("import.filter_guides"), &GUIDE_EXTENSIONS)
+                .add_filter(tr("import.filter_all"), &["*"])
                 .pick_file()
         });
     }
@@ -80,6 +79,11 @@ impl FilePicker {
                 .add_filter("Imagen PNG", &["png"])
                 .save_file()
         });
+    }
+
+    /// Opens a folder picker.
+    pub fn pick_folder(&mut self) {
+        self.spawn(|| rfd::FileDialog::new().pick_folder());
     }
 
     /// Whether the dialog is open.

@@ -1,4 +1,11 @@
-//! Build-mode rules: guide progress.
+//! Build-mode rules: guide progress and the placed-object model (edit commands, picking, placement and pointer
+//! interaction).
+
+pub mod edit;
+pub mod interact;
+pub mod math;
+pub mod picking;
+pub mod placement;
 
 use super::models::{BuildGuide, BuildState};
 
@@ -14,10 +21,4 @@ pub fn place_next(state: &mut BuildState, guide: &BuildGuide) {
     } else {
         state.placed += 1;
     }
-}
-
-/// Formats a normalized time of day (06:00 at 0, 20:00 at 1) as `HH:MM`.
-pub fn format_hour(t: f32) -> String {
-    let minutes = (6.0 * 60.0 + t.clamp(0.0, 1.0) * 14.0 * 60.0).round() as u32;
-    format!("{:02}:{:02}", minutes / 60, minutes % 60)
 }

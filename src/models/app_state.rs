@@ -1,53 +1,37 @@
-//! `AppState`: the one place for state shared by the shell and every workspace panel — the open project
-//! (scene), the active mode and build category, the camera and its saved views, photo effects, panel layout,
-//! one-shot requests to the shell, and the UI state of each domain panel. Every panel receives
-//! `&mut AppState` (see `screens::workspace::slots`).
+//! `AppState`: the one place for state shared by the shell and every workspace panel — the open project (scene),
+//! the active mode and build category, the shared 3D view and its camera, the state of each domain (objects,
+//! landscape, lighting, environment, materials, camera studio, movie, render studio), panel layout and one-shot
+//! requests to the shell. Every panel receives `&mut AppState` (see `screens::workspace`).
+//!
+//! The domain states are the single live copy of their data; `commands::sync` copies them into the project
+//! document when they change (so Save writes them) and loads them back when a project is opened.
 
-use super::camera::{CameraPose, CameraStrip};
 use super::navigation::{BuildCategory, Mode, Screen};
+use super::render_studio::RenderStudio;
+use crate::commands::rendering::RenderHub;
+use crate::commands::scene::SceneComposer;
+use crate::commands::sync::Baselines;
 use crate::commands::workspace::Workspace;
-use crate::features::build::models::BuildState;
+use crate::features::build::models::ObjectsState;
+use crate::features::camera::models::state::CameraStudioState;
+use crate::features::environment::EnvironmentSettings;
+use crate::features::landscape::models::LandscapeState;
+use crate::features::lighting::models::LightingState;
+use crate::features::materials::components::session::Session;
 use crate::features::materials::models::MaterialState;
-use crate::features::movie::models::MovieState;
-use crate::features::rendering::models::RenderStudioState;
-use crate::services::sample_data::rendering as render_sample;
+use crate::features::movie::components::export_panel::ExportPanel;
+use crate::features::movie::models::{Animation, MovieState};
+use crate::features::projects::models::CameraDoc;
+use crate::features::viewport::ui::ViewportState;
 use crate::services::textures::Textures;
 use std::path::PathBuf;
-
-/// One adjustable effect of photo mode.
-#[derive(Debug, Clone, PartialEq)]
-pub struct PhotoEffect {
-    /// Localization key of the effect name.
-    pub key: &'static str,
-    /// Whether the effect is applied.
-    pub enabled: bool,
-    /// Strength, normalized 0..1.
-    pub amount: f32,
-}
-
-/// The effects every new scene starts with.
-pub fn default_effects() -> Vec<PhotoEffect> {
-    let effect = |key, enabled, amount| PhotoEffect {
-        key,
-        enabled,
-        amount,
-    };
-    vec![
-        effect("effect.exposure", true, 0.5),
-        effect("effect.sun", true, 0.6),
-        effect("effect.shadows", true, 0.7),
-        effect("effect.depth", false, 0.3),
-        effect("effect.color", true, 0.5),
-        effect("effect.vignette", false, 0.25),
-    ]
-}
 
 /// Which workspace panels are expanded.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PanelLayout {
-    /// The bottom panel (category content, camera strip, timeline or queue).
+    /// The bottom drawer (category tabs, camera strip, timeline or queue).
     pub bottom_open: bool,
-    /// The right panel (properties, effects, camera or output settings).
+    /// The right panel (category content, effects, camera inspector or output settings).
     pub side_open: bool,
     /// The shortcut hint strip.
     pub hints_open: bool,
@@ -66,8 +50,6 @@ impl Default for PanelLayout {
 /// One-shot requests a panel raises and the shell serves at the end of the frame.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct ShellRequests {
-    /// Frame the selection (or the whole scene) in the 3D view (the `F` key); the 3D view clears it.
-    pub frame_view: bool,
     /// Go to another screen.
     pub navigate: Option<Screen>,
 }
@@ -80,26 +62,44 @@ pub struct AppState {
     pub mode: Mode,
     /// Active build-mode category tab.
     pub category: BuildCategory,
-    /// Current camera of the 3D view.
-    pub view: CameraPose,
-    /// Saved camera views of the photo strip.
-    pub cameras: CameraStrip,
-    /// Photo-mode effects, in panel order.
-    pub effects: Vec<PhotoEffect>,
     /// Expanded panels.
     pub panels: PanelLayout,
     /// Requests for the shell.
     pub requests: ShellRequests,
     /// Placeholder image cache.
     pub textures: Textures,
-    /// Build-mode tools state (objects, terrain, weather, properties).
-    pub build: BuildState,
+    /// The shared 3D view: camera, saved slots and the scene sent to the GPU.
+    pub viewport: ViewportState,
+    /// Builds the scene shown in the 3D view from the project, the landscape and the placed objects.
+    pub composer: SceneComposer,
+    /// Placed objects, selection and history.
+    pub objects: ObjectsState,
+    /// Terrain, water and vegetation with the brush settings.
+    pub landscape: LandscapeState,
+    /// Lights, groups, emissive materials and lighting scenes.
+    pub lighting: LightingState,
+    /// Sun, sky and weather.
+    pub environment: EnvironmentSettings,
     /// Material editing state.
     pub materials: MaterialState,
-    /// Movie timeline and camera state.
+    /// Material editor previews.
+    pub material_session: Session,
+    /// Photographic camera and filters of the photo mode.
+    pub camera_studio: CameraStudioState,
+    /// Saved cameras of the photo strip, kept in the project as `CameraDoc`.
+    pub cameras: Vec<CameraDoc>,
+    /// Movie timeline state.
     pub movie: MovieState,
-    /// Output settings and render queue.
-    pub render: RenderStudioState,
+    /// The camera animation being edited.
+    pub animation: Animation,
+    /// Movie export dialog.
+    pub movie_export: ExportPanel,
+    /// Render studio (output settings, queue view, preview).
+    pub studio: RenderStudio,
+    /// The render queue.
+    pub render: RenderHub,
+    /// What each domain state looked like when it last matched the project document.
+    pub baselines: Baselines,
 }
 
 impl AppState {
@@ -109,39 +109,25 @@ impl AppState {
             workspace: Workspace::new(data_dir),
             mode: Mode::default(),
             category: BuildCategory::default(),
-            view: CameraPose::default(),
-            cameras: CameraStrip::default(),
-            effects: default_effects(),
             panels: PanelLayout::default(),
             requests: ShellRequests::default(),
             textures: Textures::default(),
-            build: BuildState::default(),
+            viewport: ViewportState::new(),
+            composer: SceneComposer::default(),
+            objects: ObjectsState::default(),
+            landscape: LandscapeState::default(),
+            lighting: LightingState::default(),
+            environment: EnvironmentSettings::default(),
             materials: MaterialState::default(),
+            material_session: Session::default(),
+            camera_studio: CameraStudioState::default(),
+            cameras: Vec::new(),
             movie: MovieState::default(),
-            render: RenderStudioState {
-                tab: 0,
-                jobs: render_sample::jobs(),
-                resolution: 2,
-                samples: 0.25,
-                denoise: true,
-                output: "C:/Proyectos/Guanacaste/Renders".into(),
-            },
-        }
-    }
-
-    /// Saves the current view as a new photo-strip camera named `Cámara N`; returns its index when it fit.
-    pub fn save_current_view(&mut self) -> Option<usize> {
-        let name = crate::services::localization::trf(
-            "camera.default_name",
-            &[&(self.cameras.saved.len() + 1).to_string()],
-        );
-        self.cameras.save(name, self.view)
-    }
-
-    /// Moves the 3D view to saved camera `index`.
-    pub fn recall_camera(&mut self, index: usize) {
-        if let Some(pose) = self.cameras.recall(index) {
-            self.view = pose;
+            animation: Animation::default(),
+            movie_export: ExportPanel::default(),
+            studio: RenderStudio::default(),
+            render: RenderHub::default(),
+            baselines: Baselines::default(),
         }
     }
 
@@ -161,30 +147,10 @@ impl Default for AppState {
 mod tests {
     use super::*;
 
-    fn temp_state() -> AppState {
-        let folder = std::env::temp_dir().join(format!(
-            "gr-state-{}",
-            crate::features::projects::services::util::hex(
-                &crate::features::projects::services::util::new_document_id()
-            )
-        ));
-        AppState::with_data_dir(folder)
-    }
-
-    #[test]
-    fn saving_and_recalling_views_moves_the_camera() {
-        let mut state = temp_state();
-        assert_eq!(state.save_current_view(), Some(0));
-        assert_eq!(state.cameras.saved[0].name, "Cámara 1");
-        let home = state.view;
-        state.view.position = [9.0, 9.0, 9.0];
-        state.recall_camera(0);
-        assert_eq!(state.view, home);
-    }
-
     #[test]
     fn navigation_is_a_request() {
-        let mut state = temp_state();
+        let folder = std::env::temp_dir().join("gr-state-nav");
+        let mut state = AppState::with_data_dir(folder);
         state.navigate(Screen::Workspace(Mode::Photo));
         assert_eq!(
             state.requests.navigate,

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>Guanacaste Render</Name>
+    <Assembly>GuanacasteRender\GuanacasteRender.Revit.dll</Assembly>
+    <AddInId>7b0f6d52-3c8a-4e0b-9a41-5d1e8f2c6a93</AddInId>
+    <FullClassName>GuanacasteRender.Revit.App</FullClassName>
+    <VendorId>GRRV</VendorId>
+    <VendorDescription>Guanacaste Render - exportador de Revit al formato .gr</VendorDescription>
+  </AddIn>
+</RevitAddIns>

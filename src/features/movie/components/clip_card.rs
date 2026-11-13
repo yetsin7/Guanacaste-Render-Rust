@@ -1,153 +1,138 @@
-//! The clip card over the 3D view: title, description, node chips and actions.
+//! The sequence card over the 3D view: duration, frame rate, speed, loop and how the path is interpolated.
 
+use super::fields::number;
 use crate::components::{
-    button::{Button, ButtonStyle},
-    frames, icons,
-    layout::split_row,
-    tag::Tag,
-    text,
+    form, frames, icons, layout::split_row, segmented::Segmented, tag::Tag, text, toggle,
 };
 use crate::config::theme::{colors, typography};
-use crate::services::localization::tr;
-use eframe::egui::{self, pos2, vec2, CornerRadius, Pos2, Rect, Sense, Ui, UiBuilder};
+use crate::features::movie::logic::timecode;
+use crate::features::movie::models::{
+    Animation, PathMode, Timing, FPS_RANGE, MAX_DURATION, SPEED_RANGE,
+};
+use crate::services::localization::{tr, trf};
+use eframe::egui::{vec2, CornerRadius, Pos2, Rect, Ui, UiBuilder};
 
-const NODES: [(char, egui::Color32, &str, &str); 4] = [
-    (
-        icons::TIMELINE,
-        colors::PRIMARY,
-        "movie.node_path",
-        "movie.node_path_note",
-    ),
-    (
-        icons::SUN,
-        colors::TERTIARY,
-        "movie.node_sun",
-        "movie.node_sun_note",
-    ),
-    (
-        icons::CAMERA,
-        colors::SECONDARY,
-        "movie.node_focal",
-        "movie.node_focal_note",
-    ),
-    (
-        icons::TIMELINE,
-        colors::PRIMARY_FIXED,
-        "movie.node_speed",
-        "movie.node_speed_note",
-    ),
-];
+/// Card width in points.
+pub const WIDTH: f32 = 296.0;
 
-/// Draws the card with its top-left corner at `origin`.
-pub fn show(ui: &mut Ui, origin: Pos2) {
-    let mut child =
-        ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(origin, vec2(320.0, 400.0))));
+/// Draws the card with its top-left corner at `origin`; returns true when the animation changed.
+pub fn show(ui: &mut Ui, origin: Pos2, animation: &mut Animation) -> bool {
+    let mut changed = false;
+    let mut child = ui.new_child(
+        UiBuilder::new().max_rect(Rect::from_min_size(origin, vec2(WIDTH + 24.0, 400.0))),
+    );
     frames::overlay(12)
         .corner_radius(CornerRadius::same(4))
         .show(&mut child, |ui| {
-            ui.set_width(296.0);
+            ui.set_width(WIDTH);
             ui.spacing_mut().item_spacing.y = 8.0;
             split_row(
                 ui,
                 20.0,
                 |ui| {
-                    Tag::new(tr("movie.clip"), colors::PRIMARY)
-                        .fill(colors::with_alpha(colors::PRIMARY_CONTAINER, 51))
-                        .padding(8.0, 2.0)
-                        .show(ui);
-                },
-                |ui| {
-                    Tag::new("00:14.00", colors::ON_SURFACE_VARIANT)
-                        .lead_icon(icons::SCHEDULE, 13.0, colors::PRIMARY)
+                    Tag::new(text::caps(tr("movie.sequence_card")), colors::PRIMARY)
+                        .lead_icon(icons::TIMELINE, 13.0, colors::PRIMARY)
                         .gap(4.0)
-                        .padding(0.0, 0.0)
+                        .fill(colors::SURFACE_HIGH)
+                        .padding(6.0, 2.0)
                         .show(ui);
                 },
-            );
-            ui.vertical(|ui| {
-                ui.spacing_mut().item_spacing.y = 2.0;
-                text::label(
-                    ui,
-                    tr("movie.clip_title"),
-                    typography::headline_md(),
-                    colors::ON_SURFACE,
-                );
-                text::paragraph(
-                    ui,
-                    tr("movie.clip_body"),
-                    typography::body_sm(),
-                    colors::ON_SURFACE_VARIANT,
-                    19.5,
-                );
-            });
-            nodes(ui);
-            split_row(
-                ui,
-                24.0,
                 |ui| {
                     text::label(
                         ui,
-                        tr("movie.samples"),
-                        typography::label_sm(),
+                        trf(
+                            "movie.summary",
+                            &[
+                                &timecode(animation.total_duration(), animation.fps),
+                                &animation.frame_count().to_string(),
+                            ],
+                        ),
+                        typography::mono(10.0),
                         colors::OUTLINE,
                     );
                 },
-                |ui| {
-                    ui.spacing_mut().item_spacing.x = 8.0;
-                    Button::new(tr("movie.update_node"), ButtonStyle::Pale)
-                        .font(typography::mono_medium(11.0))
-                        .padding(8.0, 2.0)
-                        .show(ui);
-                    Button::new(tr("movie.duplicate"), ButtonStyle::Container)
-                        .font(typography::label_sm())
-                        .padding(8.0, 2.0)
-                        .show(ui);
-                },
             );
+            changed |= name(ui, animation);
+            changed |= numbers(ui, animation);
+            changed |= modes(ui, animation);
         });
+    changed
 }
 
-fn nodes(ui: &mut Ui) {
-    let gap = 4.0;
-    let width = (ui.available_width() - gap) / 2.0;
-    let (area, _) =
-        ui.allocate_exact_size(vec2(ui.available_width(), 2.0 * 38.0 + gap), Sense::hover());
-    for (index, (glyph, color, title, note)) in NODES.into_iter().enumerate() {
-        let rect = Rect::from_min_size(
-            pos2(
-                area.left() + (index % 2) as f32 * (width + gap),
-                area.top() + (index / 2) as f32 * (38.0 + gap),
-            ),
-            vec2(width, 38.0),
-        );
-        ui.painter()
-            .rect_filled(rect, CornerRadius::same(2), colors::SURFACE_CONTAINER);
-        text::paint_icon(
-            ui.painter(),
-            pos2(rect.left() + 14.0, rect.center().y),
-            glyph,
-            14.0,
-            color,
-        );
-        let mut text_ui = ui.new_child(UiBuilder::new().max_rect(Rect::from_min_max(
-            pos2(rect.left() + 28.0, rect.top() + 4.0),
-            rect.max,
-        )));
-        text_ui.spacing_mut().item_spacing.y = 0.0;
-        crate::components::text_layout::clamped(
-            &mut text_ui,
-            tr(title),
-            typography::label_sm(),
-            colors::ON_SURFACE,
-            width - 32.0,
-            1,
-            14.0,
-        );
-        text::label(
-            &mut text_ui,
-            tr(note),
-            typography::mono(9.0),
-            colors::OUTLINE,
-        );
+fn name(ui: &mut Ui, animation: &mut Animation) -> bool {
+    form::text_field(ui, &mut animation.name, tr("movie.sequence_name"), WIDTH).changed()
+}
+
+fn numbers(ui: &mut Ui, animation: &mut Animation) -> bool {
+    let mut changed = number(
+        ui,
+        "movie.duration",
+        &mut animation.duration,
+        0.1,
+        0.0..=MAX_DURATION,
+        "movie.unit_s",
+    );
+    let mut fps = f64::from(animation.fps);
+    if number(
+        ui,
+        "movie.fps",
+        &mut fps,
+        0.2,
+        f64::from(FPS_RANGE.0)..=f64::from(FPS_RANGE.1),
+        "movie.unit_fps",
+    ) {
+        animation.fps = fps.round() as u32;
+        changed = true;
     }
+    changed |= number(
+        ui,
+        "movie.speed",
+        &mut animation.speed,
+        0.02,
+        SPEED_RANGE.0..=SPEED_RANGE.1,
+        "movie.unit_times",
+    );
+    split_row(
+        ui,
+        24.0,
+        |ui| {
+            text::label(
+                ui,
+                tr("movie.loop"),
+                typography::body_sm(),
+                colors::ON_SURFACE,
+            );
+        },
+        |ui| {
+            let before = animation.looping;
+            toggle::show_sized(ui, &mut animation.looping, vec2(36.0, 20.0));
+            changed |= before != animation.looping;
+        },
+    );
+    changed
+}
+
+fn modes(ui: &mut Ui, animation: &mut Animation) -> bool {
+    let mut changed = false;
+    let mut path = usize::from(animation.camera.path == PathMode::Linear);
+    let labels = [tr("movie.path_smooth"), tr("movie.path_linear")];
+    if Segmented::text(&labels).height(24.0).show(ui, &mut path) {
+        animation.camera.path = if path == 1 {
+            PathMode::Linear
+        } else {
+            PathMode::Smooth
+        };
+        changed = true;
+    }
+    let mut timing = usize::from(animation.camera.timing == Timing::ConstantSpeed);
+    let labels = [tr("movie.timing_keyed"), tr("movie.timing_constant")];
+    if Segmented::text(&labels).height(24.0).show(ui, &mut timing) {
+        animation.camera.timing = if timing == 1 {
+            Timing::ConstantSpeed
+        } else {
+            Timing::Keyed
+        };
+        changed = true;
+    }
+    changed
 }

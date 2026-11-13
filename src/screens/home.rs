@@ -1,8 +1,9 @@
 //! Start screen: new, open and import actions, the open project (to continue) and the recent projects.
 
 use crate::commands;
+use crate::commands::sample_model as sample;
 use crate::components::button::{Button, ButtonStyle};
-use crate::components::{empty_state, icons, key_cap::KeyCap, text};
+use crate::components::{empty_state, icons, key_cap::KeyCap, paint, text};
 use crate::config::theme::{colors, typography};
 use crate::features::projects::components::open_dialog::elide_middle;
 use crate::features::projects::logic::describe::{age_label, size_label};
@@ -12,7 +13,10 @@ use crate::models::dialog::Dialog;
 use crate::models::navigation::Screen;
 use crate::models::AppState;
 use crate::services::localization::{tr, trf};
-use eframe::egui::{pos2, vec2, Align2, CornerRadius, CursorIcon, Margin, ScrollArea, Sense, Ui};
+use crate::services::textures::Placeholder;
+use eframe::egui::{
+    pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, Margin, Rect, ScrollArea, Sense, Ui,
+};
 
 const MAX_WIDTH: f32 = 860.0;
 const ROW_HEIGHT: f32 = 56.0;
@@ -32,8 +36,11 @@ pub fn show(ui: &mut Ui, app: &mut AppState) {
                     ui.add_space(40.0);
                     title(ui);
                     actions(ui);
+                    sample_model(ui);
                     continue_card(ui, app);
                     recent(ui, app, width);
+                    ui.add_space(16.0);
+                    showcase(ui, app, width);
                     ui.add_space(24.0);
                 });
             });
@@ -224,4 +231,70 @@ fn recent_row(ui: &mut Ui, info: &RecentInfo, width: f32, now: u64) -> bool {
     response
         .on_hover_text(info.entry.path.display().to_string())
         .clicked()
+}
+
+fn note_id() -> eframe::egui::Id {
+    eframe::egui::Id::new("home-sample-note")
+}
+
+/// The button that opens the Casa del Cobogó example, with a note when the file cannot be found.
+fn sample_model(ui: &mut Ui) {
+    ui.horizontal(|ui| {
+        if Button::new(tr("home.sample"), ButtonStyle::Container)
+            .icon(icons::VIEW_IN_AR, 16.0)
+            .padding(12.0, 6.0)
+            .show(ui)
+            .on_hover_text(tr("home.sample_hint"))
+            .clicked()
+        {
+            let note = match sample::locate() {
+                Some(path) => {
+                    commands::request_open(ui.ctx(), path);
+                    String::new()
+                }
+                None => tr("home.sample_missing").to_owned(),
+            };
+            ui.data_mut(|data| data.insert_temp(note_id(), note));
+        }
+    });
+    let note: String = ui.data(|data| data.get_temp(note_id())).unwrap_or_default();
+    if !note.is_empty() {
+        text::label(ui, note, typography::body_sm(), colors::WARNING);
+    }
+}
+
+/// An illustration of what the software can do, labelled as a sample. It is never a project or a scene.
+fn showcase(ui: &mut Ui, app: &mut AppState, width: f32) {
+    text::label(
+        ui,
+        text::caps(tr("home.showcase")),
+        typography::label_md(),
+        colors::ON_SURFACE_VARIANT,
+    );
+    let height = (width * 0.34).clamp(120.0, 300.0);
+    let (rect, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
+    let texture = app.textures.get(ui.ctx(), Placeholder::VillaRender).clone();
+    let painter = ui.painter().with_clip_rect(rect);
+    painter.rect_filled(rect, CornerRadius::same(4), colors::SURFACE_LOWEST);
+    paint::image_cover(&painter, rect, &texture, vec2(0.5, 0.6), Color32::WHITE);
+    let badge = Rect::from_min_size(rect.left_top() + vec2(10.0, 10.0), vec2(190.0, 22.0));
+    painter.rect_filled(
+        badge,
+        CornerRadius::same(3),
+        colors::with_alpha(colors::SURFACE_LOWEST, 225),
+    );
+    text::paint_text(
+        &painter,
+        badge.center(),
+        Align2::CENTER_CENTER,
+        tr("home.showcase_badge"),
+        typography::label_sm(),
+        colors::WARNING,
+    );
+    text::label(
+        ui,
+        tr("home.showcase_note"),
+        typography::body_sm(),
+        colors::OUTLINE,
+    );
 }

@@ -41,7 +41,7 @@ y es el lugar de las futuras funciones del motor.
 
 La app tiene una pantalla de inicio (`home`: nuevo, abrir, importar, proyectos recientes) y un **espacio de trabajo**
 con la vista 3D a pantalla completa y cuatro modos siempre visibles en la barra de modos (`components/mode_bar.rs`,
-teclas 1-4): Construir, Foto, Película y Exportar. Las pantallas secundarias (biblioteca, inspector de activos, editor
+teclas F1-F4): Construir, Foto, Película y Exportar. Las pantallas secundarias (biblioteca, inspector de activos, editor
 de materiales, ajustes, ayuda) se abren desde la barra de modos o desde el contenido.
 
 | Pantalla | Código | `--screen=` |
@@ -60,7 +60,7 @@ abiertos, las solicitudes al shell (`requests`: encuadrar, navegar) y el estado 
 inferior y una superposición, todos `fn(&mut Ui, &mut AppState)`. Para llenar una ranura se sustituye la función en
 `workspace/{build,photo,movie,export}.rs`; la vista 3D es `workspace/viewport.rs`. Los paneles son colapsables
 (`components/dock_panel.rs`) y los atajos visibles viven en `components/tool_hints.rs`. Atajos: `ASDW`/`QE` (vista 3D,
-pendiente de la vista real), `F` encuadrar, `Espacio` reproducir en Película, `1-4` modos, `Ctrl+S` guardar.
+pendiente de la vista real), `F` encuadrar, `Espacio` reproducir en Película, `F1-F4` modos, `Ctrl+S` guardar.
 
 ## Diálogos y avisos
 

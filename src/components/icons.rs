@@ -43,6 +43,9 @@ pub const RESTORE_WINDOW: char = '\u{e3e0}';
 /// `layers`.
 pub const LAYERS: char = '\u{e53b}';
 
+/// `expand_less`.
+pub const EXPAND_LESS: char = '\u{e5ce}';
+
 /// `expand_more`.
 pub const EXPAND_MORE: char = '\u{e5cf}';
 
@@ -351,6 +354,3 @@ pub const BLUR: char = '\u{e3a5}';
 
 /// `palette`.
 pub const PALETTE: char = '\u{e40a}';
-
-/// `expand_less`.
-pub const EXPAND_LESS: char = '\u{e5ce}';

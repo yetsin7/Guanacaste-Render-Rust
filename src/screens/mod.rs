@@ -1,5 +1,6 @@
 //! Screen composition and navigation. The start screen and the scene workspace read the shared [`AppState`];
-//! the remaining screens keep their own state and only need the texture cache and a way to navigate.
+//! the remaining screens keep their own state and only need the texture cache, the open project and a way to
+//! navigate.
 
 mod help;
 mod home;
@@ -8,6 +9,7 @@ mod materials;
 mod settings;
 pub mod workspace;
 
+use crate::commands::workspace::Workspace;
 use crate::models::navigation::Screen;
 use crate::models::AppState;
 use crate::services::textures::Textures;
@@ -19,6 +21,8 @@ pub struct ScreenContext<'a> {
     pub textures: &'a mut Textures,
     /// Set by a screen to request navigation to another screen.
     pub navigate: &'a mut Option<Screen>,
+    /// The open project and its workspace.
+    pub workspace: &'a mut Workspace,
 }
 
 /// State of the secondary screens.
@@ -41,6 +45,7 @@ impl Screens {
                 let mut context = ScreenContext {
                     textures: &mut app.textures,
                     navigate: &mut app.requests.navigate,
+                    workspace: &mut app.workspace,
                 };
                 match other {
                     Screen::Library => self.library.show(ui, &mut context),

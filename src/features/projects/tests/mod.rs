@@ -1,8 +1,11 @@
 //! Unit tests of the projects domain: repository filters, the `.gr` container, saving, recovery and the
 //! read-only Guanacaste 3D path.
 
+mod animation_tests;
 mod container_tests;
 mod legacy_tests;
+mod plugin_fixture_tests;
+mod revit_tests;
 mod store_tests;
 
 use super::logic;

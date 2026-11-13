@@ -8,8 +8,8 @@ use crate::components::{
     text,
 };
 use crate::config::theme::{colors, typography};
-use crate::features::build::logic::format_hour;
 use crate::features::build::models::BuildState;
+use crate::features::environment::components::panel;
 use crate::services::localization::tr;
 use eframe::egui::Ui;
 
@@ -20,14 +20,6 @@ const TERRAIN_TOOLS: [(char, &str); 5] = [
     (icons::PALETTE, "build.terrain_paint"),
     (icons::CLOUD, "build.terrain_water"),
 ];
-const WEATHER_PRESETS: [(char, &str); 5] = [
-    (icons::SUN, "build.weather_clear"),
-    (icons::CLOUD, "build.weather_cloudy"),
-    (icons::BLUR, "build.weather_fog"),
-    (icons::WIND, "build.weather_wind"),
-    (icons::SNOW, "build.weather_snow"),
-];
-
 fn slider_row(ui: &mut Ui, key: &'static str, value_text: String, value: &mut f32) {
     ui.vertical(|ui| {
         ui.spacing_mut().item_spacing.y = 6.0;
@@ -85,33 +77,7 @@ pub fn landscape(ui: &mut Ui, state: &mut BuildState) {
     );
 }
 
-/// The weather and time-of-day panel.
+/// The sky, sun and weather panel (see the environment domain).
 pub fn weather(ui: &mut Ui, state: &mut BuildState) {
-    let choices: Vec<_> = WEATHER_PRESETS
-        .iter()
-        .map(|(glyph, key)| Choice {
-            icon: Some(*glyph),
-            label: tr(key),
-        })
-        .collect();
-    choice_row::show(
-        ui,
-        &choices,
-        &mut state.weather,
-        &choice_row::pill_style(typography::label_sm()),
-        4.0,
-    );
-    slider_row(ui, "build.hour", format_hour(state.hour), &mut state.hour);
-    slider_row(
-        ui,
-        "build.clouds",
-        format!("{:.0}%", state.clouds * 100.0),
-        &mut state.clouds,
-    );
-    slider_row(
-        ui,
-        "build.fog",
-        format!("{:.0}%", state.fog * 100.0),
-        &mut state.fog,
-    );
+    panel::show(ui, &mut state.environment);
 }

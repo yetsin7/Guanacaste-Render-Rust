@@ -1,17 +1,25 @@
-//! Material editor rules.
+//! Material editor rules: sampling, procedural textures, presets, previews and project storage.
 
-use super::models::MaterialState;
+pub mod color;
+pub mod convert;
+pub mod editor;
+pub mod maps;
+pub mod presets;
+pub mod preview;
+pub mod procedural;
+pub mod project_io;
+pub mod sample;
+pub mod sampling;
+pub mod sync;
 
-/// Restores the default parameters, keeping the viewport tool and filter.
-pub fn reset(state: &mut MaterialState) {
-    *state = MaterialState {
-        tool: state.tool,
-        filter: std::mem::take(&mut state.filter),
-        ..MaterialState::default()
-    };
+use super::models::Material;
+
+/// Restores every value of `material` to the defaults, keeping its name.
+pub fn reset(material: &mut Material) {
+    *material = Material::new(std::mem::take(&mut material.name));
 }
 
-/// Whether a parameter named `name` is shown under the filter text (case-insensitive substring).
+/// Whether a material named `name` is shown under the filter text (case-insensitive substring).
 pub fn matches_filter(name: &str, filter: &str) -> bool {
     let needle = filter.trim().to_lowercase();
     needle.is_empty() || name.to_lowercase().contains(&needle)

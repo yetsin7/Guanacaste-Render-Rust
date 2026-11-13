@@ -8,7 +8,6 @@ use crate::features::projects::components::{
     recovery_dialog::RecoveryChoice, unsaved_dialog::UnsavedChoice,
 };
 use crate::features::projects::logic::save_plan::{save_target, SaveTarget};
-use crate::features::rendering::models::{ImageFormat, RESOLUTIONS};
 use crate::models::dialog::{Dialog, DialogOutcome};
 use crate::services::localization::tr;
 use eframe::egui::{Context, ViewportCommand};
@@ -110,6 +109,40 @@ impl DialogHost {
         self.shown = self.active;
     }
 
+    /// Handles files dropped on the window: a Guanacaste Render project opens as a project, anything else goes
+    /// to the import dialog (which explains closed formats). Only the first file is used.
+    pub(super) fn take_drops(&mut self, ctx: &Context, workspace: &mut Workspace) {
+        use crate::features::import_export::logic::formats::{detect, sniff, Detected, Signature};
+        use crate::features::import_export::ui::drop;
+        use crate::services::localization::trf;
+        drop::overlay(ctx);
+        let paths = drop::dropped_paths(ctx);
+        let Some(first) = paths.first().cloned() else {
+            return;
+        };
+        if !matches!(self.active, None | Some(Dialog::Import)) {
+            return;
+        }
+        if paths.len() > 1 {
+            let name = first
+                .file_name()
+                .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+            workspace.notify(
+                trf("import.drop_many", &[&paths.len().to_string(), &name]),
+                false,
+            );
+        }
+        let is_project = matches!(detect(&first), Detected::Supported(_))
+            && sniff(&first).is_ok_and(|s| s == Signature::Render);
+        if is_project {
+            self.perform(ctx, workspace, Pending::Open(first));
+        } else {
+            self.import.choose(first);
+            self.active = Some(Dialog::Import);
+            self.menu_anchor = None;
+        }
+    }
+
     /// Opens `path` at start-up (the recovery offer, if any, stays queued behind it).
     pub fn open_at_start(&mut self, workspace: &mut Workspace, path: &std::path::Path) {
         if !workspace.open_file(path) {
@@ -152,21 +185,15 @@ impl DialogHost {
             }
         }
         if std::mem::take(&mut self.export.request) {
-            self.export(workspace);
+            self.export();
         }
         self.shown = self.active;
     }
 
-    fn export(&mut self, workspace: &mut Workspace) {
-        if ImageFormat::ALL[self.export.format] != ImageFormat::Png {
-            workspace.notify(tr("workspace.export_only_png").to_owned(), true);
-            return;
-        }
-        let (width, height) = RESOLUTIONS[self.export.resolution.min(RESOLUTIONS.len() - 1)];
-        workspace.export_png(&PathBuf::from(self.export.path.trim()), width, height);
-        if workspace.status.as_ref().is_some_and(|s| !s.error) {
-            self.active = None;
-        }
+    /// Hands the export settings to the shell, which queues the render and reports the result.
+    fn export(&mut self) {
+        self.render_request = Some(self.export.clone());
+        self.active = None;
     }
 
     /// Answer of the unsaved-changes dialog.

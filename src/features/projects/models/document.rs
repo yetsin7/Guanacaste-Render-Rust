@@ -1,6 +1,10 @@
 //! The editable part of a project, stored as JSON inside a `.gr` container (`GRRPROJ1`). Heavy geometry lives in binary
 //! blocks (see `services/container.rs`); this document only keeps the metadata of each mesh.
 
+use crate::features::build::models::ObjectsDoc;
+use crate::features::lighting::models::LightingSetup;
+use crate::features::materials::models::Material;
+use crate::features::movie::models::Animation;
 use serde::{Deserialize, Serialize};
 
 /// Schema version written by this application.
@@ -86,13 +90,17 @@ pub struct LevelDoc {
     pub node: u32,
 }
 
-/// A material.
+/// A material. `name` and `color` are the portable summary every reader understands; `pbr` is the full physically
+/// based material, absent in documents written before the material editor existed (then it is derived from `color`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MaterialDoc {
     /// Name.
     pub name: String,
     /// RGBA 0..=1.
     pub color: [f32; 4],
+    /// The full PBR material (schema 1 extension; older readers ignore it, older files omit it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pbr: Option<Material>,
 }
 
 /// Metadata of a mesh whose vertices and indices are in a binary block.
@@ -235,10 +243,25 @@ pub struct ProjectDocument {
     pub cameras: Vec<CameraDoc>,
     /// Timeline.
     pub timeline: TimelineDoc,
+    /// Camera animation of the movie studio. Files written before it existed lack the field and get an empty
+    /// animation, so no schema bump is needed.
+    pub animation: Animation,
     /// Render settings.
     pub render: RenderSettingsDoc,
     /// Sun and sky.
     pub sun_sky: SunSkyDoc,
     /// Placed vegetation.
     pub vegetation: Vec<VegetationDoc>,
+    /// Terrain, water and scattered vegetation; absent in projects saved before the landscape existed.
+    pub landscape: Option<crate::features::landscape::models::Landscape>,
+    /// Placed scene objects and imported library assets. Added after schema 1 as an optional field: files without
+    /// it open with no objects, and it is left out of the file while empty, so no migration is needed.
+    #[serde(skip_serializing_if = "ObjectsDoc::is_empty")]
+    pub objects: ObjectsDoc,
+    /// Artificial lights, groups, emissive materials and lighting scenes (absent in older files; omitted when empty).
+    #[serde(skip_serializing_if = "LightingSetup::is_empty")]
+    pub lighting: LightingSetup,
+    /// Sun, sky and weather of the scene (absent in older files and while untouched).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub environment: Option<crate::features::environment::EnvironmentSettings>,
 }

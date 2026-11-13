@@ -22,7 +22,7 @@ const MODES: [(char, &str); 4] = [
 ];
 
 /// Number-key labels of the modes.
-const MODE_KEYS: [&str; 4] = ["1", "2", "3", "4"];
+const MODE_KEYS: [&str; 4] = ["F1", "F2", "F3", "F4"];
 
 /// Secondary screens on the right: icon, tooltip key and target.
 const SECONDARY: [(char, &str, Screen); 3] = [

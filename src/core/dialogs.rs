@@ -80,6 +80,8 @@ pub struct DialogHost {
     notices: Vec<Notice>,
     import: ImportDialogState,
     pending: Option<Pending>,
+    /// Export settings the user confirmed; the shell queues the render and clears this.
+    pub render_request: Option<ExportState>,
 }
 
 impl DialogHost {
@@ -97,8 +99,9 @@ impl DialogHost {
             preferences_tab: 0,
             shortcuts_search: String::new(),
             notices: notifications_panel::initial_notices(),
-            import: ImportDialogState::default(),
+            import: ImportDialogState::with_data_dir(&workspace.data_dir),
             pending: None,
+            render_request: None,
         }
     }
 
@@ -120,6 +123,7 @@ impl DialogHost {
         preferences: &mut Preferences,
     ) {
         self.intake(ctx, workspace);
+        self.take_drops(ctx, workspace);
         if self.active.is_none() && !ctx.egui_wants_keyboard_input() {
             let save_as = KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::SHIFT, Key::S);
             if ctx.input_mut(|input| input.consume_shortcut(&save_as)) {
