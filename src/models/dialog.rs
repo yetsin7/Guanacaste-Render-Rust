@@ -18,8 +18,14 @@ pub enum Dialog {
     NewScene,
     /// Open a project file.
     OpenProject,
-    /// Save the project.
+    /// Save the project (becomes "save as" when it has no own `.gr` yet).
     SaveProject,
+    /// Save the project under a new name.
+    SaveAs,
+    /// Ask what to do with unsaved changes before closing, opening or creating.
+    UnsavedChanges,
+    /// Offer the recovery copies left by an unexpected exit.
+    Recovery,
     /// Import a model exported from Revit or another program.
     Import,
     /// Export the current view as an image.

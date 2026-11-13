@@ -17,6 +17,8 @@ pub struct TitleBarInfo<'a> {
     pub resolution: &'a str,
     /// Whether the frame-rate pill is shown.
     pub show_fps: bool,
+    /// Name of the open project and whether it has unsaved changes.
+    pub project: Option<(&'a str, bool)>,
 }
 
 /// Draws the title bar inside `ui`, which must be exactly [`HEIGHT`] tall.
@@ -53,6 +55,24 @@ pub fn show(ui: &mut Ui, info: &TitleBarInfo) -> Option<eframe::egui::Pos2> {
             .fill(colors::SURFACE_CONTAINER)
             .border(colors::SURFACE_HIGHEST)
             .show(ui);
+        if let Some((name, dirty)) = info.project {
+            ui.add_space(10.0);
+            divider(ui);
+            ui.add_space(10.0);
+            text::label(ui, name, typography::label_md(), colors::ON_SURFACE_VARIANT);
+            if dirty {
+                ui.add_space(6.0);
+                let (rect, _) = ui.allocate_exact_size(Vec2::splat(8.0), Sense::hover());
+                ui.painter()
+                    .circle_filled(rect.center(), 3.5, colors::PRIMARY);
+                text::label(
+                    ui,
+                    format!(" {}", tr("workspace.unsaved")),
+                    typography::label_sm(),
+                    colors::OUTLINE,
+                );
+            }
+        }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.spacing_mut().item_spacing.x = 0.0;
             window_buttons(ui);

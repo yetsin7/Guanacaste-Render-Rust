@@ -99,6 +99,8 @@ pub struct ExportState {
     pub path: String,
     /// Transparent background switch.
     pub transparent: bool,
+    /// The user pressed "Export".
+    pub request: bool,
 }
 
 impl Default for ExportState {
@@ -109,6 +111,7 @@ impl Default for ExportState {
             quality: 0.9,
             path: "C:/Proyectos/Guanacaste/Renders/villa.png".into(),
             transparent: false,
+            request: false,
         }
     }
 }

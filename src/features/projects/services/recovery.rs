@@ -5,8 +5,12 @@ use super::util::hex;
 use crate::features::projects::models::Project;
 use std::path::{Path, PathBuf};
 
-/// The per-user data folder of the application (`%LOCALAPPDATA%\GuanacasteRender` on Windows).
+/// The per-user data folder of the application (`%LOCALAPPDATA%\GuanacasteRender` on Windows). The
+/// `GR_DATA_DIR` environment variable replaces it (portable installs, tests, demonstrations).
 pub fn data_dir() -> PathBuf {
+    if let Some(folder) = std::env::var_os("GR_DATA_DIR") {
+        return PathBuf::from(folder);
+    }
     let base = std::env::var_os("LOCALAPPDATA")
         .or_else(|| std::env::var_os("XDG_DATA_HOME"))
         .map(PathBuf::from)

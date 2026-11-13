@@ -158,6 +158,15 @@ pub fn show(ctx: &Context, state: &mut ImportDialogState) -> DialogOutcome {
         |ui| {
             modal::content(ui, |ui| body(ui, state));
             modal::footer(ui, |ui| {
+                if matches!(state.result.as_deref(), Some(Ok(_)))
+                    && Button::new(tr("import.adopt"), ButtonStyle::Pale)
+                        .icon(icons::CHECK, 16.0)
+                        .padding(16.0, 6.0)
+                        .show(ui)
+                        .clicked()
+                {
+                    state.adopt = true;
+                }
                 if Button::new(tr("import.close"), ButtonStyle::Container)
                     .padding(16.0, 6.0)
                     .show(ui)

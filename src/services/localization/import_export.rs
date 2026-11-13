@@ -21,6 +21,7 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("import.err_crashed", "El importador encontró un error interno; la aplicación sigue funcionando."),
     ("import.analyzing", "Analizando el archivo... {0} %"),
     ("import.cancel", "Cancelar importación"),
+    ("import.adopt", "Usar como proyecto"),
     ("import.close", "Cerrar"),
     ("import.report", "Informe de importación ({0} avisos)"),
     ("import.report_empty", "Sin avisos: todo el contenido se leyó correctamente."),

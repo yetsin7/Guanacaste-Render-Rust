@@ -1,14 +1,15 @@
 //! Developer launch options: `--screen=<slug>` opens a given screen at start-up and `--size=<W>x<H>` opens a
 //! fixed-size window in interface points (useful to compare against the prototype screenshots); `--zoom=<f>`
 //! scales the whole interface; `--dialog=<name>` opens a dialog. The `GR_SCREEN` environment variable
-//! is an alternative to `--screen`.
+//! is an alternative to `--screen`. Any argument that is not an option is a project file to open (this is what
+//! "Open with" and double-clicking a `.gr` pass).
 
 use crate::features::projects::components::open_dialog::OPEN_ERROR;
 use crate::models::dialog::Dialog;
 use crate::models::navigation::Screen;
 
 /// Options read from the command line.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct LaunchOptions {
     /// Screen to show first.
     pub screen: Option<Screen>,
@@ -18,6 +19,8 @@ pub struct LaunchOptions {
     pub zoom: Option<f32>,
     /// Dialog to open at start-up.
     pub dialog: Option<Dialog>,
+    /// Project file to open at start-up.
+    pub open: Option<std::path::PathBuf>,
 }
 
 impl LaunchOptions {
@@ -38,6 +41,8 @@ impl LaunchOptions {
                 options.dialog = dialog_from_slug(slug);
             } else if let Some(zoom) = arg.strip_prefix("--zoom=") {
                 options.zoom = zoom.parse().ok();
+            } else if !arg.starts_with("--") {
+                options.open = Some(arg.into());
             }
         }
         options
@@ -62,6 +67,9 @@ fn dialog_from_slug(slug: &str) -> Option<Dialog> {
         "open" => Dialog::OpenProject,
         "import" => Dialog::Import,
         "save" => Dialog::SaveProject,
+        "save-as" => Dialog::SaveAs,
+        "unsaved" => Dialog::UnsavedChanges,
+        "recovery" => Dialog::Recovery,
         "export" => Dialog::ExportImage,
         "preferences" => Dialog::Preferences,
         "shortcuts" => Dialog::Shortcuts,
@@ -98,5 +106,11 @@ mod tests {
     fn ignores_unknown_values() {
         let options = LaunchOptions::parse(["--screen=nope", "--size=abc", "--other"]);
         assert_eq!(options, LaunchOptions::default());
+    }
+
+    #[test]
+    fn a_bare_argument_is_a_file_to_open() {
+        let options = LaunchOptions::parse(["--screen=build", "C:/Proyectos/casa.gr"]);
+        assert_eq!(options.open, Some("C:/Proyectos/casa.gr".into()));
     }
 }

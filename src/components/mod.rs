@@ -29,5 +29,6 @@ pub mod tag;
 pub mod text;
 pub mod text_layout;
 pub mod title_bar;
+pub mod toast;
 pub mod toggle;
 pub mod tool_rail;

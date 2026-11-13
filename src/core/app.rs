@@ -20,6 +20,7 @@ pub struct StudioApp {
     preferences: Preferences,
     applied_scale: usize,
     pending_dialog: Option<crate::models::dialog::Dialog>,
+    window_title: String,
 }
 
 impl StudioApp {
@@ -29,14 +30,19 @@ impl StudioApp {
         if let Some(zoom) = options.zoom {
             creation.egui_ctx.set_zoom_factor(zoom);
         }
+        let mut dialogs = DialogHost::default();
+        if let Some(path) = &options.open {
+            dialogs.open_at_start(path);
+        }
         Self {
             screen: options.screen.unwrap_or_default(),
             screens: Screens::default(),
             textures: Textures::default(),
-            dialogs: DialogHost::default(),
+            dialogs,
             preferences: Preferences::default(),
             applied_scale: Preferences::default().scale_index,
             pending_dialog: options.dialog,
+            window_title: String::new(),
         }
     }
 
@@ -55,10 +61,12 @@ impl eframe::App for StudioApp {
             .frame(bar)
             .exact_size(title_bar::HEIGHT)
             .show(ui, |ui| {
+                let workspace = &self.dialogs.workspace;
                 let info = title_bar::TitleBarInfo {
                     fps: shell::FPS_LABEL,
                     resolution: shell::RESOLUTION_LABEL,
                     show_fps: self.preferences.show_fps,
+                    project: workspace.name().map(|name| (name, workspace.dirty())),
                 };
                 if let Some(anchor) = title_bar::show(ui, &info) {
                     self.dialogs.open_menu(anchor);
@@ -89,7 +97,18 @@ impl eframe::App for StudioApp {
         if let Some(dialog) = self.pending_dialog.take() {
             crate::commands::request_dialog(ui.ctx(), dialog);
         }
-        self.dialogs.show(ui.ctx(), &mut self.preferences);
+        let ctx = ui.ctx().clone();
+        if ctx.input(|input| input.viewport().close_requested())
+            && self.dialogs.intercept_close(&ctx)
+        {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        }
+        self.dialogs.show(&ctx, &mut self.preferences);
+        let title = self.dialogs.workspace.window_title();
+        if title != self.window_title {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
+            self.window_title = title;
+        }
         if self.preferences.scale_index != self.applied_scale {
             self.applied_scale = self.preferences.scale_index;
             ui.ctx().set_zoom_factor(self.preferences.zoom());

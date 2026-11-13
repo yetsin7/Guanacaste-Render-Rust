@@ -1,6 +1,7 @@
 //! Rules of the repository and of the project document: filtering, conversion and schema migrations.
 
 pub mod convert;
+pub mod describe;
 pub mod migrations;
 pub mod save_plan;
 

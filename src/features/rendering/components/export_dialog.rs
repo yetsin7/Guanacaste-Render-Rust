@@ -1,4 +1,4 @@
-//! The export-image dialog.
+//! The export-image dialog. Until the render engine exists the image is the plan + isometric line preview.
 
 use crate::components::{
     button::{Button, ButtonStyle},
@@ -12,16 +12,9 @@ use crate::components::{
 use crate::config::theme::{colors, typography};
 use crate::features::rendering::logic::{estimate_megabytes, resolution_label};
 use crate::features::rendering::models::{ExportState, ImageFormat, RESOLUTIONS};
-use crate::models::dialog::{Dialog, DialogOutcome, ErrorInfo};
+use crate::models::dialog::DialogOutcome;
 use crate::services::localization::tr;
 use eframe::egui::Context;
-
-/// The error raised when exporting is attempted.
-pub const EXPORT_ERROR: ErrorInfo = ErrorInfo {
-    title: "error.export_title",
-    message: "error.export_body",
-    code: "GR-RENDER-001",
-};
 
 /// Draws the dialog.
 pub fn show(ctx: &Context, state: &mut ExportState) -> DialogOutcome {
@@ -110,8 +103,8 @@ pub fn show(ctx: &Context, state: &mut ExportState) -> DialogOutcome {
                 notice::show(
                     ui,
                     Level::Warning,
-                    tr("notices.info_title"),
-                    tr("notices.info_body"),
+                    tr("export.note_title"),
+                    tr("export.note_body"),
                 );
             });
             modal::footer(ui, |ui| {
@@ -121,7 +114,7 @@ pub fn show(ctx: &Context, state: &mut ExportState) -> DialogOutcome {
                     .show(ui)
                     .clicked()
                 {
-                    outcome = DialogOutcome::Open(Dialog::Error(EXPORT_ERROR));
+                    state.request = true;
                 }
                 if Button::new(tr("dialog.cancel"), ButtonStyle::Container)
                     .padding(16.0, 6.0)

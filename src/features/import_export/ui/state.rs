@@ -36,6 +36,8 @@ pub struct ImportDialogState {
     pub pitch: f32,
     /// The native file dialog.
     pub picker: FilePicker,
+    /// The user asked to use the finished import as the open project.
+    pub adopt: bool,
 }
 
 impl ImportDialogState {

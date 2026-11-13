@@ -1,5 +1,7 @@
 //! Application use cases that coordinate several domains: requests that any screen can raise and the shell serves.
 
+pub mod workspace;
+
 use crate::models::dialog::Dialog;
 use eframe::egui::{Context, Id};
 

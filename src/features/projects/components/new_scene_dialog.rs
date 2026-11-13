@@ -1,4 +1,4 @@
-//! The new-scene dialog. Creating is disabled until the engine exists.
+//! The new-scene dialog: creates an empty project that is saved as `.gr` on the first "Save".
 
 use crate::components::{
     button::{Button, ButtonStyle},
@@ -38,18 +38,16 @@ pub fn show(ctx: &Context, state: &mut NewSceneState) -> DialogOutcome {
                 );
                 form::caption(ui, tr("new.location"));
                 form::text_field(ui, &mut state.folder, "C:/Proyectos/Guanacaste", 488.0);
-                notice::show(
-                    ui,
-                    Level::Info,
-                    tr("notices.info_title"),
-                    tr("notices.info_body"),
-                );
+                notice::show(ui, Level::Info, tr("new.note_title"), tr("new.note_body"));
             });
             modal::footer(ui, |ui| {
-                Button::new(tr("new.create"), ButtonStyle::Pale)
+                if Button::new(tr("new.create"), ButtonStyle::Pale)
                     .padding(16.0, 6.0)
-                    .disabled(tr("dialog.no_engine"))
-                    .show(ui);
+                    .show(ui)
+                    .clicked()
+                {
+                    state.create = true;
+                }
                 if Button::new(tr("dialog.cancel"), ButtonStyle::Container)
                     .padding(16.0, 6.0)
                     .show(ui)
