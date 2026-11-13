@@ -206,6 +206,7 @@ impl eframe::App for StudioApp {
         self.dialogs
             .show(&ctx, &mut self.app.workspace, &mut self.preferences);
         self.queue_export_request();
+        crate::commands::thumbnails::update(&ctx, &mut self.app);
         self.follow_project();
         let title = self.app.workspace.window_title();
         if title != self.window_title {

@@ -1,14 +1,17 @@
-//! The scene workspace: the real 3D view fills the whole area and the active mode docks a right panel and a
-//! bottom drawer over it. Every mode is described by a [`ModeSlots`] entry; each slot is a plain
-//! `fn(&mut Ui, &mut AppState)` that draws into the space the shell gives it. To change what a mode shows, replace
-//! the function in that mode's file (`build.rs`, `photo.rs`, `movie.rs`, `export.rs`); the 3D view itself is the
-//! same for every mode (`viewport.rs`).
+//! The scene workspace: the real 3D view fills the whole area and the active mode docks a side panel (right, or
+//! left next to a rail) and a bottom drawer over it, with the floating tool palette and the render overlays on
+//! top. Every mode is described by a [`ModeSlots`] entry; each slot is a plain `fn(&mut Ui, &mut AppState)` that
+//! draws into the space the shell gives it. To change what a mode shows, replace the function in that mode's
+//! file (`build.rs`, `photo.rs`, `movie.rs`, `export.rs`); the 3D view itself is the same for every mode.
 
 mod build;
 mod export;
 mod ground_section;
 mod movie;
+mod palette;
 mod photo;
+mod photo_bar;
+mod render_overlay;
 mod viewport;
 
 use crate::components::dock_panel::{DockPanel, Edge};
@@ -16,7 +19,10 @@ use crate::components::tool_hints;
 use crate::models::navigation::Mode;
 use crate::models::AppState;
 use crate::services::localization::tr;
-use eframe::egui::{pos2, Align2, Area, Id, Order, Rect, Ui};
+use eframe::egui::{pos2, vec2, Align2, Area, Id, Order, Rect, Ui};
+
+/// Width of the rail of modes that have one.
+const RAIL_WIDTH: f32 = 72.0;
 
 /// A panel body: draws into `ui`, whose `max_rect` is the space under the panel header.
 pub type Panel = fn(&mut Ui, &mut AppState);
@@ -30,7 +36,7 @@ pub struct Slot {
     pub title: &'static str,
     /// Header icon.
     pub glyph: char,
-    /// Width (right panel) or height (bottom drawer) in points, given the current state.
+    /// Width (side panel) or height (bottom drawer) in points, given the current state.
     pub extent: fn(&AppState) -> f32,
     /// The content.
     pub body: Panel,
@@ -38,10 +44,14 @@ pub struct Slot {
 
 /// Everything the shell needs to lay out one mode.
 pub struct ModeSlots {
-    /// Right panel.
+    /// Side panel.
     pub side: Slot,
     /// Bottom drawer.
     pub bottom: Slot,
+    /// A rail of icons at the far left, when the mode has one.
+    pub rail: Option<Panel>,
+    /// Whether the side panel sits at the left (next to the rail) instead of the right.
+    pub side_left: bool,
     /// Mode-specific drawing over the 3D view.
     pub overlay: Overlay,
     /// Whether the shortcut strip offers the Space (play) hint.
@@ -58,6 +68,65 @@ pub fn slots(mode: Mode) -> ModeSlots {
     }
 }
 
+/// Where each part of the workspace goes.
+struct Layout {
+    rail: Option<Rect>,
+    side: Rect,
+    bottom: Rect,
+    free: Rect,
+}
+
+fn layout(rect: Rect, slots: &ModeSlots, app: &AppState) -> Layout {
+    let edge = if slots.side_left {
+        Edge::Left
+    } else {
+        Edge::Right
+    };
+    let side_extent = DockPanel::extent(edge, app.panels.side_open, (slots.side.extent)(app));
+    let bottom_extent = DockPanel::extent(
+        Edge::Bottom,
+        app.panels.bottom_open,
+        (slots.bottom.extent)(app),
+    );
+    let rail_width = if slots.rail.is_some() {
+        RAIL_WIDTH
+    } else {
+        0.0
+    };
+    let rail = slots
+        .rail
+        .map(|_| Rect::from_min_size(rect.min, vec2(rail_width, rect.height())));
+    let left = rect.left() + rail_width;
+    if slots.side_left {
+        let side = Rect::from_min_max(
+            pos2(left, rect.top()),
+            pos2(left + side_extent, rect.bottom()),
+        );
+        let bottom =
+            Rect::from_min_max(pos2(side.right(), rect.bottom() - bottom_extent), rect.max);
+        let free = Rect::from_min_max(side.right_top(), pos2(rect.right(), bottom.top()));
+        Layout {
+            rail,
+            side,
+            bottom,
+            free,
+        }
+    } else {
+        let side = Rect::from_min_max(pos2(rect.right() - side_extent, rect.top()), rect.max);
+        let bottom = Rect::from_min_max(
+            pos2(left, rect.bottom() - bottom_extent),
+            pos2(side.left(), rect.bottom()),
+        );
+        let free = Rect::from_min_max(pos2(left, rect.top()), pos2(side.left(), bottom.top()));
+        Layout {
+            rail,
+            side,
+            bottom,
+            free,
+        }
+    }
+}
+
 /// Draws the workspace of `mode` into the whole of `ui`.
 pub fn show(ui: &mut Ui, app: &mut AppState, mode: Mode) {
     let rect = ui.max_rect();
@@ -67,26 +136,31 @@ pub fn show(ui: &mut Ui, app: &mut AppState, mode: Mode) {
         Mode::Export => export::update(ui, app),
         _ => {}
     }
-    let side_extent =
-        DockPanel::extent(Edge::Right, app.panels.side_open, (slots.side.extent)(app));
-    let bottom_extent = DockPanel::extent(
-        Edge::Bottom,
-        app.panels.bottom_open,
-        (slots.bottom.extent)(app),
-    );
-    let side = Rect::from_min_max(pos2(rect.right() - side_extent, rect.top()), rect.max);
-    let bottom = Rect::from_min_max(
-        pos2(rect.left(), rect.bottom() - bottom_extent),
-        pos2(side.left(), rect.bottom()),
-    );
-    viewport::panel(ui, rect, side.left() / 2.0 + rect.left() / 2.0, app);
+    let places = layout(rect, &slots, app);
+    app.thumbs.view = Some(places.free);
+    viewport::panel(ui, rect, app);
     (slots.overlay)(ui, rect, app);
-    hints(ui, bottom, app, slots.plays);
+    if !app.thumbs.capturing() {
+        palette::show(ui.ctx(), places.free.left_top() + vec2(12.0, 10.0), app);
+        render_overlay::show(ui.ctx(), places.free, app);
+        hints(ui, places.bottom, app, slots.plays);
+    }
+    if let (Some(rail_rect), Some(rail_body)) = (places.rail, slots.rail) {
+        ui.painter()
+            .rect_filled(rail_rect, 0.0, crate::config::theme::colors::SURFACE_LOW);
+        let mut child = ui.new_child(eframe::egui::UiBuilder::new().max_rect(rail_rect));
+        rail_body(&mut child, app);
+    }
+    let edge = if slots.side_left {
+        Edge::Left
+    } else {
+        Edge::Right
+    };
     let mut open = app.panels.side_open;
     let body = slots.side.body;
-    DockPanel::new("side", tr(slots.side.title), slots.side.glyph, Edge::Right).show(
+    DockPanel::new("side", tr(slots.side.title), slots.side.glyph, edge).show(
         ui,
-        side,
+        places.side,
         &mut open,
         |ui| body(ui, app),
     );
@@ -99,7 +173,7 @@ pub fn show(ui: &mut Ui, app: &mut AppState, mode: Mode) {
         slots.bottom.glyph,
         Edge::Bottom,
     )
-    .show(ui, bottom, &mut open, |ui| body(ui, app));
+    .show(ui, places.bottom, &mut open, |ui| body(ui, app));
     app.panels.bottom_open = open;
 }
 

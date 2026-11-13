@@ -3,10 +3,12 @@
 pub mod camera_link;
 pub mod ground;
 pub mod pointer;
+pub mod render_watch;
 pub mod rendering;
 pub mod sample_model;
 pub mod scene;
 pub mod sync;
+pub mod thumbnails;
 pub mod viewport;
 pub mod workspace;
 

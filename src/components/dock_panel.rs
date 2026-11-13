@@ -19,6 +19,8 @@ pub const COLLAPSED_WIDTH: f32 = 36.0;
 pub enum Edge {
     /// A column along the right edge.
     Right,
+    /// A column along the left edge.
+    Left,
     /// A drawer along the bottom edge.
     Bottom,
 }
@@ -46,7 +48,7 @@ impl<'a> DockPanel<'a> {
     pub fn extent(edge: Edge, open: bool, size: f32) -> f32 {
         match (edge, open) {
             (_, true) => size,
-            (Edge::Right, false) => COLLAPSED_WIDTH,
+            (Edge::Right | Edge::Left, false) => COLLAPSED_WIDTH,
             (Edge::Bottom, false) => HEADER,
         }
     }
@@ -66,7 +68,7 @@ impl<'a> DockPanel<'a> {
             Stroke::new(1.0, colors::SURFACE_HIGHEST),
             StrokeKind::Inside,
         );
-        if self.edge == Edge::Right && !*open {
+        if self.edge != Edge::Bottom && !*open {
             self.strip(ui, area, open);
             return;
         }
@@ -107,6 +109,7 @@ impl<'a> DockPanel<'a> {
             row.spacing_mut().item_spacing.x = 4.0;
             let (glyph, tooltip) = match (self.edge, *open) {
                 (Edge::Right, _) => (icons::CHEVRON_RIGHT, "dock.collapse"),
+                (Edge::Left, _) => (icons::CHEVRON_LEFT, "dock.collapse"),
                 (Edge::Bottom, true) => (icons::EXPAND_MORE, "dock.collapse"),
                 (Edge::Bottom, false) => (icons::EXPAND_LESS, "dock.expand"),
             };
@@ -131,7 +134,12 @@ impl<'a> DockPanel<'a> {
                 .layout(Layout::top_down(Align::Center)),
         );
         column.spacing_mut().item_spacing.y = 8.0;
-        if IconButton::new(icons::CHEVRON_LEFT)
+        let expand = if self.edge == Edge::Left {
+            icons::CHEVRON_RIGHT
+        } else {
+            icons::CHEVRON_LEFT
+        };
+        if IconButton::new(expand)
             .sizes(16.0, 28.0)
             .fill(None)
             .tooltip(tr("dock.expand"))

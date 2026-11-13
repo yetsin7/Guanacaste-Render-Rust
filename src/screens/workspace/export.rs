@@ -45,6 +45,8 @@ pub fn slots() -> ModeSlots {
                 app.studio.preview.show(ui, view, &app.studio.state.jobs);
             }
         },
+        rail: None,
+        side_left: false,
         plays: false,
     }
 }
@@ -98,7 +100,7 @@ fn queue(ui: &mut Ui, app: &mut AppState) {
     }
 }
 
-fn start(app: &mut AppState, action: HeaderAction) {
+pub(super) fn start(app: &mut AppState, action: HeaderAction) {
     let plan = plan_from_studio(&app.studio.state);
     if safe_stem(&plan.output.file_name) != plan.output.file_name.trim() {
         app.studio.state.file_name = safe_stem(&plan.output.file_name);

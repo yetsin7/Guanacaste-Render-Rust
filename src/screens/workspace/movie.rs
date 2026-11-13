@@ -33,6 +33,8 @@ pub fn slots() -> ModeSlots {
             body: timeline as Panel,
         },
         overlay,
+        rail: None,
+        side_left: false,
         plays: true,
     }
 }

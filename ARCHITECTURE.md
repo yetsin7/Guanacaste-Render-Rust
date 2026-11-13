@@ -56,6 +56,14 @@ de materiales, ajustes, ayuda) se abren desde la barra de modos o desde el conte
 y la categoría activos, la cámara actual y las cámaras guardadas (`models::camera`), los efectos de foto, los paneles
 abiertos, las solicitudes al shell (`requests`: encuadrar, navegar) y el estado de cada panel de dominio.
 
+**Vista 3D y herramientas:** la vista 3D real (`features/viewport`) es la misma en todos los modos
+(`workspace/viewport.rs`); sobre ella flotan la paleta de herramientas (`components/tool_palette.rs`,
+`workspace/palette.rs`), los avisos de render (`workspace/render_overlay.rs`) y los paneles. Los rayos del ratón
+(`commands/pointer.rs`) mueven los pinceles de paisaje y la colocación de objetos. `commands/scene.rs` compone la
+escena (modelo + objetos + suelo base), `commands/sync.rs` guarda y carga cada dominio en el `.gr`, y
+`commands/thumbnails.rs` captura las miniaturas de las cámaras guardadas. Todo proyecto tiene un suelo base plano
+de 200 m en Z = 0 (`Landscape::default`), que se puede ocultar; los modelos importados se posan sobre él.
+
 **Ranuras de contenido:** cada modo es un `ModeSlots` (`src/screens/workspace/mod.rs`): un panel derecho, un cajón
 inferior y una superposición, todos `fn(&mut Ui, &mut AppState)`. Para llenar una ranura se sustituye la función en
 `workspace/{build,photo,movie,export}.rs`; la vista 3D es `workspace/viewport.rs`. Los paneles son colapsables

@@ -34,3 +34,4 @@ pub mod title_bar;
 pub mod toast;
 pub mod toggle;
 pub mod tool_hints;
+pub mod tool_palette;

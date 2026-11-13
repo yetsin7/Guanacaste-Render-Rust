@@ -25,6 +25,36 @@ impl Mode {
     }
 }
 
+/// The sections of the left rail of photo mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum PhotoSection {
+    /// Sun, sky, clouds and weather.
+    #[default]
+    Environment,
+    /// The filter stack.
+    Image,
+    /// Lens, framing and focus.
+    Camera,
+    /// Material editing.
+    Material,
+    /// Output quality.
+    Quality,
+    /// AI render (not available yet).
+    AiRender,
+}
+
+impl PhotoSection {
+    /// Every section, in rail order.
+    pub const ALL: [PhotoSection; 6] = [
+        PhotoSection::Environment,
+        PhotoSection::Image,
+        PhotoSection::Camera,
+        PhotoSection::Material,
+        PhotoSection::Quality,
+        PhotoSection::AiRender,
+    ];
+}
+
 /// The category tabs at the bottom of build mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum BuildCategory {

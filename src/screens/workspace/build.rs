@@ -55,6 +55,8 @@ pub fn slots() -> ModeSlots {
             body: bottom as Panel,
         },
         overlay: |_, _, _| {},
+        rail: None,
+        side_left: false,
         plays: false,
     }
 }

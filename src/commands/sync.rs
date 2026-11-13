@@ -57,6 +57,7 @@ fn load(app: &mut AppState) {
     b.link = LinkMarks::default();
     app.movie = MovieState::default();
     app.cameras = Vec::new();
+    app.thumbs.items.clear();
     let Some(project) = app.workspace.project.as_mut() else {
         app.objects = ObjectsState::default();
         app.landscape = LandscapeState::default();

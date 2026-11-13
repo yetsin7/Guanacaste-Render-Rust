@@ -6,11 +6,12 @@
 //! The domain states are the single live copy of their data; `commands::sync` copies them into the project
 //! document when they change (so Save writes them) and loads them back when a project is opened.
 
-use super::navigation::{BuildCategory, Mode, Screen};
+use super::navigation::{BuildCategory, Mode, PhotoSection, Screen};
 use super::render_studio::RenderStudio;
 use crate::commands::rendering::RenderHub;
 use crate::commands::scene::SceneComposer;
 use crate::commands::sync::Baselines;
+use crate::commands::thumbnails::Thumbnails;
 use crate::commands::workspace::Workspace;
 use crate::features::build::models::ObjectsState;
 use crate::features::camera::models::state::CameraStudioState;
@@ -62,6 +63,14 @@ pub struct AppState {
     pub mode: Mode,
     /// Active build-mode category tab.
     pub category: BuildCategory,
+    /// Active section of the photo mode's left rail.
+    pub photo_section: PhotoSection,
+    /// The "live style" switch of the photo bar (the real-time view keeps showing the photo filters).
+    pub live_style: bool,
+    /// Thumbnails of the saved cameras, captured from the 3D view.
+    pub thumbs: Thumbnails,
+    /// Render progress history and the completion notice.
+    pub render_watch: crate::commands::render_watch::RenderWatch,
     /// Expanded panels.
     pub panels: PanelLayout,
     /// Requests for the shell.
@@ -109,6 +118,10 @@ impl AppState {
             workspace: Workspace::new(data_dir),
             mode: Mode::default(),
             category: BuildCategory::default(),
+            photo_section: PhotoSection::default(),
+            live_style: true,
+            thumbs: Thumbnails::default(),
+            render_watch: Default::default(),
             panels: PanelLayout::default(),
             requests: ShellRequests::default(),
             textures: Textures::default(),
