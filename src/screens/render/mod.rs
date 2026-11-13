@@ -1,74 +1,96 @@
-//! Render studio screen: output settings with a sample preview, and the render queue.
+//! Render studio screen: output settings with the live picture, and the render queue.
 
 use super::ScreenContext;
-use crate::components::{tag::Tag, text};
-use crate::config::theme::{colors, typography};
-use crate::features::rendering::components::{output_panel, queue_table, studio_header};
+use crate::features::rendering::components::output_panel::{self, PanelAction};
+use crate::features::rendering::components::preview_view::PreviewView;
+use crate::features::rendering::components::queue_table::{self, QueueAction};
+use crate::features::rendering::components::studio_header::{self, HeaderAction};
+use crate::features::rendering::engine::ViewPreset;
+use crate::features::rendering::logic::plan::plan_from_studio;
 use crate::features::rendering::models::RenderStudioState;
-use crate::features::viewport::components::backdrop;
-use crate::services::localization::tr;
-use crate::services::sample_data::rendering as sample;
-use eframe::egui::{pos2, vec2, Rect, Ui, UiBuilder};
+use crate::features::rendering::services::{open_folder, safe_stem, FolderPicker};
+use crate::services::localization::{tr, trf};
+use eframe::egui::{pos2, Rect, Ui};
+use std::path::PathBuf;
+use std::time::Duration;
 
 /// State of the render studio screen.
+#[derive(Default)]
 pub struct RenderScreen {
     state: RenderStudioState,
-}
-
-impl Default for RenderScreen {
-    fn default() -> Self {
-        Self {
-            state: RenderStudioState {
-                tab: 0,
-                jobs: sample::jobs(),
-                resolution: 2,
-                samples: 0.25,
-                denoise: true,
-                output: "C:/Proyectos/Guanacaste/Renders".into(),
-            },
-        }
-    }
+    picker: FolderPicker,
+    preview: PreviewView,
 }
 
 impl RenderScreen {
     /// Draws the screen.
     pub fn show(&mut self, ui: &mut Ui, context: &mut ScreenContext) {
         ui.spacing_mut().item_spacing.y = 0.0;
-        studio_header::show(ui, &mut self.state);
+        self.state.jobs = context.render.queue.snapshot();
+        if let Some(folder) = self.picker.poll() {
+            self.state.output = folder.display().to_string();
+        }
+        let ready = context
+            .workspace
+            .project
+            .as_ref()
+            .is_some_and(|project| !project.meshes.is_empty());
+        if let Some(action) = studio_header::show(ui, &mut self.state, ready) {
+            self.start(context, action);
+        }
         let body = Rect::from_min_max(
             pos2(ui.max_rect().left(), ui.cursor().top()),
             ui.max_rect().max,
         );
         if self.state.tab == 1 {
-            queue_table::show(ui, body, &mut self.state);
-            return;
+            match queue_table::show(ui, body, &self.state) {
+                Some(QueueAction::Cancel(id)) => context.render.queue.cancel(id),
+                Some(QueueAction::Retry(id)) => context.render.queue.retry(id),
+                Some(QueueAction::Remove(id)) => context.render.queue.remove(id),
+                Some(QueueAction::ClearFinished) => {
+                    context.render.queue.clear_finished();
+                }
+                None => {}
+            }
+        } else {
+            let panel = Rect::from_min_max(
+                pos2(body.right() - output_panel::WIDTH, body.top()),
+                body.max,
+            );
+            let view = Rect::from_min_max(body.min, pos2(panel.left(), body.bottom()));
+            self.preview.update(ui.ctx(), &context.render.queue);
+            self.preview.show(ui, view, &self.state.jobs);
+            match output_panel::show(ui, panel, &mut self.state) {
+                Some(PanelAction::Browse) => self.picker.open(&self.state.output),
+                Some(PanelAction::OpenFolder) => self.show_output_folder(),
+                None => {}
+            }
         }
-        let panel = Rect::from_min_max(
-            pos2(body.right() - output_panel::WIDTH, body.top()),
-            body.max,
+        if context.render.queue.is_busy() || self.picker.is_open() {
+            ui.ctx().request_repaint_after(Duration::from_millis(100));
+        }
+    }
+
+    fn show_output_folder(&mut self) {
+        if !open_folder(&PathBuf::from(self.state.output.trim())) {
+            self.state.notice = Some((tr("render.folder_missing").to_owned(), true));
+        }
+    }
+
+    fn start(&mut self, context: &mut ScreenContext, action: HeaderAction) {
+        let plan = plan_from_studio(&self.state);
+        if safe_stem(&plan.output.file_name) != plan.output.file_name.trim() {
+            self.state.file_name = safe_stem(&plan.output.file_name);
+        }
+        let views: &[ViewPreset] = match action {
+            HeaderAction::Render => &[plan.view],
+            HeaderAction::RenderAllViews => &ViewPreset::ALL,
+        };
+        self.state.notice = Some(
+            match context.render.enqueue(context.workspace, &plan, views) {
+                Ok(count) => (trf("render.queued_n", &[&count.to_string()]), false),
+                Err(reason) => (tr(reason).to_owned(), true),
+            },
         );
-        let view = Rect::from_min_max(body.min, pos2(panel.left(), body.bottom()));
-        backdrop::paint(ui, view, context.textures);
-        let mut badge = ui.new_child(UiBuilder::new().max_rect(view.shrink(12.0)));
-        Tag::new(tr("render.sample_preview"), colors::WARNING)
-            .font(typography::mono_medium(11.0))
-            .dot(colors::WARNING)
-            .gap(8.0)
-            .fill(colors::with_alpha(colors::SURFACE_LOW, 230))
-            .padding(12.0, 4.0)
-            .show(&mut badge);
-        let hud = Rect::from_min_size(
-            pos2(view.left() + 12.0, view.bottom() - 36.0),
-            vec2(360.0, 24.0),
-        );
-        let mut hud_ui = ui.new_child(UiBuilder::new().max_rect(hud));
-        let resolution = crate::features::rendering::logic::resolution_label(self.state.resolution);
-        text::label(
-            &mut hud_ui,
-            resolution,
-            typography::label_md(),
-            colors::ON_SURFACE,
-        );
-        output_panel::show(ui, panel, &mut self.state);
     }
 }

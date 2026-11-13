@@ -72,10 +72,6 @@ pub const ENTRIES: &[(&str, &str)] = &[
         "El proyecto abierto no tiene geometría que exportar.",
     ),
     ("workspace.export_failed", "No se pudo escribir la imagen:"),
-    (
-        "workspace.export_only_png",
-        "Por ahora solo se exporta en PNG.",
-    ),
     ("workspace.exported", "Imagen exportada en {0}."),
     ("workspace.unsaved", "sin guardar"),
 ];

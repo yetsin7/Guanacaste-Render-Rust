@@ -83,6 +83,8 @@ pub struct DialogHost {
     pending: Option<Pending>,
     /// The open project and its files.
     pub workspace: Workspace,
+    /// Export settings the user confirmed; the shell queues the render and clears this.
+    pub render_request: Option<ExportState>,
 }
 
 impl Default for DialogHost {
@@ -110,6 +112,7 @@ impl DialogHost {
             import: ImportDialogState::default(),
             pending: None,
             workspace,
+            render_request: None,
         }
     }
 

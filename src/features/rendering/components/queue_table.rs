@@ -11,10 +11,9 @@ use crate::components::{
     text,
 };
 use crate::config::theme::{colors, typography};
-use crate::features::rendering::logic::{clear_finished, summary};
-use crate::features::rendering::models::{JobStatus, RenderJob, RenderStudioState};
+use crate::features::rendering::logic::{summary, time_text};
+use crate::features::rendering::models::{JobInfo, JobStatus, RenderStudioState};
 use crate::services::localization::{tr, trf};
-use crate::services::sample_data::rendering as sample;
 use eframe::egui::{
     self, pos2, vec2, Align2, Color32, CornerRadius, Margin, Rect, Sense, Ui, UiBuilder,
 };
@@ -41,8 +40,22 @@ fn status_look(status: JobStatus) -> (Color32, Color32) {
     }
 }
 
-/// Draws the table inside `area`.
-pub fn show(ui: &mut Ui, area: Rect, state: &mut RenderStudioState) {
+/// What the user asked of the queue.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QueueAction {
+    /// Stop a queued or running job.
+    Cancel(u64),
+    /// Run a failed or cancelled job again.
+    Retry(u64),
+    /// Remove a job from the list.
+    Remove(u64),
+    /// Remove every finished job.
+    ClearFinished,
+}
+
+/// Draws the table inside `area` and returns what the user asked for.
+pub fn show(ui: &mut Ui, area: Rect, state: &RenderStudioState) -> Option<QueueAction> {
+    let mut action = None;
     let mut inner = ui.new_child(UiBuilder::new().max_rect(area));
     egui::Frame::new()
         .inner_margin(Margin::same(16))
@@ -78,24 +91,25 @@ pub fn show(ui: &mut Ui, area: Rect, state: &mut RenderStudioState) {
                 },
             );
             if clear {
-                clear_finished(&mut state.jobs);
+                action = Some(QueueAction::ClearFinished);
             }
             header(ui);
-            if state.jobs.is_empty()
-                && empty_state::show(
+            if state.jobs.is_empty() {
+                empty_state::show(
                     ui,
                     icons::QUEUE,
                     tr("queue.empty_title"),
                     tr("queue.empty_body"),
-                    Some(tr("queue.restore")),
-                )
-            {
-                state.jobs = sample::jobs();
+                    None,
+                );
             }
             for job in &state.jobs {
-                row(ui, job);
+                if let Some(requested) = row(ui, job) {
+                    action = Some(requested);
+                }
             }
         });
+    action
 }
 
 fn header(ui: &mut Ui) {
@@ -117,7 +131,7 @@ fn header(ui: &mut Ui) {
     }
 }
 
-fn row(ui: &mut Ui, job: &RenderJob) {
+fn row(ui: &mut Ui, job: &JobInfo) -> Option<QueueAction> {
     let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), 48.0), Sense::hover());
     let fill = if response.hovered() {
         colors::SURFACE_HIGH
@@ -127,7 +141,7 @@ fn row(ui: &mut Ui, job: &RenderJob) {
     ui.painter().rect_filled(rect, CornerRadius::same(2), fill);
     let width = rect.width() - 24.0 - 64.0;
     let mut x = rect.left() + 12.0;
-    let cells = [job.name, job.preset, job.resolution];
+    let cells = [&job.name, &job.preset, &job.resolution];
     for (index, value) in cells.into_iter().enumerate() {
         let font = if index == 0 {
             typography::mono_medium(11.0)
@@ -147,7 +161,7 @@ fn row(ui: &mut Ui, job: &RenderJob) {
         crate::components::text_layout::paint_left(
             &painter,
             pos2(cell.left(), cell.center().y),
-            value,
+            value.as_str(),
             font,
             color,
         );
@@ -186,7 +200,7 @@ fn row(ui: &mut Ui, job: &RenderJob) {
     crate::components::text_layout::paint_left(
         &ui.painter().with_clip_rect(eta_clip),
         pos2(x, rect.center().y),
-        job.eta,
+        &time_text(job),
         typography::mono(10.0),
         colors::OUTLINE,
     );
@@ -194,23 +208,34 @@ fn row(ui: &mut Ui, job: &RenderJob) {
         pos2(rect.right() - 60.0, rect.center().y - 12.0),
         vec2(56.0, 24.0),
     )));
+    let mut action = None;
     actions.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 2.0;
-        let running = !job.status.is_finished();
-        let glyph = if running {
-            icons::PAUSE
-        } else {
-            icons::REFRESH
+        let first = match job.status {
+            JobStatus::Done => None,
+            JobStatus::Failed | JobStatus::Cancelled => {
+                Some((icons::REFRESH, "queue.retry", QueueAction::Retry(job.id)))
+            }
+            _ => Some((icons::CLOSE, "queue.cancel", QueueAction::Cancel(job.id))),
         };
-        IconButton::new(glyph)
+        if let Some((glyph, tip, requested)) = first {
+            let button = IconButton::new(glyph)
+                .sizes(14.0, 24.0)
+                .fill(None)
+                .tooltip(tr(tip))
+                .show(ui);
+            if button.clicked() {
+                action = Some(requested);
+            }
+        }
+        let remove = IconButton::new(icons::DELETE)
             .sizes(14.0, 24.0)
             .fill(None)
-            .tooltip(tr("dialog.no_engine"))
+            .tooltip(tr("queue.remove"))
             .show(ui);
-        IconButton::new(icons::CLOSE)
-            .sizes(14.0, 24.0)
-            .fill(None)
-            .tooltip(tr("dialog.no_engine"))
-            .show(ui);
+        if remove.clicked() {
+            action = Some(QueueAction::Remove(job.id));
+        }
     });
+    action
 }

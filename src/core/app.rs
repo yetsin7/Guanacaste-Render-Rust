@@ -1,12 +1,15 @@
 //! The eframe application: frameless shell (title bar, tool rail) around the active screen.
 
+use crate::commands::rendering::RenderHub;
 use crate::components::{title_bar, tool_rail};
 use crate::config::launch::LaunchOptions;
 use crate::config::theme::{self, colors};
 use crate::core::dialogs::DialogHost;
+use crate::features::rendering::logic::plan::plan_from_export;
 use crate::models::navigation::Screen;
 use crate::models::preferences::Preferences;
 use crate::screens::{ScreenContext, Screens};
+use crate::services::localization::tr;
 use crate::services::sample_data::shell;
 use crate::services::textures::Textures;
 use eframe::egui;
@@ -17,6 +20,7 @@ pub struct StudioApp {
     screens: Screens,
     textures: Textures,
     dialogs: DialogHost,
+    render: RenderHub,
     preferences: Preferences,
     applied_scale: usize,
     pending_dialog: Option<crate::models::dialog::Dialog>,
@@ -39,6 +43,7 @@ impl StudioApp {
             screens: Screens::default(),
             textures: Textures::default(),
             dialogs,
+            render: RenderHub::default(),
             preferences: Preferences::default(),
             applied_scale: Preferences::default().scale_index,
             pending_dialog: options.dialog,
@@ -49,6 +54,24 @@ impl StudioApp {
     /// The screen currently shown.
     pub fn screen(&self) -> Screen {
         self.screen
+    }
+}
+
+impl StudioApp {
+    /// Queues the render the export dialog asked for and tells the user how it went.
+    fn queue_export_request(&mut self) {
+        let Some(request) = self.dialogs.render_request.take() else {
+            return;
+        };
+        let plan = plan_from_export(&request);
+        let workspace = &mut self.dialogs.workspace;
+        match self.render.enqueue(workspace, &plan, &[plan.view]) {
+            Ok(_) => {
+                workspace.notify(tr("render.queued").to_owned(), false);
+                self.screen = Screen::Render;
+            }
+            Err(reason) => workspace.notify(tr(reason).to_owned(), true),
+        }
     }
 }
 
@@ -88,6 +111,8 @@ impl eframe::App for StudioApp {
                 let mut context = ScreenContext {
                     textures: &mut self.textures,
                     navigate: &mut requested,
+                    workspace: &self.dialogs.workspace,
+                    render: &mut self.render,
                 };
                 self.screens.show(ui, self.screen, &mut context);
             });
@@ -104,6 +129,7 @@ impl eframe::App for StudioApp {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
         self.dialogs.show(&ctx, &mut self.preferences);
+        self.queue_export_request();
         let title = self.dialogs.workspace.window_title();
         if title != self.window_title {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
