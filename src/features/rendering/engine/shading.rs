@@ -1,16 +1,19 @@
-//! Light transport: hard sun shadows, sky light, diffuse and specular surfaces, bounces and transparency.
+//! Light transport: sun and artificial lights with shadow rays, sky light, PBR surfaces, emission, glass and fog.
 
+use super::atmosphere::Atmosphere;
 use super::geometry::RenderScene;
+use super::lights::{Incoming, SceneLights};
 use super::sampling::{basis, cosine_hemisphere, Rng};
-use super::types::{RenderMaterial, RenderRequest};
+use super::surface::{evaluate, Surf};
+use super::types::RenderRequest;
 use super::vec3::Vec3;
 
 /// Offset that keeps secondary rays from hitting the surface they start on.
 const BIAS: f32 = 1e-3;
 /// Samples brighter than this are scaled down to tame isolated bright dots.
 const FIREFLY_LIMIT: f32 = 12.0;
-/// Cosine of the sun's half angle: the visible disc.
-const SUN_DISC_COS: f32 = 0.999_96;
+/// Radius of the sun disc as seen from the ground, in radians (softens shadow edges very slightly).
+const SUN_RADIUS: f32 = 0.0047;
 
 /// What one camera ray brought back.
 #[derive(Debug, Clone, Copy)]
@@ -19,129 +22,191 @@ pub struct Sample {
     pub color: Vec3,
     /// False when the ray left the scene without touching anything.
     pub covered: bool,
+    /// Depth along the view axis of the first surface, or the far plane for sky.
+    pub depth: f32,
+    /// Unit normal of the first surface (zero for sky).
+    pub normal: Vec3,
 }
 
-/// Scene, materials and lights prepared for tracing.
+/// Scene, atmosphere and lights prepared for tracing.
 pub struct Shader<'a> {
     scene: &'a RenderScene,
-    materials: &'a [RenderMaterial],
+    atmosphere: Atmosphere,
+    lights: SceneLights<'a>,
     bounces: u32,
-    sun_dir: Vec3,
-    sun_light: Vec3,
-    sun_color: Vec3,
-    zenith: Vec3,
-    horizon: Vec3,
+    far: f32,
+    /// Angle covered by one pixel, radians.
+    pixel_angle: f32,
 }
 
 impl<'a> Shader<'a> {
-    /// Prepares the lights of `request` for `scene`.
+    /// Prepares the atmosphere and lights of `request` for `scene`.
     pub fn new(scene: &'a RenderScene, request: &'a RenderRequest) -> Self {
-        let sky = &request.sun_sky;
-        let sun_color = Vec3::from_array(sky.sun_color);
+        let atmosphere = Atmosphere::new(&request.environment);
+        let lights = SceneLights::new(&request.lights, atmosphere.reference_lux);
+        let camera = &request.camera;
+        let half = (camera.fov_y_degrees.clamp(1.0, 170.0).to_radians() * 0.5).tan();
         Self {
             scene,
-            materials: request.materials.as_deref().unwrap_or(&scene.materials),
+            atmosphere,
+            lights,
             bounces: request.settings.bounces,
-            sun_dir: Vec3::from_array(sky.sun_direction).normalized(),
-            sun_light: sun_color * sky.sun_intensity,
-            sun_color,
-            zenith: Vec3::from_array(sky.zenith_color),
-            horizon: Vec3::from_array(sky.horizon_color),
+            far: camera.far,
+            pixel_angle: 2.0 * half / camera.height.max(1) as f32,
         }
     }
 
-    fn material(&self, index: u32) -> RenderMaterial {
-        self.materials
-            .get(index as usize)
-            .or_else(|| self.scene.materials.last())
-            .copied()
-            .unwrap_or_default()
-    }
-
-    /// Radiance of the sky seen along `dir`; the sun disc only shows when `with_sun` is set.
-    pub fn sky(&self, dir: Vec3, with_sun: bool) -> Vec3 {
-        let t = dir.z.clamp(0.0, 1.0).powf(0.6);
-        let base = self.horizon.lerp(self.zenith, t);
-        if with_sun && dir.dot(self.sun_dir) > SUN_DISC_COS {
-            base + self.sun_color * 8.0
-        } else {
-            base
-        }
-    }
-
-    /// Whether the sun can be seen from `origin`; transparent surfaces block it with probability equal to
-    /// their opacity.
-    fn sun_visible(&self, mut origin: Vec3, rng: &mut Rng) -> bool {
+    /// Whether `origin` sees `dir` for `max_t` meters; transparent surfaces block with probability equal to their
+    /// opacity.
+    fn visible(&self, mut origin: Vec3, dir: Vec3, mut max_t: f32, rng: &mut Rng) -> bool {
         for _ in 0..8 {
-            let Some(hit) = self
-                .scene
-                .bvh
-                .closest(origin, self.sun_dir, 1e-4, f32::INFINITY)
-            else {
+            let Some(hit) = self.scene.bvh.any_hit(origin, dir, 1e-4, max_t) else {
                 return true;
             };
-            let material = self.material(self.scene.bvh.triangles[hit.triangle].material);
+            let material =
+                &self.scene.materials[self.scene.bvh.triangles[hit.triangle].material as usize];
             if rng.next_f32() >= material.transparency {
                 return false;
             }
-            origin += self.sun_dir * (hit.t + BIAS);
+            origin += dir * (hit.t + BIAS);
+            max_t -= hit.t + BIAS;
         }
         true
     }
 
-    /// Traces one ray: `t_min`/`t_max` bound the first segment only.
+    /// The sun direction nudged inside the sun disc.
+    fn jittered_sun(&self, rng: &mut Rng) -> Vec3 {
+        let sun = self.atmosphere.sun_direction;
+        let (t, b) = basis(sun);
+        let (r, phi) = (
+            SUN_RADIUS * rng.next_f32().sqrt(),
+            std::f32::consts::TAU * rng.next_f32(),
+        );
+        (sun + t * (r * phi.cos()) + b * (r * phi.sin())).normalized()
+    }
+
+    /// Reflected light of a surface for light arriving along `light` (unit, toward the light), per unit of
+    /// illuminance on the surface plane.
+    fn brdf(&self, s: &Surf, light: Vec3, view: Vec3) -> Vec3 {
+        let (diffuse, fresnel) = surface_terms(s, view);
+        let half = (light + view).normalized();
+        let n = shininess(s.roughness);
+        let lobe = s.normal.dot(half).max(0.0).powf(n) * (n + 2.0) / 8.0;
+        diffuse.mul_v(Vec3::ONE - fresnel) + fresnel * lobe
+    }
+
+    /// Adds the direct light (sun and lamps) reaching `point` to `color`.
+    #[allow(clippy::too_many_arguments)]
+    fn direct(
+        &self,
+        s: &Surf,
+        point: Vec3,
+        origin: Vec3,
+        view: Vec3,
+        rng: &mut Rng,
+        scratch: &mut Vec<Incoming>,
+    ) -> Vec3 {
+        let mut sum = Vec3::ZERO;
+        let sun = self.jittered_sun(rng);
+        let to_sun = s.normal.dot(sun);
+        if to_sun > 0.0 && self.visible(origin, sun, f32::INFINITY, rng) {
+            sum += self.brdf(s, sun, view).mul_v(self.atmosphere.sun_light) * to_sun;
+        }
+        if !self.lights.is_empty() {
+            self.lights.gather(point, s.normal, rng, scratch);
+            for incoming in scratch.iter() {
+                let to = incoming.position - origin;
+                let distance = to.length();
+                if distance < 1e-4 {
+                    continue;
+                }
+                let dir = to / distance;
+                if incoming.shadows && !self.visible(origin, dir, distance - 2.0 * BIAS, rng) {
+                    continue;
+                }
+                sum += self.brdf(s, dir, view).mul_v(incoming.irradiance);
+            }
+        }
+        sum
+    }
+
+    /// Traces one ray: `t_min`/`t_max` bound the first segment only; `axis_cos` is the cosine between the ray and
+    /// the view axis (it turns distances into depths).
+    #[allow(clippy::too_many_arguments)]
     pub fn trace(
         &self,
         mut origin: Vec3,
         mut dir: Vec3,
         mut t_min: f32,
         mut t_max: f32,
+        axis_cos: f32,
         rng: &mut Rng,
+        scratch: &mut Vec<Incoming>,
     ) -> Sample {
         let mut throughput = Vec3::ONE;
         let mut color = Vec3::ZERO;
         let mut covered = false;
         let mut mirror_chain = true;
         let mut depth = 0;
+        let mut travelled = 0.0f32;
+        let mut first: Option<(f32, Vec3)> = None;
         for _ in 0..self.bounces + 24 {
             let Some(hit) = self.scene.bvh.closest(origin, dir, t_min, t_max) else {
-                color += throughput.mul_v(self.sky(dir, mirror_chain));
+                color += throughput.mul_v(self.atmosphere.sky(dir, mirror_chain));
                 break;
             };
-            if depth == 0 {
-                covered = true;
-            }
             let tri = &self.scene.bvh.triangles[hit.triangle];
-            let material = self.material(tri.material);
+            let mut normal = tri.normal();
+            if normal.dot(dir) > 0.0 {
+                normal = -normal;
+            }
+            travelled += hit.t;
+            let s = evaluate(self.scene, tri, &hit, normal, travelled * self.pixel_angle);
             let point = origin + dir * hit.t;
-            if rng.next_f32() < material.transparency {
-                let tint = Vec3::ONE.lerp(Vec3::from_array(material.color), 0.5);
-                throughput = throughput.mul_v(tint);
+            let view = -dir;
+            if rng.next_f32() > s.alpha {
+                let reflect = s.roughness < 0.5
+                    && s.ior > 1.05
+                    && rng.next_f32() < schlick(s.ior, normal.dot(view));
+                if reflect {
+                    origin = point + normal * BIAS;
+                    dir = glossy_reflection(dir, normal, s.roughness, rng);
+                    t_min = 1e-4;
+                    t_max = f32::INFINITY;
+                    continue;
+                }
+                throughput = throughput.mul_v(Vec3::ONE.lerp(s.albedo, 0.5));
                 origin = point + dir * BIAS;
                 t_min = 0.0;
                 t_max = (t_max - hit.t).max(0.0);
                 continue;
             }
-            let mut normal = tri.normal();
-            if normal.dot(dir) > 0.0 {
-                normal = -normal;
+            if depth == 0 {
+                covered = true;
             }
-            let view = -dir;
-            let (diffuse, fresnel) = self.surface(&material, normal, view);
+            if first.is_none() {
+                first = Some((travelled, s.normal));
+            }
+            let material = &self.scene.materials[tri.material as usize];
+            let glow = s.emission
+                + Vec3::from_array(
+                    material
+                        .emission_nits
+                        .map(|n| self.atmosphere.nits_to_units(n)),
+                ) * (std::f32::consts::PI / self.atmosphere.reference_lux);
+            color += throughput.mul_v(glow);
+            let mut s = s;
+            if s.normal.dot(view) <= 0.0 {
+                s.normal = normal;
+            }
             let shadow_origin = point + normal * BIAS;
-            let to_sun = normal.dot(self.sun_dir);
-            if to_sun > 0.0 && self.sun_visible(shadow_origin, rng) {
-                let half = (self.sun_dir + view).normalized();
-                let shininess = shininess(material.roughness);
-                let lobe = normal.dot(half).max(0.0).powf(shininess) * (shininess + 2.0) / 8.0;
-                let surface = diffuse.mul_v(Vec3::ONE - fresnel) + fresnel * lobe;
-                color += throughput.mul_v(surface.mul_v(self.sun_light)) * to_sun;
-            }
+            color += throughput.mul_v(self.direct(&s, point, shadow_origin, view, rng, scratch));
             if depth >= self.bounces {
                 break;
             }
             depth += 1;
-            let probability = if material.metallic >= 0.999 {
+            let (diffuse, fresnel) = surface_terms(&s, view);
+            let probability = if s.metallic >= 0.999 {
                 1.0
             } else {
                 fresnel.max_component().clamp(0.05, 0.95)
@@ -151,17 +216,19 @@ impl<'a> Shader<'a> {
             t_max = f32::INFINITY;
             if rng.next_f32() < probability {
                 throughput = throughput.mul_v(fresnel) / probability;
-                dir = glossy_reflection(dir, normal, material.roughness, rng);
+                dir = glossy_reflection(dir, s.normal, s.roughness, rng);
             } else {
                 mirror_chain = false;
-                throughput =
-                    throughput.mul_v(diffuse.mul_v(Vec3::ONE - fresnel)) / (1.0 - probability);
-                dir = cosine_hemisphere(normal, rng);
+                throughput = throughput.mul_v(diffuse.mul_v(Vec3::ONE - fresnel) * s.occlusion)
+                    / (1.0 - probability);
+                dir = cosine_hemisphere(s.normal, rng);
             }
             if !throughput.is_finite() || throughput.max_component() < 1e-4 {
                 break;
             }
         }
+        let (distance, normal) = first.unwrap_or((self.far, Vec3::ZERO));
+        color = self.atmosphere.fog(color, distance);
         if !color.is_finite() {
             color = Vec3::ZERO;
         }
@@ -169,19 +236,35 @@ impl<'a> Shader<'a> {
         if peak > FIREFLY_LIMIT {
             color *= FIREFLY_LIMIT / peak;
         }
-        Sample { color, covered }
+        Sample {
+            color,
+            covered,
+            depth: if first.is_some() {
+                distance * axis_cos
+            } else {
+                self.far
+            },
+            normal,
+        }
     }
+}
 
-    /// Diffuse color and Fresnel reflectance of a surface seen from `view`.
-    fn surface(&self, m: &RenderMaterial, normal: Vec3, view: Vec3) -> (Vec3, Vec3) {
-        let albedo = Vec3::from_array(m.color);
-        let metal = m.metallic.clamp(0.0, 1.0);
-        let f0 = Vec3::splat(0.04).lerp(albedo, metal);
-        let cos = normal.dot(view).clamp(0.0, 1.0);
-        let weight = (1.0 - cos).powi(5);
-        let fresnel = f0 + (Vec3::ONE - f0) * weight;
-        (albedo * (1.0 - metal), fresnel)
-    }
+/// Diffuse color and Fresnel reflectance of a surface seen from `view`.
+fn surface_terms(s: &Surf, view: Vec3) -> (Vec3, Vec3) {
+    let metal = s.metallic.clamp(0.0, 1.0);
+    let f_dielectric = ((s.ior - 1.0) / (s.ior + 1.0)).powi(2).clamp(0.02, 0.2);
+    let f0 = Vec3::splat(f_dielectric).lerp(s.albedo, metal);
+    let cos = s.normal.dot(view).clamp(0.0, 1.0);
+    // Rough surfaces do not mirror the sky at grazing angles: the Fresnel peak shrinks with the roughness.
+    let peak = Vec3::splat(1.0 - s.roughness).max(f0);
+    let fresnel = f0 + (peak - f0) * (1.0 - cos).powi(5);
+    (s.albedo * (1.0 - metal), fresnel)
+}
+
+/// Schlick reflectance of a dielectric with index `ior` at the cosine `cos`.
+fn schlick(ior: f32, cos: f32) -> f32 {
+    let f0 = ((ior - 1.0) / (ior + 1.0)).powi(2);
+    f0 + (1.0 - f0) * (1.0 - cos.clamp(0.0, 1.0)).powi(5)
 }
 
 /// Blinn-Phong exponent that matches a roughness value.

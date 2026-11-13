@@ -4,7 +4,7 @@ use super::scenes::{cube, empty, horizontal_quad, paint, scene, wall_quad};
 use crate::features::import_export::models::ImportedScene;
 use crate::features::rendering::engine::{
     frame_bounds, render_prepared, render_scene, RenderCamera, RenderControl, RenderError,
-    RenderRequest, RenderScene, TileUpdate, ViewPreset,
+    RenderRequest, RenderScene, TileUpdate, ViewPreset, World,
 };
 use crate::features::rendering::models::RayTracingQuality;
 use image::RgbaImage;
@@ -81,7 +81,7 @@ fn the_sun_casts_a_hard_shadow_of_a_cube_on_the_ground() {
         },
         RayTracingQuality::Medium,
     );
-    req.sun_sky.sun_direction = [1.0, 0.0, 1.0];
+    req.environment.hour = 9.0;
     let image = render_scene(&scene, &req);
     // The light travels toward -X, so the shadow falls to the left of the cube; the right side is lit.
     let shadow = brightness(&image, 28, 24);
@@ -161,7 +161,7 @@ fn the_same_request_gives_the_same_picture_and_a_new_seed_a_different_noise() {
 
 #[test]
 fn tiles_cover_the_picture_and_progress_reaches_one() {
-    let prepared = RenderScene::new(&super::scenes::cube_on_ground());
+    let prepared = RenderScene::new(&World::new(super::scenes::cube_on_ground()));
     let req = request(camera(70, 40), RayTracingQuality::Low);
     let control = RenderControl::new();
     let tiles = AtomicUsize::new(0);
@@ -180,7 +180,7 @@ fn tiles_cover_the_picture_and_progress_reaches_one() {
 
 #[test]
 fn a_cancelled_render_returns_the_cancel_error() {
-    let prepared = RenderScene::new(&super::scenes::cube_on_ground());
+    let prepared = RenderScene::new(&World::new(super::scenes::cube_on_ground()));
     let req = request(camera(64, 64), RayTracingQuality::Ultra);
     let control = RenderControl::new();
     control.cancel();

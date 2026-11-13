@@ -1,9 +1,15 @@
-//! The renderer's view of an imported scene: triangles in a BVH plus linear-color materials.
+//! The renderer's view of a world: triangles in a BVH, linear materials, texture maps and corner UVs.
 
-use super::bvh::{Bvh, Triangle};
-use super::types::RenderMaterial;
+use super::bvh::{Bvh, Triangle, NO_UV};
+use super::types::{RenderMaterial, NO_MAPS};
 use super::vec3::Vec3;
-use crate::features::import_export::models::ImportedScene;
+use super::world::World;
+use crate::features::lighting::logic::emissive_radiance;
+use crate::features::materials::logic::color::srgb_to_linear;
+use crate::features::materials::logic::convert;
+use crate::features::materials::models::Material;
+use crate::features::materials::MaterialMaps;
+use crate::services::texture_cache::{TextureCache, DEFAULT_BUDGET};
 
 /// A scene prepared for ray tracing.
 #[derive(Debug, Default)]
@@ -12,49 +18,91 @@ pub struct RenderScene {
     pub bvh: Bvh,
     /// Materials, indexed like the scene's, plus a final default entry for meshes without one.
     pub materials: Vec<RenderMaterial>,
+    /// The PBR materials behind `materials` (same indices; the default entry has none).
+    pub pbr: Vec<Material>,
+    /// Decoded texture maps of the materials that have any; `RenderMaterial::maps` indexes this.
+    pub maps: Vec<MaterialMaps>,
+    /// Corner UVs, three per textured triangle (`Triangle::uv` is the first).
+    pub uvs: Vec<[f32; 2]>,
 }
 
-fn srgb_to_linear(value: f32) -> f32 {
-    let v = value.clamp(0.0, 1.0);
-    if v <= 0.04045 {
-        v / 12.92
-    } else {
-        ((v + 0.055) / 1.055).powf(2.4)
-    }
-}
-
-/// The render material that corresponds to an imported material color (sRGB with alpha).
-pub fn material_from_color(color: [f32; 4]) -> RenderMaterial {
-    let alpha = color[3].clamp(0.0, 1.0);
+/// The tracer's flat material for a PBR one.
+fn flat(material: &Material) -> RenderMaterial {
+    let c = material.base_color;
+    let alpha = (1.0 - material.transparency) * c[3];
+    let strength = material.emission_strength;
     RenderMaterial {
         color: [
-            srgb_to_linear(color[0]),
-            srgb_to_linear(color[1]),
-            srgb_to_linear(color[2]),
+            srgb_to_linear(c[0]),
+            srgb_to_linear(c[1]),
+            srgb_to_linear(c[2]),
         ],
-        roughness: if alpha < 0.99 { 0.05 } else { 0.7 },
-        metallic: 0.0,
+        roughness: material.roughness,
+        metallic: material.metallic,
         transparency: 1.0 - alpha,
+        ior: material.ior,
+        emission: material.emission.map(|e| srgb_to_linear(e) * strength),
+        emission_nits: [0.0; 3],
+        maps: NO_MAPS,
     }
+}
+
+fn has_maps(material: &Material) -> bool {
+    [
+        &material.maps.albedo,
+        &material.maps.normal,
+        &material.maps.roughness,
+        &material.maps.metallic,
+        &material.maps.ao,
+        &material.maps.emission,
+    ]
+    .iter()
+    .any(|slot| slot.is_some())
 }
 
 impl RenderScene {
-    /// Converts the meshes of `scene` (already in world meters) and builds the BVH. Triangles with invalid
-    /// indices, non-finite corners or no area are skipped.
-    pub fn new(scene: &ImportedScene) -> Self {
-        let mut materials: Vec<RenderMaterial> = scene
-            .materials
-            .iter()
-            .map(|m| material_from_color(m.color))
-            .collect();
+    /// Converts the meshes of the world (already in world meters), decodes the textures and builds the BVH.
+    /// Triangles with invalid indices, non-finite corners or no area are skipped.
+    pub fn new(world: &World) -> Self {
+        let scene = &world.scene;
+        let mut cache = TextureCache::new(DEFAULT_BUDGET);
+        let mut materials = Vec::with_capacity(scene.materials.len() + 1);
+        let mut pbr = Vec::with_capacity(scene.materials.len());
+        let mut maps = Vec::new();
+        for (index, source) in scene.materials.iter().enumerate() {
+            let material = world
+                .pbr
+                .get(index)
+                .cloned()
+                .unwrap_or_else(|| convert::from_scene(source));
+            let mut render = flat(&material);
+            if let Some(glow) = world
+                .emissive
+                .iter()
+                .find(|e| e.enabled && e.material == material.name)
+            {
+                let radiance = emissive_radiance(glow);
+                render.emission_nits = [radiance.r, radiance.g, radiance.b];
+            }
+            if has_maps(&material) {
+                let (resolved, _failures) = MaterialMaps::resolve(&mut cache, &material);
+                render.maps = maps.len() as u32;
+                maps.push(resolved);
+            }
+            materials.push(render);
+            pbr.push(material);
+        }
         let default_material = materials.len() as u32;
         materials.push(RenderMaterial::default());
         let mut triangles = Vec::with_capacity(scene.triangle_count());
+        let mut uvs = Vec::new();
         for mesh in &scene.meshes {
             let material = mesh
                 .material
                 .filter(|m| *m < default_material as usize)
                 .map_or(default_material, |m| m as u32);
+            let textured = materials[material as usize].maps != NO_MAPS
+                && mesh.uvs.len() == mesh.positions.len();
             let corner = |index: u32| {
                 mesh.positions
                     .get(index as usize)
@@ -66,20 +114,29 @@ impl RenderScene {
                 else {
                     continue;
                 };
-                let triangle = Triangle {
+                let mut triangle = Triangle {
                     v0: a,
                     e1: b - a,
                     e2: c - a,
                     material,
+                    uv: NO_UV,
                 };
-                if triangle.e1.cross(triangle.e2).length() > 1e-12 {
-                    triangles.push(triangle);
+                if triangle.e1.cross(triangle.e2).length() <= 1e-12 {
+                    continue;
                 }
+                if textured {
+                    triangle.uv = uvs.len() as u32;
+                    uvs.extend(tri.iter().map(|&i| mesh.uvs[i as usize]));
+                }
+                triangles.push(triangle);
             }
         }
         Self {
             bvh: Bvh::build(triangles),
             materials,
+            pbr,
+            maps,
+            uvs,
         }
     }
 

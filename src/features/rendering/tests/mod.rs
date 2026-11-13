@@ -1,14 +1,19 @@
 //! Unit tests of the rendering domain.
 
+mod camera_post_tests;
 mod engine_tests;
 mod export_tests;
+mod light_material_tests;
 mod output_tests;
 mod queue_tests;
 mod scenes;
+mod world_movie_tests;
 
+use super::logic::inputs::RenderInputs;
 use super::logic::plan::{build_spec, plan_from_export, plan_from_studio};
 use super::logic::*;
 use super::models::*;
+use crate::features::rendering::engine::World;
 use std::sync::Arc;
 
 #[test]
@@ -101,12 +106,19 @@ fn queue_summary_counts_by_status() {
 #[test]
 fn plans_become_jobs_only_for_scenes_with_geometry() {
     let plan = plan_from_studio(&RenderStudioState::default());
-    assert!(build_spec(&Arc::new(scenes::empty()), &plan, false).is_none());
-    let cube = Arc::new(scenes::cube_on_ground());
-    let spec = build_spec(&cube, &plan, false).expect("cube has bounds");
+    let inputs = RenderInputs::default();
+    assert!(build_spec(
+        &Arc::new(World::new(scenes::empty())),
+        &inputs,
+        &plan,
+        false
+    )
+    .is_none());
+    let cube = Arc::new(World::new(scenes::cube_on_ground()));
+    let spec = build_spec(&cube, &inputs, &plan, false).expect("cube has bounds");
     assert_eq!(spec.request.camera.width, 1280);
     assert_eq!(spec.request.camera.height, 720);
-    let suffixed = build_spec(&cube, &plan, true).expect("cube has bounds");
+    let suffixed = build_spec(&cube, &inputs, &plan, true).expect("cube has bounds");
     assert_ne!(suffixed.output.file_name, spec.output.file_name);
 }
 

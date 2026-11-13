@@ -160,7 +160,9 @@ impl SkyModel {
         self.grey_out(color)
     }
 
-    fn sample_without_discs(&self, d: Vec3) -> Rgb {
+    /// Like [`SkyModel::sample`] but without the sun, moon and stars: the light a diffuse surface collects from
+    /// the dome, for renderers that sample the sun separately.
+    pub fn sample_without_discs(&self, d: Vec3) -> Rgb {
         let d = normalize(d);
         let sky = self.sky_color(d);
         let alpha = cloud_alpha(d, &self.clouds, self.drift);

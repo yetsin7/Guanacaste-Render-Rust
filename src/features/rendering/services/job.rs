@@ -63,7 +63,7 @@ pub struct ExportRequest {
 struct Shared {
     done: AtomicU32,
     total: AtomicU32,
-    cancel: AtomicBool,
+    cancel: Arc<AtomicBool>,
     encoding: AtomicBool,
     result: Mutex<Option<JobEnd>>,
 }
@@ -77,6 +77,7 @@ pub struct ExportJob {
 
 fn run(mut request: ExportRequest, shared: &Shared) -> JobEnd {
     let settings = request.settings.clone();
+    request.source.set_cancel(Arc::clone(&shared.cancel));
     let mut progress = |done: u32, total: u32| {
         shared.done.store(done, Ordering::Relaxed);
         shared.total.store(total, Ordering::Relaxed);
@@ -90,6 +91,7 @@ fn run(mut request: ExportRequest, shared: &Shared) -> JobEnd {
     ) {
         Ok(frames) => frames,
         Err(ExportError::Cancelled) => return JobEnd::Cancelled,
+        Err(_) if shared.cancel.load(Ordering::Relaxed) => return JobEnd::Cancelled,
         Err(error) => return JobEnd::Failed(error.to_string()),
     };
     let video = match (&request.ffmpeg, settings.encode_video) {

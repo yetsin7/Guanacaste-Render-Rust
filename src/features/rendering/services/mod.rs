@@ -4,6 +4,7 @@
 pub mod ffmpeg;
 pub mod frame_source;
 pub mod job;
+pub mod movie_source;
 pub mod output;
 pub mod picker;
 pub mod queue;

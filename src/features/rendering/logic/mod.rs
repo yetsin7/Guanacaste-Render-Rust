@@ -1,6 +1,8 @@
 //! Rendering rules: export size estimates, queue summaries and the text of job times.
 
+pub mod inputs;
 pub mod plan;
+pub mod world;
 
 use super::models::{ImageFormat, JobInfo, JobStatus, RESOLUTIONS};
 use crate::services::localization::{tr, trf};

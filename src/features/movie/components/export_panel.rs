@@ -8,14 +8,17 @@ use crate::config::theme::{colors, typography};
 use crate::features::import_export::services::picker::FilePicker;
 use crate::features::movie::logic::export_text::describe;
 use crate::features::movie::models::Animation;
-use crate::features::rendering::models::RESOLUTIONS;
+use crate::features::rendering::models::{QUALITIES, RESOLUTIONS};
 use crate::features::rendering::services::ffmpeg;
-use crate::features::rendering::services::frame_source::ColorFrameSource;
+use crate::features::rendering::services::frame_source::FrameSource;
 use crate::features::rendering::services::job::{ExportQueue, ExportRequest};
 use crate::features::rendering::services::sequence::{clean_prefix, ExportSettings};
 use crate::services::localization::{tr, trf};
 use eframe::egui::{Context, Ui};
 use std::path::PathBuf;
+
+/// Builds the frame source of a job from the chosen quality index; `None` when there is nothing to render.
+pub type Sources<'a> = &'a mut dyn FnMut(usize) -> Option<Box<dyn FrameSource>>;
 
 /// State of the export dialog and the queue behind it.
 pub struct ExportPanel {
@@ -25,6 +28,8 @@ pub struct ExportPanel {
     pub resolution: usize,
     /// Name of the files and of the video.
     pub name: String,
+    /// Selected index into [`QUALITIES`].
+    pub quality: usize,
     /// Chosen output folder.
     pub folder: Option<PathBuf>,
     /// Whether to encode an MP4 when ffmpeg is available.
@@ -32,6 +37,7 @@ pub struct ExportPanel {
     ffmpeg: Option<PathBuf>,
     picker: FilePicker,
     queue: ExportQueue,
+    notice: Option<&'static str>,
 }
 
 impl Default for ExportPanel {
@@ -39,12 +45,14 @@ impl Default for ExportPanel {
         Self {
             open: false,
             resolution: 0,
+            quality: 0,
             name: "recorrido".into(),
             folder: None,
             encode_video: true,
             ffmpeg: None,
             picker: FilePicker::default(),
             queue: ExportQueue::default(),
+            notice: None,
         }
     }
 }
@@ -69,7 +77,7 @@ impl ExportPanel {
         self.queue.poll();
     }
 
-    fn enqueue(&mut self, animation: &Animation) {
+    fn enqueue(&mut self, animation: &Animation, sources: Sources) {
         let Some(folder) = self.folder.clone() else {
             return;
         };
@@ -81,17 +89,21 @@ impl ExportPanel {
             height,
             encode_video: self.encode_video,
         };
-        // The photo renderer will replace this source when it exists.
+        let Some(source) = sources(self.quality) else {
+            self.notice = Some("movie.export_no_scene");
+            return;
+        };
+        self.notice = None;
         self.queue.enqueue(ExportRequest {
             animation: animation.clone(),
-            source: Box::new(ColorFrameSource),
+            source,
             settings,
             ffmpeg: self.ffmpeg.clone(),
         });
     }
 
     /// Draws the dialog when it is open.
-    pub fn show(&mut self, ctx: &Context, animation: &Animation) {
+    pub fn show(&mut self, ctx: &Context, animation: &Animation, sources: Sources) {
         if !self.open {
             return;
         }
@@ -102,7 +114,7 @@ impl ExportPanel {
             icons::MOVIE,
             460.0,
             |ui| {
-                modal::content(ui, |ui| self.settings(ui, animation));
+                modal::content(ui, |ui| self.settings(ui, animation, sources));
                 modal::divider(ui);
                 modal::content(ui, |ui| self.progress(ui));
             },
@@ -112,7 +124,7 @@ impl ExportPanel {
         }
     }
 
-    fn settings(&mut self, ui: &mut Ui, animation: &Animation) {
+    fn settings(&mut self, ui: &mut Ui, animation: &Animation, sources: Sources) {
         text::label(
             ui,
             trf(
@@ -146,6 +158,18 @@ impl ExportPanel {
             &labels,
             200.0,
         );
+        let qualities: Vec<&str> = QUALITIES.iter().map(|q| tr(q.label_key())).collect();
+        form::caption(ui, tr("movie.export_quality"));
+        form::dropdown(
+            ui,
+            "movie-export-quality",
+            &mut self.quality,
+            &qualities,
+            200.0,
+        );
+        if let Some(key) = self.notice {
+            text::paragraph(ui, tr(key), typography::body_sm(), colors::TERTIARY, 16.0);
+        }
         form::caption(ui, tr("movie.export_name"));
         form::text_field(ui, &mut self.name, tr("movie.export_name"), 260.0);
         form::caption(ui, tr("movie.export_folder"));
@@ -183,7 +207,7 @@ impl ExportPanel {
             button = button.disabled(reason);
         }
         if button.show(ui).clicked() && ready {
-            self.enqueue(animation);
+            self.enqueue(animation, sources);
         }
     }
 

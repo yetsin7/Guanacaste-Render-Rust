@@ -2,6 +2,8 @@
 //! blocks (see `services/container.rs`); this document only keeps the metadata of each mesh.
 
 use crate::features::build::models::ObjectsDoc;
+use crate::features::camera::models::stack::FilterStack;
+use crate::features::environment::models::EnvironmentSettings;
 use crate::features::lighting::models::LightingSetup;
 use crate::features::materials::models::Material;
 use crate::features::movie::models::Animation;
@@ -261,4 +263,11 @@ pub struct ProjectDocument {
     /// Artificial lights, groups, emissive materials and lighting scenes (absent in older files; omitted when empty).
     #[serde(skip_serializing_if = "LightingSetup::is_empty")]
     pub lighting: LightingSetup,
+    /// Date, time, place, sky and weather used by the render. Absent in older files (the renderer then uses the
+    /// default environment) and omitted while unset.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub environment: Option<EnvironmentSettings>,
+    /// Filters applied to every render of the project (absent in older files; omitted when empty).
+    #[serde(skip_serializing_if = "FilterStack::is_empty")]
+    pub filters: FilterStack,
 }

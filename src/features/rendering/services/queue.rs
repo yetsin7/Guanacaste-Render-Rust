@@ -1,7 +1,7 @@
 //! The render queue: jobs run one after another on a background thread with progress, cancel and retry.
 
 use super::output::{save_image, OutputError};
-use crate::features::import_export::models::ImportedScene;
+use crate::features::rendering::engine::World;
 use crate::features::rendering::engine::{
     render_prepared, RenderControl, RenderError, RenderRequest, RenderScene, TileUpdate,
 };
@@ -19,7 +19,7 @@ pub struct JobSpec {
     /// Quality preset name shown in the queue.
     pub preset: String,
     /// The scene to render.
-    pub scene: Arc<ImportedScene>,
+    pub scene: Arc<World>,
     /// Camera, light and quality.
     pub request: RenderRequest,
     /// Where the picture goes when finished.
@@ -52,7 +52,7 @@ struct State {
     next_id: u64,
     shutdown: bool,
     preview: Preview,
-    prepared: Option<(Arc<ImportedScene>, Arc<RenderScene>)>,
+    prepared: Option<(Arc<World>, Arc<RenderScene>)>,
 }
 
 struct Shared {

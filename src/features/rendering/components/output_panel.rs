@@ -90,14 +90,34 @@ fn settings(ui: &mut Ui, state: &mut RenderStudioState) {
         &qualities,
         WIDTH - 40.0,
     );
-    let views: Vec<&str> = ViewPreset::ALL.iter().map(|v| tr(v.label_key())).collect();
-    let mut view = ViewPreset::ALL
-        .iter()
-        .position(|v| *v == state.view)
-        .unwrap_or(0);
+    // The presets come first, then the saved cameras of the project.
+    let mut views: Vec<&str> = ViewPreset::ALL.iter().map(|v| tr(v.label_key())).collect();
+    views.extend(state.saved_cameras.iter().map(String::as_str));
+    let presets = ViewPreset::ALL.len();
+    let mut view = match state.saved_view {
+        Some(index) if index < state.saved_cameras.len() => presets + index,
+        _ => ViewPreset::ALL
+            .iter()
+            .position(|v| *v == state.view)
+            .unwrap_or(0),
+    };
     form::caption(ui, tr("render.view"));
     form::dropdown(ui, "render-view", &mut view, &views, WIDTH - 40.0);
-    state.view = ViewPreset::ALL[view];
+    if view < presets {
+        state.view = ViewPreset::ALL[view];
+        state.saved_view = None;
+    } else {
+        state.saved_view = Some(view - presets);
+        ui.horizontal(|ui| {
+            crate::components::checkbox::show(ui, &mut state.depth_of_field);
+            text::label(
+                ui,
+                tr("render.dof"),
+                typography::body_sm(),
+                colors::ON_SURFACE,
+            );
+        });
+    }
 }
 
 fn destination(ui: &mut Ui, state: &mut RenderStudioState) -> Option<PanelAction> {
