@@ -1,14 +1,15 @@
-//! The editor header: title, scene chips, parameter filter and tools.
+//! The editor header: title, project chips and the material filter.
 
 use crate::components::{
     icon_button::IconButton, icons, layout::split_row, search_field::SearchField, tag::Tag, text,
 };
 use crate::config::theme::{colors, typography};
-use crate::services::localization::tr;
+use crate::services::localization::{tr, trf};
 use eframe::egui::{self, Margin, Ui};
 
-/// Draws the header; `filter` is the parameter filter text.
-pub fn show(ui: &mut Ui, filter: &mut String) {
+/// Draws the header. `project` is the open project's name, `count` the number of materials and `filter` the list
+/// filter text.
+pub fn show(ui: &mut Ui, project: Option<&str>, count: usize, filter: &mut String) {
     egui::Frame::new()
         .fill(colors::SURFACE_LOW)
         .inner_margin(Margin::symmetric(8, 2))
@@ -25,21 +26,24 @@ pub fn show(ui: &mut Ui, filter: &mut String) {
                         typography::label_md(),
                         colors::PRIMARY,
                     );
-                    Tag::new(tr("material.scene"), colors::ON_SURFACE_VARIANT)
+                    let scope = match project {
+                        Some(name) => trf("material.scene", &[name]),
+                        None => tr("material.session").to_owned(),
+                    };
+                    Tag::new(scope, colors::ON_SURFACE_VARIANT)
                         .fill(colors::SURFACE_CONTAINER)
                         .padding(4.0, 2.0)
                         .show(ui);
-                    Tag::new(tr("material.stats"), colors::TERTIARY)
-                        .fill(colors::SURFACE_CONTAINER)
-                        .padding(4.0, 2.0)
-                        .show(ui);
+                    Tag::new(
+                        trf("material.stats", &[&count.to_string()]),
+                        colors::TERTIARY,
+                    )
+                    .fill(colors::SURFACE_CONTAINER)
+                    .padding(4.0, 2.0)
+                    .show(ui);
                 },
                 |ui| {
                     ui.spacing_mut().item_spacing.x = 4.0;
-                    IconButton::new(icons::SYNC)
-                        .sizes(16.0, 28.0)
-                        .tooltip(tr("material.sync"))
-                        .show(ui);
                     IconButton::bell()
                         .sizes(16.0, 28.0)
                         .tooltip(tr("library.notifications"))

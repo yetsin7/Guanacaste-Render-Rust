@@ -19,6 +19,8 @@ pub struct ScreenContext<'a> {
     pub textures: &'a mut Textures,
     /// Set by a screen to request navigation to another screen.
     pub navigate: &'a mut Option<Screen>,
+    /// The open project, when there is one (the material editor edits its materials).
+    pub project: Option<&'a mut crate::features::projects::models::Project>,
 }
 
 /// State of every screen.

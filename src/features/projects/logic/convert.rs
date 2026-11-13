@@ -67,6 +67,7 @@ pub fn from_scene(
         .map(|m| MaterialDoc {
             name: m.name.clone(),
             color: m.color,
+            pbr: None,
         })
         .collect();
     document.nodes = scene
