@@ -6,7 +6,8 @@ use crate::features::build::components::{
 };
 use crate::features::build::logic;
 use crate::features::build::models::{BuildGuide, BuildState};
-use crate::features::viewport::components::{backdrop, reticle};
+use crate::features::viewport::components::{backdrop, nav_toolbar, reticle};
+use crate::features::viewport::ui::panel;
 use crate::models::navigation::Screen;
 use crate::services::localization::tr;
 use crate::services::sample_data::build as sample;
@@ -31,12 +32,17 @@ impl BuildScreen {
     /// Draws the screen over the whole central area.
     pub fn show(&mut self, ui: &mut Ui, context: &mut ScreenContext) {
         let rect = ui.max_rect();
-        backdrop::paint(ui, rect, context.textures);
-        let center = pos2(
-            rect.left() + rect.width() * 0.42,
-            rect.top() + rect.height() * 0.48,
-        );
-        reticle::show(ui, center, self.guide.asset, tr("build.snap"));
+        let live = context.viewport.has_geometry();
+        if live {
+            panel::show(ui, rect, context.viewport);
+        } else {
+            backdrop::paint(ui, rect, context.textures);
+            let center = pos2(
+                rect.left() + rect.width() * 0.42,
+                rect.top() + rect.height() * 0.48,
+            );
+            reticle::show(ui, center, self.guide.asset, tr("build.snap"));
+        }
 
         let inner = rect.shrink(12.0);
         if let Some(top_bar::TopBarAction::Close) = top_bar::show(ui, inner, tr("build.scene")) {
@@ -61,5 +67,12 @@ impl BuildScreen {
             *context.navigate = Some(Screen::MaterialEditor);
         }
         shortcuts_hint::show(ui, inner.right_bottom());
+        if live {
+            nav_toolbar::show(
+                ui,
+                pos2(rect.center().x, inner.top() + 48.0),
+                context.viewport,
+            );
+        }
     }
 }

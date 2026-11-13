@@ -14,6 +14,7 @@ mod projects;
 mod rendering;
 mod settings;
 mod store;
+mod view3d;
 mod viewport;
 
 use std::collections::HashMap;
@@ -29,6 +30,7 @@ const TABLES: &[&[(&str, &str)]] = &[
     projects::ENTRIES,
     store::ENTRIES,
     viewport::ENTRIES,
+    view3d::ENTRIES,
     library::ENTRIES,
     materials::ENTRIES,
     movie::ENTRIES,

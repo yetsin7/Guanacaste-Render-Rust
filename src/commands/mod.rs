@@ -1,6 +1,7 @@
 //! Application use cases that coordinate several domains: requests that any screen can raise and the shell serves.
 
 pub mod rendering;
+pub mod viewport;
 pub mod workspace;
 
 use crate::models::dialog::Dialog;

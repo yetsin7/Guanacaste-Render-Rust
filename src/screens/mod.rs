@@ -11,6 +11,7 @@ mod settings;
 
 use crate::commands::rendering::RenderHub;
 use crate::commands::workspace::Workspace;
+use crate::features::viewport::ui::ViewportState;
 use crate::models::navigation::Screen;
 use crate::services::textures::Textures;
 use eframe::egui::Ui;
@@ -25,6 +26,8 @@ pub struct ScreenContext<'a> {
     pub workspace: &'a mut Workspace,
     /// The render queue.
     pub render: &'a mut RenderHub,
+    /// The shared 3D view (camera and scene of the open project).
+    pub viewport: &'a mut ViewportState,
 }
 
 /// State of every screen.
