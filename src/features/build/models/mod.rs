@@ -1,5 +1,15 @@
 //! Build-mode entities and UI state.
 
+mod drag;
+mod history;
+mod objects;
+mod state;
+
+pub use drag::*;
+pub use history::*;
+pub use objects::*;
+pub use state::*;
+
 /// Tabs of the build dock.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildTab {

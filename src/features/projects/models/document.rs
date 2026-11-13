@@ -1,6 +1,7 @@
 //! The editable part of a project, stored as JSON inside a `.gr` container (`GRRPROJ1`). Heavy geometry lives in binary
 //! blocks (see `services/container.rs`); this document only keeps the metadata of each mesh.
 
+use crate::features::build::models::ObjectsDoc;
 use serde::{Deserialize, Serialize};
 
 /// Schema version written by this application.
@@ -241,4 +242,8 @@ pub struct ProjectDocument {
     pub sun_sky: SunSkyDoc,
     /// Placed vegetation.
     pub vegetation: Vec<VegetationDoc>,
+    /// Placed scene objects and imported library assets. Added after schema 1 as an optional field: files without
+    /// it open with no objects, and it is left out of the file while empty, so no migration is needed.
+    #[serde(skip_serializing_if = "ObjectsDoc::is_empty")]
+    pub objects: ObjectsDoc,
 }

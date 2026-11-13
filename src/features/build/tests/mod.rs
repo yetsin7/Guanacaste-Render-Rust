@@ -1,5 +1,9 @@
 //! Unit tests of the build domain.
 
+mod objects_tests;
+mod persistence_tests;
+mod pointer_tests;
+
 use super::logic::*;
 use super::models::BuildState;
 use crate::services::sample_data::build as sample;

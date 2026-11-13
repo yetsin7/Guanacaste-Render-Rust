@@ -1,4 +1,11 @@
-//! Build-mode rules: guide progress.
+//! Build-mode rules: guide progress and the placed-object model (edit commands, picking, placement and pointer
+//! interaction).
+
+pub mod edit;
+pub mod interact;
+pub mod math;
+pub mod picking;
+pub mod placement;
 
 use super::models::{BuildGuide, BuildState};
 

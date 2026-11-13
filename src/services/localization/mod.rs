@@ -8,6 +8,7 @@ mod import_export;
 mod library;
 mod materials;
 mod movie;
+mod objects;
 mod projects;
 mod rendering;
 mod settings;
@@ -28,6 +29,7 @@ const TABLES: &[&[(&str, &str)]] = &[
     library::ENTRIES,
     materials::ENTRIES,
     movie::ENTRIES,
+    objects::ENTRIES,
     rendering::ENTRIES,
     settings::ENTRIES,
     help::ENTRIES,
