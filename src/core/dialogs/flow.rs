@@ -111,6 +111,40 @@ impl DialogHost {
         self.shown = self.active;
     }
 
+    /// Handles files dropped on the window: a Guanacaste Render project opens as a project, anything else goes
+    /// to the import dialog (which explains closed formats). Only the first file is used.
+    pub(super) fn take_drops(&mut self, ctx: &Context) {
+        use crate::features::import_export::logic::formats::{detect, sniff, Detected, Signature};
+        use crate::features::import_export::ui::drop;
+        use crate::services::localization::trf;
+        drop::overlay(ctx);
+        let paths = drop::dropped_paths(ctx);
+        let Some(first) = paths.first().cloned() else {
+            return;
+        };
+        if !matches!(self.active, None | Some(Dialog::Import)) {
+            return;
+        }
+        if paths.len() > 1 {
+            let name = first
+                .file_name()
+                .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+            self.workspace.notify(
+                trf("import.drop_many", &[&paths.len().to_string(), &name]),
+                false,
+            );
+        }
+        let is_project = matches!(detect(&first), Detected::Supported(_))
+            && sniff(&first).is_ok_and(|s| s == Signature::Render);
+        if is_project {
+            self.perform(ctx, Pending::Open(first));
+        } else {
+            self.import.choose(first);
+            self.active = Some(Dialog::Import);
+            self.menu_anchor = None;
+        }
+    }
+
     /// Opens `path` at start-up (the recovery offer, if any, stays queued behind it).
     pub fn open_at_start(&mut self, path: &std::path::Path) {
         if !self.workspace.open_file(path) {

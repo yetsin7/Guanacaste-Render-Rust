@@ -10,19 +10,22 @@ use crate::features::import_export::models::{
     ImportError, ImportOutcome, ImportReport, ImportedScene, Level, Material, Mesh, NodeKind,
     SceneNode, Severity, SourceFormat, SourceInfo,
 };
+use crate::features::import_export::services::legacy_container::{invalid, MAX_PAYLOAD};
 use crate::features::import_export::services::progress::Progress;
+
+pub use crate::features::import_export::services::legacy_container::{read_container, SIGNATURE};
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::io::Read;
 use std::path::Path;
 
-/// Signature of a Guanacaste 3D native container.
-pub const SIGNATURE: &[u8; 8] = b"G3DNATV1";
-const HEADER_BYTES: usize = 81;
-const MAX_PAYLOAD: u64 = 256 << 20;
-
 /// Lists of the Guanacaste 3D document that carry no 3D geometry in this importer.
+/// Most elements a project may declare before it is refused as hostile or corrupt.
+const MAX_ELEMENTS: usize = 1_000_000;
+/// Most points of one slab or roof outline (the ear-clipping triangulation is quadratic).
+const MAX_OUTLINE_POINTS: usize = 5_000;
+/// Coordinates beyond this (meters) are corrupt data, not architecture.
+const MAX_COORDINATE: f32 = 1.0e7;
+
 const IGNORED_LISTS: [&str; 6] = [
     "Rooms",
     "ElectricalDevices",
@@ -31,57 +34,6 @@ const IGNORED_LISTS: [&str; 6] = [
     "Dimensions",
     "Callouts",
 ];
-
-fn invalid(text: &str) -> ImportError {
-    ImportError::Invalid(text.to_owned())
-}
-
-/// Verifies the container and returns `(schema version, JSON document)`.
-pub fn read_container(bytes: &[u8]) -> Result<(i32, Value), ImportError> {
-    if bytes.len() < HEADER_BYTES || &bytes[..8] != SIGNATURE {
-        return Err(invalid(
-            "No es un proyecto de Guanacaste 3D (firma G3DNATV1 ausente).",
-        ));
-    }
-    let i32_at =
-        |at: usize| i32::from_le_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]);
-    let i64_at = |at: usize| {
-        let mut value = [0u8; 8];
-        value.copy_from_slice(&bytes[at..at + 8]);
-        i64::from_le_bytes(value)
-    };
-    if i32_at(8) != 1 {
-        return Err(invalid(
-            "Versión de contenedor de Guanacaste 3D desconocida.",
-        ));
-    }
-    if bytes[12] != 1 {
-        return Err(invalid(
-            "El archivo es una familia o plantilla de Guanacaste 3D, no un proyecto.",
-        ));
-    }
-    let schema = i32_at(13);
-    let (raw_len, gz_len) = (i64_at(33), i64_at(41));
-    if raw_len <= 0
-        || gz_len <= 0
-        || raw_len as u64 > MAX_PAYLOAD
-        || HEADER_BYTES as i64 + gz_len != bytes.len() as i64
-    {
-        return Err(invalid(
-            "Las longitudes del contenedor no coinciden con el archivo.",
-        ));
-    }
-    let mut json = Vec::with_capacity(raw_len as usize);
-    flate2::read::GzDecoder::new(&bytes[HEADER_BYTES..])
-        .take(raw_len as u64 + 1)
-        .read_to_end(&mut json)
-        .map_err(|_| invalid("Los datos comprimidos están dañados."))?;
-    if json.len() as i64 != raw_len || Sha256::digest(&json)[..] != bytes[49..81] {
-        return Err(invalid("La suma de comprobación del proyecto no coincide."));
-    }
-    let value = serde_json::from_slice(&json).map_err(|e| invalid(&e.to_string()))?;
-    Ok((schema, value))
-}
 
 fn number(value: &Value, key: &str) -> f64 {
     value.get(key).and_then(Value::as_f64).unwrap_or(0.0)
@@ -131,6 +83,7 @@ impl Builder {
         self.materials.push(Material {
             name: name.to_owned(),
             color,
+            texture: None,
         });
         self.materials.len() - 1
     }
@@ -158,7 +111,12 @@ impl Builder {
             meshes: Vec::new(),
             level,
         };
-        match mesh {
+        let sane = |m: &Mesh| {
+            m.positions
+                .iter()
+                .all(|p| p.iter().all(|v| v.is_finite() && v.abs() < MAX_COORDINATE))
+        };
+        match mesh.filter(sane) {
             Some(mut mesh) => {
                 mesh.material = Some(material);
                 self.meshes.push(mesh);
@@ -258,10 +216,15 @@ pub fn build(document: &Value, schema: i32, file_size: u64) -> (ImportedScene, I
     }
     for floor in list(document, "Floors") {
         let top = b.elevation(floor) + number(floor, "ElevationOffset");
-        let outline: Vec<[f64; 2]> = list(floor, "Boundary")
-            .iter()
-            .map(|p| [number(p, "X"), number(p, "Y")])
-            .collect();
+        let boundary = list(floor, "Boundary");
+        let outline: Vec<[f64; 2]> = if boundary.len() > MAX_OUTLINE_POINTS {
+            Vec::new()
+        } else {
+            boundary
+                .iter()
+                .map(|p| [number(p, "X"), number(p, "Y")])
+                .collect()
+        };
         let roof = floor.get("Kind").and_then(Value::as_i64) == Some(2);
         let material = if roof {
             b.material("Cubierta", [0.55, 0.36, 0.30, 1.0])
@@ -292,6 +255,14 @@ pub fn build(document: &Value, schema: i32, file_size: u64) -> (ImportedScene, I
         b.element(column, "Column", mesh, material);
     }
     for element in list(document, "StructuralElements") {
+        if number(element, "Height") <= 0.0 {
+            // Voids such as stair openings carry no solid.
+            *b.report
+                .skipped_types
+                .entry("StructuralElement (sin altura)".to_owned())
+                .or_insert(0) += 1;
+            continue;
+        }
         let base = b.elevation(element) + number(element, "Offset");
         let (start, end) = (point(element, "Start"), point(element, "End"));
         let width = number(element, "Width");
@@ -317,6 +288,9 @@ pub fn build(document: &Value, schema: i32, file_size: u64) -> (ImportedScene, I
         if count > 0 {
             b.report.skipped_types.insert(key.to_owned(), count);
         }
+    }
+    if b.report.elements_total == 0 {
+        b.report.note(Severity::Warning, "legacy.empty", &[]);
     }
     b.report.note(Severity::Info, "legacy.read_only", &[]);
     let scene = ImportedScene {
@@ -350,6 +324,23 @@ pub fn import(path: &Path, progress: &Progress) -> Result<ImportOutcome, ImportE
     progress.check()?;
     let (schema, document) = read_container(&bytes)?;
     progress.set(0.5);
+    drop(bytes);
+    let declared: usize = [
+        "Walls",
+        "Floors",
+        "Columns",
+        "StructuralElements",
+        "Levels",
+        "Openings",
+    ]
+    .iter()
+    .map(|key| list(&document, key).len())
+    .sum();
+    if declared > MAX_ELEMENTS {
+        return Err(invalid(
+            "El proyecto declara más de un millón de elementos: parece dañado.",
+        ));
+    }
     let (scene, mut report) = build(&document, schema, size);
     report.duration_ms = started.elapsed().as_millis();
     progress.set(1.0);

@@ -1,9 +1,12 @@
 //! Unit tests of the import domain. The IFC fixtures are synthetic: written by hand to imitate Revit, never
 //! validated against a real Revit export (see `tests/real_files.rs` for that).
 
+mod dae_tests;
 pub(crate) mod fixtures;
 mod formats_tests;
 mod ifc_tests;
+mod legacy_hardening_tests;
+mod mesh_formats_tests;
 mod robustness_tests;
 
 use crate::features::import_export::models::{

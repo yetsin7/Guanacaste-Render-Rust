@@ -135,6 +135,7 @@ pub fn import_bytes(data: &[u8], progress: &Progress) -> Result<ImportOutcome, I
                 materials.push(Material {
                     name,
                     color: [c[0] as f32, c[1] as f32, c[2] as f32, 1.0],
+                    texture: None,
                 });
                 material_ids.insert(id, materials.len() - 1);
             }
@@ -230,6 +231,7 @@ pub fn import_bytes(data: &[u8], progress: &Progress) -> Result<ImportOutcome, I
                 .get(id)
                 .and_then(|m| material_ids.get(m))
                 .copied(),
+            ..Default::default()
         };
         for t in triangles {
             mesh.indices.extend(t.iter().map(|i| *i as u32));

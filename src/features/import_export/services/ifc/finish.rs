@@ -57,6 +57,7 @@ pub(super) fn finish(
                 positions: Vec::new(),
                 indices: Vec::new(),
                 material: Some(*material),
+                ..Default::default()
             });
             builder.nodes[*node].meshes.push(meshes.len() - 1);
             meshes.len() - 1

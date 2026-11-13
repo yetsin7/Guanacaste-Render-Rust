@@ -244,6 +244,7 @@ impl Reader<'_> {
                 positions: mapped,
                 indices,
                 material: primitive["material"].as_u64().map(|m| m as usize),
+                ..Default::default()
             });
             self.nodes[node].meshes.push(self.meshes.len() - 1);
             self.nodes[node].kind = NodeKind::Element;
@@ -299,6 +300,7 @@ pub fn import_bytes(
                     .as_str()
                     .map_or_else(|| format!("material {i}"), str::to_owned),
                 color: [c[0], c[1], c[2], *c.get(3).unwrap_or(&1.0)],
+                texture: None,
             }
         })
         .collect();

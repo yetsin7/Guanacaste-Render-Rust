@@ -119,6 +119,7 @@ pub fn decode_mesh(raw: &[u8], vertices: u32, indices: u32) -> Result<Mesh, Stor
         positions,
         indices: index_list,
         material: None,
+        uvs: Vec::new(),
     })
 }
 
