@@ -43,6 +43,9 @@ pub const RESTORE_WINDOW: char = '\u{e3e0}';
 /// `layers`.
 pub const LAYERS: char = '\u{e53b}';
 
+/// `expand_less`.
+pub const EXPAND_LESS: char = '\u{e5ce}';
+
 /// `expand_more`.
 pub const EXPAND_MORE: char = '\u{e5cf}';
 

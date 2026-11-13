@@ -1,7 +1,7 @@
 //! Unit tests of the rendering domain.
 
-mod export_tests;
 mod engine_tests;
+mod export_tests;
 mod output_tests;
 mod queue_tests;
 mod scenes;

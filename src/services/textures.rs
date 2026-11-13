@@ -13,7 +13,8 @@ pub enum Placeholder {
 }
 
 impl Placeholder {
-    fn bytes(self) -> &'static [u8] {
+    /// The encoded PNG bytes of the image.
+    pub(crate) fn bytes(self) -> &'static [u8] {
         match self {
             Placeholder::VillaRender => {
                 include_bytes!("../../assets/placeholders/villa_render.png")

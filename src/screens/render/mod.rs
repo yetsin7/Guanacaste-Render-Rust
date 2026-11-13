@@ -1,6 +1,8 @@
 //! Render studio screen: output settings with the live picture, and the render queue.
 
 use super::ScreenContext;
+use crate::features::camera::components::studio as camera_studio;
+use crate::features::camera::models::state::CameraStudioState;
 use crate::features::rendering::components::output_panel::{self, PanelAction};
 use crate::features::rendering::components::preview_view::PreviewView;
 use crate::features::rendering::components::queue_table::{self, QueueAction};
@@ -20,6 +22,7 @@ pub struct RenderScreen {
     state: RenderStudioState,
     picker: FolderPicker,
     preview: PreviewView,
+    camera: CameraStudioState,
 }
 
 impl RenderScreen {
@@ -42,6 +45,10 @@ impl RenderScreen {
             pos2(ui.max_rect().left(), ui.cursor().top()),
             ui.max_rect().max,
         );
+        if self.state.tab == 2 {
+            camera_studio::show(ui, body, &mut self.camera);
+            return;
+        }
         if self.state.tab == 1 {
             match queue_table::show(ui, body, &self.state) {
                 Some(QueueAction::Cancel(id)) => context.render.queue.cancel(id),

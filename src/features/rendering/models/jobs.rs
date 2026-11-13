@@ -240,7 +240,7 @@ pub const QUALITIES: [RayTracingQuality; 4] = [
 /// UI state of the render studio screen.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenderStudioState {
-    /// Selected tab (0 preview, 1 queue).
+    /// Selected tab (0 preview, 1 queue, 2 camera).
     pub tab: usize,
     /// Snapshot of the queue, refreshed every frame.
     pub jobs: Vec<JobInfo>,

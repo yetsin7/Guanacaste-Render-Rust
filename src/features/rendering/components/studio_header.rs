@@ -45,7 +45,11 @@ pub fn show(ui: &mut Ui, state: &mut RenderStudioState, ready: bool) -> Option<H
                     ui.add_space(16.0);
                     tab_bar::show(
                         ui,
-                        &[tr("render.tab_preview"), queue_label.as_str()],
+                        &[
+                            tr("render.tab_preview"),
+                            queue_label.as_str(),
+                            tr("camera.tab"),
+                        ],
                         &mut tab,
                     );
                 },
