@@ -32,6 +32,23 @@ fn literals(text: &str) -> Vec<String> {
     out
 }
 
+/// Literal first arguments of `tr("...")` and `trf("...")` calls (not of functions that merely end in `tr`).
+fn direct_calls(text: &str) -> Vec<&str> {
+    let mut found = Vec::new();
+    for call in ["tr(\"", "trf(\""] {
+        let mut from = 0;
+        while let Some(at) = text[from..].find(call).map(|i| i + from) {
+            let before = text[..at].chars().next_back();
+            from = at + call.len();
+            if before.is_some_and(|c| c.is_alphanumeric() || c == '_') {
+                continue;
+            }
+            found.push(text[from..].split('"').next().unwrap_or_default());
+        }
+    }
+    found
+}
+
 #[test]
 fn keys_used_in_code_exist_and_catalog_has_no_dead_keys() {
     let keys: HashSet<&str> = entries().map(|(key, _)| *key).collect();
@@ -50,6 +67,11 @@ fn keys_used_in_code_exist_and_catalog_has_no_dead_keys() {
         let text = fs::read_to_string(&file).expect("readable source");
         // Skip test modules: they may probe unknown keys on purpose.
         let text = text.split("#[cfg(test)]").next().unwrap_or("");
+        for literal in direct_calls(text) {
+            if !keys.contains(literal) {
+                missing.push(format!("{} -> {literal} (tr/trf)", file.display()));
+            }
+        }
         for literal in literals(text) {
             let Some((prefix, rest)) = literal.split_once('.') else {
                 continue;

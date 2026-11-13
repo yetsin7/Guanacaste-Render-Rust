@@ -50,7 +50,7 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("save.name", "Nombre del archivo"),
     ("save.folder", "Carpeta"),
     ("save.thumbnail", "Incluir miniatura"),
-    ("save.thumbnail_note", "Guarda una vista previa del modelo (planta e isométrica) dentro del .gr"),
+    ("save.thumbnail_note", "Planta e isométrica del modelo dentro del .gr"),
     ("save.save", "Guardar"),
     ("save.reason_title", "Se guardará como un archivo nuevo"),
     ("save.format_title", "Proyecto .gr de Guanacaste Render"),

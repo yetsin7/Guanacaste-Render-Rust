@@ -43,4 +43,39 @@ pub const ENTRIES: &[(&str, &str)] = &[
         "save.read_only_reason",
         "El proyecto es de una versión más nueva: guárdalo como una copia.",
     ),
+    ("workspace.opened", "Proyecto «{0}» abierto."),
+    (
+        "workspace.opened_legacy",
+        "Proyecto de Guanacaste 3D importado en solo lectura: al guardar se creará un .gr nuevo.",
+    ),
+    (
+        "workspace.opened_read_only",
+        "Proyecto de una versión más nueva: se abrió en solo lectura.",
+    ),
+    ("workspace.created", "Proyecto «{0}» creado."),
+    ("workspace.imported", "{0} importado como proyecto nuevo."),
+    ("workspace.saved", "Guardado en {0} ({1})."),
+    (
+        "workspace.restored",
+        "Se restauró «{0}» desde la copia automática.",
+    ),
+    (
+        "workspace.autosave_failed",
+        "No se pudo escribir la copia automática de recuperación.",
+    ),
+    (
+        "workspace.nothing_to_save",
+        "No hay ningún proyecto abierto que guardar.",
+    ),
+    (
+        "workspace.export_empty",
+        "El proyecto abierto no tiene geometría que exportar.",
+    ),
+    ("workspace.export_failed", "No se pudo escribir la imagen:"),
+    (
+        "workspace.export_only_png",
+        "Por ahora solo se exporta en PNG.",
+    ),
+    ("workspace.exported", "Imagen exportada en {0}."),
+    ("workspace.unsaved", "sin guardar"),
 ];
