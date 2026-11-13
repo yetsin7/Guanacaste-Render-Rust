@@ -4,6 +4,7 @@
 pub mod components;
 pub mod logic;
 pub mod models;
+pub mod services;
 
 #[cfg(test)]
 mod tests;

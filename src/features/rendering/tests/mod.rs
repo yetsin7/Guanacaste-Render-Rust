@@ -1,5 +1,7 @@
 //! Unit tests of the rendering domain.
 
+mod export_tests;
+
 use super::logic::*;
 use super::models::*;
 use crate::services::sample_data::rendering as sample;

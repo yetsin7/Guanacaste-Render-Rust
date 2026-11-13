@@ -1,29 +1,44 @@
-//! The physical camera inspector docked at the top-right of the 3D view.
+//! The inspector docked at the top-right of the 3D view: the selected keyframe and the studio camera.
 
+use super::fields::{number, pose_editor};
 use crate::components::{
-    frames, icons,
+    button::{Button, ButtonStyle},
+    form, frames, icons,
     layout::split_row,
-    segmented::Segmented,
-    slider::{Slider, Thumb},
-    tag::Tag,
-    text, toggle,
+    section_title, text,
 };
 use crate::config::theme::{colors, typography};
-use crate::features::movie::logic;
-use crate::features::movie::models::MovieState;
-use crate::services::localization::tr;
-use eframe::egui::{
-    self, pos2, vec2, Color32, CornerRadius, Margin, Rect, Sense, Ui, UiBuilder, Vec2,
+use crate::features::movie::models::{
+    Animation, CameraKey, Ease, MovieState, Selection, MAX_DURATION,
 };
+use crate::services::localization::tr;
+use eframe::egui::{self, vec2, CornerRadius, Margin, Rect, ScrollArea, Ui, UiBuilder};
 
 /// Panel width in points.
 pub const WIDTH: f32 = 288.0;
-const APERTURES: [&str; 4] = ["f/1.4", "f/2.8", "f/5.6", "f/11"];
 
-/// Draws the panel with its top-left corner at `origin`.
-pub fn show(ui: &mut Ui, origin: egui::Pos2, state: &mut MovieState) {
-    let mut child =
-        ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(origin, vec2(WIDTH, 600.0))));
+fn small_button(ui: &mut Ui, label: &'static str, style: ButtonStyle) -> bool {
+    Button::new(tr(label), style)
+        .font(typography::label_sm())
+        .padding(10.0, 4.0)
+        .show(ui)
+        .clicked()
+}
+
+/// Draws the panel with its top-left corner at `origin`, at most `max_height` tall. Returns true when the
+/// animation changed.
+pub fn show(
+    ui: &mut Ui,
+    origin: egui::Pos2,
+    max_height: f32,
+    animation: &mut Animation,
+    state: &mut MovieState,
+) -> bool {
+    let mut changed = false;
+    let mut child = ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(
+        origin,
+        vec2(WIDTH, max_height.max(120.0)),
+    )));
     frames::overlay(0)
         .corner_radius(CornerRadius::same(4))
         .show(&mut child, |ui| {
@@ -34,225 +49,213 @@ pub fn show(ui: &mut Ui, origin: egui::Pos2, state: &mut MovieState) {
                 .inner_margin(Margin::symmetric(12, 8))
                 .show(ui, |ui| {
                     ui.set_width(WIDTH - 24.0);
-                    split_row(
-                        ui,
-                        18.0,
-                        |ui| {
-                            ui.spacing_mut().item_spacing.x = 4.0;
-                            text::icon(ui, icons::VIDEOCAM, 15.0, colors::PRIMARY);
-                            text::label(
-                                ui,
-                                text::caps(tr("movie.inspector")),
-                                typography::label_md(),
-                                colors::ON_SURFACE,
-                            );
-                        },
-                        |ui| {
-                            Tag::new(tr("movie.physical"), colors::PRIMARY)
-                                .fill(colors::SURFACE_HIGH)
-                                .padding(6.0, 2.0)
-                                .show(ui);
-                        },
-                    );
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = 4.0;
+                        text::icon(ui, icons::VIDEOCAM, 15.0, colors::PRIMARY);
+                        text::label(
+                            ui,
+                            text::caps(tr("movie.inspector")),
+                            typography::label_md(),
+                            colors::ON_SURFACE,
+                        );
+                    });
                 });
-            egui::Frame::new()
-                .inner_margin(Margin::same(12))
+            ScrollArea::vertical()
+                .max_height((max_height - 48.0).max(80.0))
+                .auto_shrink([false, true])
                 .show(ui, |ui| {
-                    ui.set_width(WIDTH - 24.0);
-                    ui.spacing_mut().item_spacing.y = 12.0;
-                    focal(ui, state);
-                    aperture(ui, state);
-                    exposure(ui);
-                    blur(ui, state);
-                    depth(ui, state);
-                    atmosphere(ui, state);
+                    egui::Frame::new()
+                        .inner_margin(Margin::same(12))
+                        .show(ui, |ui| {
+                            ui.set_width(WIDTH - 24.0);
+                            ui.spacing_mut().item_spacing.y = 8.0;
+                            changed |= selected(ui, animation, state);
+                            changed |= live_camera(ui, animation, state);
+                        });
                 });
         });
+    changed
 }
 
-fn row(ui: &mut Ui, left: &'static str, right: String, color: Color32) {
-    split_row(
-        ui,
-        18.0,
-        |ui| {
-            text::label(ui, tr(left), typography::body_sm(), colors::ON_SURFACE);
-        },
-        |ui| {
-            text::label(ui, right, typography::mono_medium(11.0), color);
-        },
-    );
-}
-
-fn focal(ui: &mut Ui, state: &mut MovieState) {
-    row(
-        ui,
-        "movie.focal",
-        format!("{:.1} mm", logic::focal_length(state.focal)),
-        colors::PRIMARY,
-    );
-    ui.add_space(-6.0);
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 8.0;
-        text::label(ui, "18mm", typography::label_sm(), colors::OUTLINE);
-        let width = ui.available_width() - 44.0;
-        ui.allocate_ui(vec2(width, 14.0), |ui| {
-            Slider::bar(6.0)
-                .thumb(Thumb::Circle(6.0))
-                .colors(colors::PRIMARY, colors::SURFACE_HIGHEST)
-                .show(ui, &mut state.focal);
-        });
-        text::label(ui, "85mm", typography::label_sm(), colors::OUTLINE);
-    });
-}
-
-fn aperture(ui: &mut Ui, state: &mut MovieState) {
-    row(
-        ui,
-        "movie.aperture",
-        APERTURES[state.aperture].to_owned(),
-        colors::SECONDARY,
-    );
-    ui.add_space(-6.0);
-    Segmented::text(&APERTURES)
-        .container(colors::SURFACE_CONTAINER, 0.0, 4.0)
-        .height(24.0)
-        .show(ui, &mut state.aperture);
-}
-
-fn exposure(ui: &mut Ui) {
-    let gap = 8.0;
-    let width = (ui.available_width() - gap) / 2.0;
-    let (area, _) = ui.allocate_exact_size(vec2(ui.available_width(), 58.0), Sense::hover());
-    let cells = [
-        (
-            "movie.shutter",
-            "1/60 s",
-            "movie.shutter_note",
-            colors::TERTIARY,
-            icons::SPEED,
-        ),
-        (
-            "movie.gain",
-            "ISO 200",
-            "movie.gain_note",
-            colors::OUTLINE,
-            icons::TUNE,
-        ),
-    ];
-    for (index, (caption, value, note, note_color, glyph)) in cells.into_iter().enumerate() {
-        let rect = Rect::from_min_size(
-            pos2(area.left() + index as f32 * (width + gap), area.top()),
-            Vec2::new(width, 58.0),
-        );
-        ui.painter()
-            .rect_filled(rect, CornerRadius::same(2), colors::SURFACE_CONTAINER);
-        text::paint_text(
-            ui.painter(),
-            rect.min + vec2(8.0, 12.0),
-            egui::Align2::LEFT_CENTER,
-            &text::caps(tr(caption)),
-            typography::label_sm(),
-            colors::OUTLINE,
-        );
-        text::paint_text(
-            ui.painter(),
-            rect.min + vec2(8.0, 30.0),
-            egui::Align2::LEFT_CENTER,
-            value,
-            typography::label_md(),
-            colors::ON_SURFACE,
-        );
-        text::paint_icon(
-            ui.painter(),
-            pos2(rect.right() - 14.0, rect.top() + 30.0),
-            glyph,
-            13.0,
-            colors::OUTLINE,
-        );
-        text::paint_text(
-            ui.painter(),
-            rect.min + vec2(8.0, 47.0),
-            egui::Align2::LEFT_CENTER,
-            tr(note),
-            typography::mono(9.0),
-            note_color,
-        );
+fn selected(ui: &mut Ui, animation: &mut Animation, state: &mut MovieState) -> bool {
+    match state.selection {
+        Selection::Camera(index) if index < animation.camera.keys.len() => {
+            camera_key(ui, animation, state, index)
+        }
+        Selection::Value { channel, key }
+            if animation
+                .channels
+                .get(channel)
+                .is_some_and(|c| key < c.keys.len()) =>
+        {
+            value_key(ui, animation, state, channel, key)
+        }
+        _ => {
+            text::label(
+                ui,
+                tr("movie.nothing_selected"),
+                typography::body_sm(),
+                colors::OUTLINE,
+            );
+            false
+        }
     }
 }
 
-fn blur(ui: &mut Ui, state: &mut MovieState) {
-    row(
-        ui,
-        "movie.blur",
-        format!(
-            "{:.2} ({})",
-            state.motion_blur,
-            tr(logic::blur_label(state.motion_blur))
-        ),
-        colors::ON_SURFACE,
-    );
-    ui.add_space(-6.0);
-    Slider::bar(6.0)
-        .thumb(Thumb::Bar(vec2(10.0, 10.0)))
-        .colors(colors::PRIMARY_CONTAINER, colors::SURFACE_HIGHEST)
-        .show(ui, &mut state.motion_blur);
-}
-
-fn depth(ui: &mut Ui, state: &mut MovieState) {
+fn ease_picker(ui: &mut Ui, id: &str, ease: &mut Ease) -> bool {
+    let labels: Vec<&str> = Ease::ALL.iter().map(|e| tr(e.label_key())).collect();
+    let mut index = Ease::ALL.iter().position(|e| e == ease).unwrap_or(0);
     split_row(
         ui,
-        34.0,
+        26.0,
         |ui| {
-            ui.vertical(|ui| {
-                ui.spacing_mut().item_spacing.y = 0.0;
-                text::label(
-                    ui,
-                    tr("movie.dof"),
-                    typography::body_sm(),
-                    colors::ON_SURFACE,
-                );
-                text::label(
-                    ui,
-                    tr("movie.dof_note"),
-                    typography::label_sm(),
-                    colors::OUTLINE,
-                );
-            });
-        },
-        |ui| {
-            toggle::show_sized(ui, &mut state.depth_of_field, vec2(36.0, 20.0));
-        },
-    );
-}
-
-fn atmosphere(ui: &mut Ui, state: &mut MovieState) {
-    crate::components::section_title::caption(ui, tr("movie.atmosphere"), colors::OUTLINE);
-    ui.add_space(-6.0);
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 6.0;
-        let width = (ui.available_width() - 6.0) / 2.0;
-        for (index, key) in ["movie.bloom", "movie.anamorphic"].into_iter().enumerate() {
-            let (rect, response) = ui.allocate_exact_size(vec2(width, 24.0), Sense::click());
-            let on = state.atmosphere[index];
-            let fill = if on {
-                colors::SECONDARY_CONTAINER
-            } else if response.hovered() {
-                colors::SURFACE_HIGH
-            } else {
-                colors::SURFACE_CONTAINER
-            };
-            ui.painter().rect_filled(rect, CornerRadius::same(2), fill);
-            text::paint_text(
-                ui.painter(),
-                rect.center(),
-                egui::Align2::CENTER_CENTER,
-                tr(key),
-                typography::label_sm(),
+            text::label(
+                ui,
+                tr("movie.ease"),
+                typography::body_sm(),
                 colors::ON_SURFACE,
             );
-            if response.clicked() {
-                state.atmosphere[index] = !on;
-            }
+        },
+        |ui| {
+            form::dropdown(ui, id, &mut index, &labels, 120.0);
+        },
+    );
+    let picked = Ease::ALL[index];
+    let changed = picked != *ease;
+    *ease = picked;
+    changed
+}
+
+fn camera_key(
+    ui: &mut Ui,
+    animation: &mut Animation,
+    state: &mut MovieState,
+    index: usize,
+) -> bool {
+    section_title::caption(ui, tr("movie.key_camera"), colors::PRIMARY);
+    let original = animation.camera.keys[index];
+    let mut key = original;
+    let mut changed = number(
+        ui,
+        "movie.time",
+        &mut key.time,
+        0.02,
+        0.0..=MAX_DURATION,
+        "movie.unit_s",
+    );
+    changed |= number(
+        ui,
+        "movie.pause",
+        &mut key.pause,
+        0.02,
+        0.0..=MAX_DURATION,
+        "movie.unit_s",
+    );
+    changed |= ease_picker(ui, "key-ease", &mut key.ease);
+    changed |= pose_editor(ui, &mut key.pose);
+    let mut remove = false;
+    ui.horizontal_wrapped(|ui| {
+        if small_button(ui, "movie.use_live", ButtonStyle::Raised) {
+            key.pose = state.live_camera;
+            changed = true;
+        }
+        if small_button(ui, "movie.go_to_key", ButtonStyle::Container) {
+            state.time = key.time;
+        }
+        remove = small_button(ui, "movie.delete_key", ButtonStyle::Container);
+    });
+    if remove {
+        animation.remove_camera_key(index);
+        state.selection = Selection::None;
+        return true;
+    }
+    if changed {
+        animation.camera.keys[index] = CameraKey {
+            time: original.time,
+            pose: key.pose.sanitized(),
+            ..key
+        };
+        if key.time != original.time {
+            let moved = animation.move_camera_key(index, key.time);
+            state.selection = Selection::Camera(moved);
+        }
+    }
+    changed
+}
+
+fn value_key(
+    ui: &mut Ui,
+    animation: &mut Animation,
+    state: &mut MovieState,
+    channel: usize,
+    index: usize,
+) -> bool {
+    section_title::caption(ui, tr("movie.key_value"), colors::TERTIARY);
+    let mut changed = false;
+    let mut name = animation.channels[channel].name.clone();
+    if form::text_field(ui, &mut name, tr("movie.channel_name"), WIDTH - 24.0).changed() {
+        animation.channels[channel].name = name;
+        changed = true;
+    }
+    let original = animation.channels[channel].keys[index];
+    let mut key = original;
+    let mut time = key.time;
+    let time_changed = number(
+        ui,
+        "movie.time",
+        &mut time,
+        0.02,
+        0.0..=MAX_DURATION,
+        "movie.unit_s",
+    );
+    changed |= number(
+        ui,
+        "movie.value",
+        &mut key.value,
+        0.05,
+        -1.0e6..=1.0e6,
+        "movie.unit_none",
+    );
+    changed |= ease_picker(ui, "value-ease", &mut key.ease);
+    let mut remove = false;
+    ui.horizontal_wrapped(|ui| {
+        if small_button(ui, "movie.go_to_key", ButtonStyle::Container) {
+            state.time = original.time;
+        }
+        remove = small_button(ui, "movie.delete_key", ButtonStyle::Container);
+    });
+    if remove {
+        animation.remove_value_key(channel, index);
+        state.selection = Selection::None;
+        return true;
+    }
+    if changed {
+        animation.channels[channel].keys[index] = key;
+    }
+    if time_changed {
+        let moved = animation.move_value_key(channel, index, time);
+        state.selection = Selection::Value {
+            channel,
+            key: moved,
+        };
+    }
+    changed || time_changed
+}
+
+fn live_camera(ui: &mut Ui, animation: &mut Animation, state: &mut MovieState) -> bool {
+    ui.add_space(4.0);
+    section_title::caption(ui, tr("movie.live_camera"), colors::SECONDARY);
+    pose_editor(ui, &mut state.live_camera);
+    let mut changed = false;
+    ui.horizontal_wrapped(|ui| {
+        if small_button(ui, "movie.record_key", ButtonStyle::Solid) {
+            let index = animation.record_camera(state.time, &state.live_camera);
+            state.selection = Selection::Camera(index);
+            changed = true;
+        }
+        if small_button(ui, "movie.take_playhead", ButtonStyle::Container) {
+            state.live_camera = animation.sample(state.time);
         }
     });
+    changed
 }
