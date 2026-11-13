@@ -6,6 +6,7 @@ mod dialogs;
 mod help;
 mod import_export;
 mod library;
+mod lighting;
 mod materials;
 mod movie;
 mod projects;
@@ -26,6 +27,7 @@ const TABLES: &[&[(&str, &str)]] = &[
     store::ENTRIES,
     viewport::ENTRIES,
     library::ENTRIES,
+    lighting::ENTRIES,
     materials::ENTRIES,
     movie::ENTRIES,
     rendering::ENTRIES,

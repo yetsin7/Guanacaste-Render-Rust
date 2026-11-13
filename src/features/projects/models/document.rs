@@ -1,6 +1,7 @@
 //! The editable part of a project, stored as JSON inside a `.gr` container (`GRRPROJ1`). Heavy geometry lives in binary
 //! blocks (see `services/container.rs`); this document only keeps the metadata of each mesh.
 
+use crate::features::lighting::models::LightingSetup;
 use serde::{Deserialize, Serialize};
 
 /// Schema version written by this application.
@@ -241,4 +242,7 @@ pub struct ProjectDocument {
     pub sun_sky: SunSkyDoc,
     /// Placed vegetation.
     pub vegetation: Vec<VegetationDoc>,
+    /// Artificial lights, groups, emissive materials and lighting scenes (absent in older files; omitted when empty).
+    #[serde(skip_serializing_if = "LightingSetup::is_empty")]
+    pub lighting: LightingSetup,
 }
