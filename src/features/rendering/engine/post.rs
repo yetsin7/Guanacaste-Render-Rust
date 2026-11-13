@@ -63,7 +63,11 @@ fn depth_of_field(frame: &mut FrameBuffers, photo: &PhotoCamera) {
                 sum[2] += source[q * 4 + 2];
                 count += 1.0;
             }
-            row[x * 4..x * 4 + 3].copy_from_slice(&[sum[0] / count, sum[1] / count, sum[2] / count]);
+            row[x * 4..x * 4 + 3].copy_from_slice(&[
+                sum[0] / count,
+                sum[1] / count,
+                sum[2] / count,
+            ]);
         }
     });
 }
@@ -86,9 +90,11 @@ pub fn finish(mut frame: FrameBuffers, request: &RenderRequest) -> RgbaImage {
     if let (Some(photo), true) = (&post.photo, post.depth_of_field) {
         depth_of_field(&mut frame, photo);
     }
-    let tone_mapped_by_filter = post.filters.entries.iter().any(|e| {
-        e.enabled && matches!(e.filter.kind, FilterKind::Aces | FilterKind::Reinhard)
-    });
+    let tone_mapped_by_filter = post
+        .filters
+        .entries
+        .iter()
+        .any(|e| e.enabled && matches!(e.filter.kind, FilterKind::Aces | FilterKind::Reinhard));
     if !tone_mapped_by_filter {
         for px in frame.color.chunks_exact_mut(4) {
             for c in &mut px[..3] {

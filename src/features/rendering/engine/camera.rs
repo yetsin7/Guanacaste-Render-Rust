@@ -137,7 +137,8 @@ pub fn saved_photo(saved: &CameraDoc) -> PhotoCamera {
     let d = sub(saved.target, saved.position);
     photo.set_focus_distance((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt());
     // A saved camera stores no shutter: expose it like the reference day so the picture is not over or under exposed.
-    photo.exposure.shutter_s = shutter_for_ev(photo.lens.aperture, photo.exposure.iso, PREVIEW_SCENE_EV100);
+    photo.exposure.shutter_s =
+        shutter_for_ev(photo.lens.aperture, photo.exposure.iso, PREVIEW_SCENE_EV100);
     photo.exposure = photo.exposure.sanitized();
     photo
 }

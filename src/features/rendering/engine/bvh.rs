@@ -33,7 +33,13 @@ impl Triangle {
     }
 
     /// Moller-Trumbore: `(t, u, v)` when the ray hits within `(t_min, t_max)`.
-    fn intersect(&self, origin: Vec3, dir: Vec3, t_min: f32, t_max: f32) -> Option<(f32, f32, f32)> {
+    fn intersect(
+        &self,
+        origin: Vec3,
+        dir: Vec3,
+        t_min: f32,
+        t_max: f32,
+    ) -> Option<(f32, f32, f32)> {
         let p = dir.cross(self.e2);
         let det = self.e1.dot(p);
         if det.abs() < 1e-14 {

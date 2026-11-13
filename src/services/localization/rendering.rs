@@ -25,7 +25,6 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("render.view_viewport", "Vista 3D"),
     ("render.view_photo", "Cámara fotográfica"),
     ("render.dof", "Desenfoque por profundidad de campo"),
-    ("render.saved_cameras", "Cámaras guardadas"),
     ("render.format", "Formato"),
     ("render.folder", "Carpeta de salida"),
     ("render.file_name", "Nombre del archivo"),

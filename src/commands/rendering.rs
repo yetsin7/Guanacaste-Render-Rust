@@ -109,7 +109,10 @@ impl RenderHub {
                     ..plan.clone()
                 });
             }
-            let saved = workspace.project.as_ref().map_or(0, |p| p.document.cameras.len());
+            let saved = workspace
+                .project
+                .as_ref()
+                .map_or(0, |p| p.document.cameras.len());
             for index in 0..saved {
                 plans.push(JobPlan {
                     camera: CameraChoice::Saved(index),
@@ -126,7 +129,10 @@ impl RenderHub {
         workspace: &Workspace,
         plan: &JobPlan,
     ) -> Result<usize, &'static str> {
-        let count = workspace.project.as_ref().map_or(0, |p| p.document.cameras.len());
+        let count = workspace
+            .project
+            .as_ref()
+            .map_or(0, |p| p.document.cameras.len());
         let plans: Vec<JobPlan> = (0..count)
             .map(|index| JobPlan {
                 camera: CameraChoice::Saved(index),

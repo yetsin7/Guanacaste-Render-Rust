@@ -111,7 +111,10 @@ pub fn build_spec(
         output.file_name = format!("{}_{}", output.file_name, view.to_lowercase());
     }
     Some(JobSpec {
-        name: trf("queue.job_name", &[&view, &format!("{}×{}", size.0, size.1)]),
+        name: trf(
+            "queue.job_name",
+            &[&view, &format!("{}×{}", size.0, size.1)],
+        ),
         preset: tr(quality.label_key()).to_owned(),
         scene: Arc::clone(world),
         request,

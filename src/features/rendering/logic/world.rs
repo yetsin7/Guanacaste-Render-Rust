@@ -62,7 +62,10 @@ pub fn vegetation_kind(name: &str) -> ProceduralKind {
 }
 
 fn transform_point(transform: &Transform, p: [f32; 3]) -> [f32; 3] {
-    let w = to_world(transform, [f64::from(p[0]), f64::from(p[1]), f64::from(p[2])]);
+    let w = to_world(
+        transform,
+        [f64::from(p[0]), f64::from(p[1]), f64::from(p[2])],
+    );
     [w[0] as f32, w[1] as f32, w[2] as f32]
 }
 
@@ -106,7 +109,9 @@ fn add_vegetation(builder: &mut Builder, landscape: &Landscape) {
     let mut budget = VEGETATION_TRIANGLES;
     let total = landscape.vegetation.len().max(1);
     let stride = {
-        let sample = procedural::generate(ProceduralKind::Tree, 0).triangle_count().max(1);
+        let sample = procedural::generate(ProceduralKind::Tree, 0)
+            .triangle_count()
+            .max(1);
         (total * sample).div_ceil(VEGETATION_TRIANGLES).max(1)
     };
     for (index, plant) in landscape.vegetation.iter().enumerate() {
@@ -114,12 +119,11 @@ fn add_vegetation(builder: &mut Builder, landscape: &Landscape) {
             continue;
         }
         let kind = vegetation_kind(&plant.asset);
-        if !assets.contains_key(&kind) {
+        let (scene, base) = assets.entry(kind).or_insert_with(|| {
             let scene = procedural::generate(kind, 0);
             let base = builder.add_materials(&scene.materials);
-            assets.insert(kind, (scene, base));
-        }
-        let (scene, base) = &assets[&kind];
+            (scene, base)
+        });
         let cost = scene.triangle_count();
         if cost > budget {
             break;
@@ -131,6 +135,26 @@ fn add_vegetation(builder: &mut Builder, landscape: &Landscape) {
             scale: [plant.scale; 3],
         };
         builder.add_meshes(&scene.meshes, *base, &|p| transform_point(&transform, p));
+    }
+}
+
+/// Half side of the plane that carries the ground out to the horizon, meters.
+const HORIZON: f32 = 30_000.0;
+
+/// A huge flat quad just under the terrain, with the terrain's first material, so the ground meets the sky at the
+/// horizon instead of ending at the edge of the height grid.
+fn horizon_plane(material: usize) -> Mesh {
+    let z = -GROUND_SINK - 0.02;
+    Mesh {
+        positions: vec![
+            [-HORIZON, -HORIZON, z],
+            [HORIZON, -HORIZON, z],
+            [HORIZON, HORIZON, z],
+            [-HORIZON, HORIZON, z],
+        ],
+        indices: vec![0, 1, 2, 0, 2, 3],
+        material: Some(material),
+        uvs: Vec::new(),
     }
 }
 
@@ -146,10 +170,18 @@ pub fn build_world(project: &Project) -> World {
     let (meshes, materials) = landscape_meshes(&landscape, 0.0);
     let base = builder.add_materials(&materials);
     builder.add_meshes(&meshes, base, &|p| [p[0], p[1], p[2] - GROUND_SINK]);
+    if !meshes.is_empty() {
+        builder.scene.meshes.push(horizon_plane(base));
+    }
     add_vegetation(&mut builder, &landscape);
     let mut world = World::new(builder.scene);
     let library = library_from_docs(&document.materials);
-    for (slot, material) in world.pbr.iter_mut().zip(library.iter()).take(project_materials) {
+    for (slot, material) in world
+        .pbr
+        .iter_mut()
+        .zip(library.iter())
+        .take(project_materials)
+    {
         *slot = material.clone();
     }
     world.emissive = document.lighting.emissive.clone();

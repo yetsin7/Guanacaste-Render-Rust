@@ -104,8 +104,7 @@ fn thin_out(out: &mut Vec<Incoming>, weights: &[f32], rng: &mut Rng) {
         }
         // Probability of this pick is `w / total`; K picks are averaged.
         let mut pick = out[chosen];
-        pick.irradiance =
-            pick.irradiance * (total / (MAX_LIGHT_RAYS as f32 * weights[chosen].max(1e-9)));
+        pick.irradiance *= total / (MAX_LIGHT_RAYS as f32 * weights[chosen].max(1e-9));
         kept.push(pick);
     }
     *out = kept;

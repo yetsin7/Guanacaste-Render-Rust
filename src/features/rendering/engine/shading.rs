@@ -63,7 +63,8 @@ impl<'a> Shader<'a> {
             let Some(hit) = self.scene.bvh.any_hit(origin, dir, 1e-4, max_t) else {
                 return true;
             };
-            let material = &self.scene.materials[self.scene.bvh.triangles[hit.triangle].material as usize];
+            let material =
+                &self.scene.materials[self.scene.bvh.triangles[hit.triangle].material as usize];
             if rng.next_f32() >= material.transparency {
                 return false;
             }
@@ -77,7 +78,10 @@ impl<'a> Shader<'a> {
     fn jittered_sun(&self, rng: &mut Rng) -> Vec3 {
         let sun = self.atmosphere.sun_direction;
         let (t, b) = basis(sun);
-        let (r, phi) = (SUN_RADIUS * rng.next_f32().sqrt(), std::f32::consts::TAU * rng.next_f32());
+        let (r, phi) = (
+            SUN_RADIUS * rng.next_f32().sqrt(),
+            std::f32::consts::TAU * rng.next_f32(),
+        );
         (sun + t * (r * phi.cos()) + b * (r * phi.sin())).normalized()
     }
 
@@ -161,7 +165,9 @@ impl<'a> Shader<'a> {
             let point = origin + dir * hit.t;
             let view = -dir;
             if rng.next_f32() > s.alpha {
-                let reflect = s.roughness < 0.5 && s.ior > 1.05 && rng.next_f32() < schlick(s.ior, normal.dot(view));
+                let reflect = s.roughness < 0.5
+                    && s.ior > 1.05
+                    && rng.next_f32() < schlick(s.ior, normal.dot(view));
                 if reflect {
                     origin = point + normal * BIAS;
                     dir = glossy_reflection(dir, normal, s.roughness, rng);
@@ -183,8 +189,11 @@ impl<'a> Shader<'a> {
             }
             let material = &self.scene.materials[tri.material as usize];
             let glow = s.emission
-                + Vec3::from_array(material.emission_nits.map(|n| self.atmosphere.nits_to_units(n)))
-                    * (std::f32::consts::PI / self.atmosphere.reference_lux);
+                + Vec3::from_array(
+                    material
+                        .emission_nits
+                        .map(|n| self.atmosphere.nits_to_units(n)),
+                ) * (std::f32::consts::PI / self.atmosphere.reference_lux);
             color += throughput.mul_v(glow);
             let mut s = s;
             if s.normal.dot(view) <= 0.0 {
@@ -230,7 +239,11 @@ impl<'a> Shader<'a> {
         Sample {
             color,
             covered,
-            depth: if first.is_some() { distance * axis_cos } else { self.far },
+            depth: if first.is_some() {
+                distance * axis_cos
+            } else {
+                self.far
+            },
             normal,
         }
     }
@@ -242,7 +255,9 @@ fn surface_terms(s: &Surf, view: Vec3) -> (Vec3, Vec3) {
     let f_dielectric = ((s.ior - 1.0) / (s.ior + 1.0)).powi(2).clamp(0.02, 0.2);
     let f0 = Vec3::splat(f_dielectric).lerp(s.albedo, metal);
     let cos = s.normal.dot(view).clamp(0.0, 1.0);
-    let fresnel = f0 + (Vec3::ONE - f0) * (1.0 - cos).powi(5);
+    // Rough surfaces do not mirror the sky at grazing angles: the Fresnel peak shrinks with the roughness.
+    let peak = Vec3::splat(1.0 - s.roughness).max(f0);
+    let fresnel = f0 + (peak - f0) * (1.0 - cos).powi(5);
     (s.albedo * (1.0 - metal), fresnel)
 }
 

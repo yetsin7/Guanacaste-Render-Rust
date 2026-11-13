@@ -43,7 +43,6 @@ pub struct Atmosphere {
     pub reference_lux: f32,
     sky_scale: f32,
     fog_tint: Vec3,
-    fogged: bool,
 }
 
 impl Atmosphere {
@@ -56,8 +55,6 @@ impl Atmosphere {
             (NIGHT_REFERENCE_LUX.ln() * (1.0 - day) + DAY_REFERENCE_LUX.ln() * day).exp();
         let sky_scale = 1.0 + (NIGHT_SKY_BOOST - 1.0) * (1.0 - day);
         let fog_tint = rgb(fog_color(env)) * sky_scale;
-        let weather = &env.weather;
-        let fogged = weather.fog_density > 0.0 || weather.precipitation_intensity > 0.0;
         Self {
             env: *env,
             model: SkyModel::new(env),
@@ -66,7 +63,6 @@ impl Atmosphere {
             reference_lux,
             sky_scale,
             fog_tint,
-            fogged,
         }
     }
 
@@ -84,10 +80,6 @@ impl Atmosphere {
 
     /// Blends `color` with the fog after `distance` meters of air (the weather settings decide how thick it is).
     pub fn fog(&self, color: Vec3, distance: f32) -> Vec3 {
-        if !self.fogged && distance < 200.0 {
-            // Clear air still hazes the far distance a little; skip the cost where it cannot be seen.
-            return color;
-        }
         color.lerp(self.fog_tint, fog_factor(&self.env.weather, distance))
     }
 
