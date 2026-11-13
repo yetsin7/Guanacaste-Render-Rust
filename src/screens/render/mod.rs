@@ -30,6 +30,12 @@ impl RenderScreen {
     pub fn show(&mut self, ui: &mut Ui, context: &mut ScreenContext) {
         ui.spacing_mut().item_spacing.y = 0.0;
         self.state.jobs = context.render.queue.snapshot();
+        self.state.saved_cameras = context
+            .workspace
+            .project
+            .as_ref()
+            .map(|p| p.document.cameras.iter().map(|c| c.name.clone()).collect())
+            .unwrap_or_default();
         if let Some(folder) = self.picker.poll() {
             self.state.output = folder.display().to_string();
         }

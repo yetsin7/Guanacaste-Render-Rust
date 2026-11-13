@@ -2,7 +2,7 @@
 
 use super::output_tests::temp_folder;
 use super::scenes::cube_on_ground;
-use crate::features::rendering::engine::{frame_bounds, RenderRequest, ViewPreset};
+use crate::features::rendering::engine::{frame_bounds, RenderRequest, ViewPreset, World};
 use crate::features::rendering::models::{
     ImageFormat, JobInfo, JobStatus, OutputTarget, RayTracingQuality,
 };
@@ -12,8 +12,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 fn spec(folder: &Path, name: &str, size: (u32, u32), quality: RayTracingQuality) -> JobSpec {
-    let scene = Arc::new(cube_on_ground());
+    let scene = cube_on_ground();
     let bounds = scene.bounds().expect("bounds");
+    let scene = Arc::new(World::new(scene));
     let camera = frame_bounds(&bounds, ViewPreset::Corner, size.0, size.1);
     JobSpec {
         name: name.into(),

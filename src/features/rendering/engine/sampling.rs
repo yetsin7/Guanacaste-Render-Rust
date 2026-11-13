@@ -78,3 +78,9 @@ pub fn tone_map(linear: Vec3) -> [f32; 3] {
 pub fn to_byte(value: f32) -> u8 {
     (value.clamp(0.0, 1.0) * 255.0 + 0.5) as u8
 }
+
+/// The ACES filmic curve on one linear channel; the result is display-linear, 0..=1.
+pub fn aces(x: f32) -> f32 {
+    let x = x.max(0.0);
+    ((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14)).clamp(0.0, 1.0)
+}

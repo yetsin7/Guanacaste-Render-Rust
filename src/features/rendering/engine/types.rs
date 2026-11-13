@@ -1,72 +1,18 @@
-//! Inputs of the CPU renderer: camera, sun and sky, materials, quality settings and the request that bundles them.
+//! Inputs of the CPU renderer: materials, quality, post-processing and the request that bundles them.
 
+pub use super::camera::RenderCamera;
+use crate::features::camera::models::camera::PhotoCamera;
+use crate::features::camera::models::stack::FilterStack;
+use crate::features::environment::models::EnvironmentSettings;
+use crate::features::lighting::models::Light;
 use crate::features::rendering::models::RayTracingQuality;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::Arc;
 
-/// A pinhole camera. Coordinates are meters, Z up.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct RenderCamera {
-    /// Eye position.
-    pub position: [f32; 3],
-    /// Viewing direction (need not be normalized).
-    pub direction: [f32; 3],
-    /// Up hint (need not be perpendicular to the direction).
-    pub up: [f32; 3],
-    /// Vertical field of view in degrees.
-    pub fov_y_degrees: f32,
-    /// Image width in pixels.
-    pub width: u32,
-    /// Image height in pixels.
-    pub height: u32,
-    /// Nearest visible depth in meters.
-    pub near: f32,
-    /// Farthest visible depth in meters.
-    pub far: f32,
-}
+/// Marks a material without texture maps.
+pub const NO_MAPS: u32 = u32::MAX;
 
-impl Default for RenderCamera {
-    fn default() -> Self {
-        Self {
-            position: [0.0, -10.0, 2.0],
-            direction: [0.0, 1.0, 0.0],
-            up: [0.0, 0.0, 1.0],
-            fov_y_degrees: 45.0,
-            width: 640,
-            height: 360,
-            near: 0.05,
-            far: 5000.0,
-        }
-    }
-}
-
-/// The sun and the sky dome.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SunSky {
-    /// Unit direction that points TO the sun (the light travels the opposite way).
-    pub sun_direction: [f32; 3],
-    /// Linear RGB color of the sun light.
-    pub sun_color: [f32; 3],
-    /// Sun strength; 1 lights a white diffuse surface facing the sun to full white.
-    pub sun_intensity: f32,
-    /// Linear RGB of the sky straight up.
-    pub zenith_color: [f32; 3],
-    /// Linear RGB of the sky at the horizon (also used below it).
-    pub horizon_color: [f32; 3],
-}
-
-impl Default for SunSky {
-    fn default() -> Self {
-        Self {
-            sun_direction: [0.4, -0.5, 0.75],
-            sun_color: [1.0, 0.95, 0.85],
-            sun_intensity: 2.5,
-            zenith_color: [0.18, 0.36, 0.78],
-            horizon_color: [0.62, 0.74, 0.9],
-        }
-    }
-}
-
-/// A simple surface material.
+/// A surface material as the tracer sees it: flat values plus an optional link to texture maps.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RenderMaterial {
     /// Linear RGB base color.
@@ -77,6 +23,14 @@ pub struct RenderMaterial {
     pub metallic: f32,
     /// Transparency, 0 (opaque) to 1 (invisible).
     pub transparency: f32,
+    /// Index of refraction.
+    pub ior: f32,
+    /// Emitted light in render units (color times strength).
+    pub emission: [f32; 3],
+    /// Emitted light in candela per square meter, from the lighting domain's emissive materials.
+    pub emission_nits: [f32; 3],
+    /// Index into the scene's texture maps, or [`NO_MAPS`].
+    pub maps: u32,
 }
 
 impl Default for RenderMaterial {
@@ -86,6 +40,10 @@ impl Default for RenderMaterial {
             roughness: 0.8,
             metallic: 0.0,
             transparency: 0.0,
+            ior: 1.5,
+            emission: [0.0; 3],
+            emission_nits: [0.0; 3],
+            maps: NO_MAPS,
         }
     }
 }
@@ -117,17 +75,39 @@ impl RenderSettings {
     }
 }
 
+/// What happens to the picture after the light transport: lens, filters and noise removal.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct PostSettings {
+    /// The photographic camera: its exposure scales the picture and, with `depth_of_field`, its lens blurs it.
+    pub photo: Option<PhotoCamera>,
+    /// Blur by distance from the focus plane (needs `photo`).
+    pub depth_of_field: bool,
+    /// Filters applied to the finished picture.
+    pub filters: FilterStack,
+    /// Remove sampling noise with an edge-preserving filter.
+    pub denoise: bool,
+}
+
+impl PostSettings {
+    /// True when the post stage would leave the tone-mapped picture exactly as the tracer produced it.
+    pub fn is_identity(&self) -> bool {
+        self.photo.is_none() && self.filters.active_count() == 0 && !self.denoise
+    }
+}
+
 /// Everything needed to render one picture of a scene.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenderRequest {
     /// Where the picture is taken from.
     pub camera: RenderCamera,
-    /// Sun and sky.
-    pub sun_sky: SunSky,
+    /// Date, time, place, sky and weather: they set the sun, the sky, the clouds and the fog.
+    pub environment: EnvironmentSettings,
+    /// Artificial lights, in the lighting domain's Y-up world (already filtered by groups and scenes).
+    pub lights: Arc<Vec<Light>>,
     /// Quality.
     pub settings: RenderSettings,
-    /// Replaces the materials of the scene, indexed like `ImportedScene::materials`, when present.
-    pub materials: Option<Vec<RenderMaterial>>,
+    /// Lens, filters and denoising.
+    pub post: PostSettings,
     /// Pixels that see only sky get alpha 0 instead of the sky color.
     pub transparent_background: bool,
     /// Seed of the sampling noise; the same seed gives the same picture.
@@ -135,13 +115,14 @@ pub struct RenderRequest {
 }
 
 impl RenderRequest {
-    /// A request with default sun and sky, the settings of `quality` and the scene materials.
+    /// A request with the default environment, no artificial lights and the settings of `quality`.
     pub fn new(camera: RenderCamera, quality: RayTracingQuality) -> Self {
         Self {
             camera,
-            sun_sky: SunSky::default(),
+            environment: EnvironmentSettings::default(),
+            lights: Arc::new(Vec::new()),
             settings: RenderSettings::from_quality(quality),
-            materials: None,
+            post: PostSettings::default(),
             transparent_background: false,
             seed: 1,
         }
@@ -167,6 +148,7 @@ pub struct TileUpdate {
 #[derive(Debug, Default)]
 pub struct RenderControl {
     cancelled: AtomicBool,
+    external: Option<Arc<AtomicBool>>,
     pixels_done: AtomicUsize,
     pixels_total: AtomicUsize,
 }
@@ -177,6 +159,14 @@ impl RenderControl {
         Self::default()
     }
 
+    /// A control that also stops when `flag` is set (for example the cancel flag of a movie export).
+    pub fn linked(flag: Arc<AtomicBool>) -> Self {
+        Self {
+            external: Some(flag),
+            ..Self::default()
+        }
+    }
+
     /// Asks the render to stop as soon as possible.
     pub fn cancel(&self) {
         self.cancelled.store(true, Ordering::Relaxed);
@@ -185,6 +175,10 @@ impl RenderControl {
     /// Whether a stop was requested.
     pub fn is_cancelled(&self) -> bool {
         self.cancelled.load(Ordering::Relaxed)
+            || self
+                .external
+                .as_ref()
+                .is_some_and(|flag| flag.load(Ordering::Relaxed))
     }
 
     /// Progress from 0 to 1.

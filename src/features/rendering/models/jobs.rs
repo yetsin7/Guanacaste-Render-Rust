@@ -252,6 +252,12 @@ pub struct RenderStudioState {
     pub quality: usize,
     /// Camera preset for the next render.
     pub view: ViewPreset,
+    /// Names of the saved cameras of the open project (refreshed by the screen every frame).
+    pub saved_cameras: Vec<String>,
+    /// Saved camera chosen instead of a preset view.
+    pub saved_view: Option<usize>,
+    /// Blur by distance from the focus plane in saved-camera pictures.
+    pub depth_of_field: bool,
     /// Transparent background switch.
     pub transparent: bool,
     /// Format index into [`ImageFormat::ALL`].
@@ -273,6 +279,9 @@ impl Default for RenderStudioState {
             aspect: 0,
             quality: 1,
             view: ViewPreset::default(),
+            saved_cameras: Vec::new(),
+            saved_view: None,
+            depth_of_field: false,
             transparent: false,
             format: 0,
             output: default_output_folder(),

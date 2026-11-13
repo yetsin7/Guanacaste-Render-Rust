@@ -59,7 +59,9 @@ impl MovieScreen {
         camera_path::show(ui, view, &mut self.animation, &mut self.state);
         self.overlays(ui, view);
         self.timeline(ui, timeline);
-        self.export.show(ui.ctx(), &self.animation);
+        let (render, workspace) = (&mut *context.render, &*context.workspace);
+        let mut sources = |quality: usize| render.movie_source(workspace, quality);
+        self.export.show(ui.ctx(), &self.animation, &mut sources);
         self.store_in_project(context);
     }
 

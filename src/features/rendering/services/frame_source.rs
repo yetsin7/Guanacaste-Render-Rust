@@ -1,8 +1,10 @@
-//! Where the frames of a video come from. The photo renderer will implement [`FrameSource`]; until then the
+//! Where the frames of a video come from. The photo renderer implements [`FrameSource`] (see `movie_source`); the
 //! studio exports with [`ColorFrameSource`], which paints one flat color per frame.
 
 use crate::features::movie::models::CameraPose;
 use image::{Rgba, RgbaImage};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
 /// What a source needs to know to produce one frame.
 #[derive(Debug, Clone, PartialEq)]
@@ -25,6 +27,9 @@ pub struct FrameRequest {
 pub trait FrameSource: Send {
     /// Renders the frame described by `request`; the image must be `request.width` by `request.height`.
     fn render(&mut self, request: &FrameRequest) -> Result<RgbaImage, String>;
+
+    /// Receives the flag that is set when the user cancels the export, so a slow frame can stop early.
+    fn set_cancel(&mut self, _cancel: Arc<AtomicBool>) {}
 }
 
 /// A stand-in source: each frame is one flat color derived from the camera position and orientation, so a
