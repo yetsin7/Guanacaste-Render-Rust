@@ -72,12 +72,4 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("build.terrain_water", "Agua"),
     ("build.brush_size", "Tamaño del pincel"),
     ("build.brush_strength", "Intensidad"),
-    ("build.weather_clear", "Despejado"),
-    ("build.weather_cloudy", "Nublado"),
-    ("build.weather_fog", "Niebla"),
-    ("build.weather_wind", "Viento"),
-    ("build.weather_snow", "Nieve"),
-    ("build.hour", "Hora del día"),
-    ("build.clouds", "Nubes"),
-    ("build.fog", "Densidad de niebla"),
 ];
