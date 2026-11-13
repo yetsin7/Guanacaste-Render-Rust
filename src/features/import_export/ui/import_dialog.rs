@@ -12,7 +12,7 @@ use crate::features::import_export::components::{
     proprietary_notice, report_list, summary_panel, wireframe,
 };
 use crate::features::import_export::logic::formats::Detected;
-use crate::features::import_export::models::{ImportError, SourceFormat};
+use crate::features::import_export::models::ImportError;
 use crate::models::dialog::DialogOutcome;
 use crate::services::localization::{tr, trf};
 use eframe::egui::{vec2, Context, Ui};
@@ -90,8 +90,32 @@ fn body(ui: &mut Ui, state: &mut ImportDialogState) {
             tr("import.unknown_title"),
             tr("import.unknown_body"),
         ),
-        Some(Detected::Supported(SourceFormat::Obj)) => options(ui, state),
+        Some(Detected::Supported(format)) if format.uses_options() => {
+            text::paragraph(
+                ui,
+                tr("import.options_hint"),
+                typography::label_sm(),
+                colors::OUTLINE,
+                15.0,
+            );
+            options(ui, state);
+        }
         Some(Detected::Supported(_)) | None => {}
+    }
+    if state.job.is_none() {
+        if let Some(last) = state.last_model.clone() {
+            let name = last.file_name().map_or_else(
+                || last.display().to_string(),
+                |n| n.to_string_lossy().into_owned(),
+            );
+            if Button::new(trf("import.reopen_last", &[&name]), ButtonStyle::Container)
+                .padding(10.0, 4.0)
+                .show(ui)
+                .clicked()
+            {
+                state.choose(last);
+            }
+        }
     }
     if let Some(job) = &state.job {
         let fraction = job.progress.get();

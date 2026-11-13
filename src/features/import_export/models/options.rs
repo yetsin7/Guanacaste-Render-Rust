@@ -13,6 +13,14 @@ pub enum SourceFormat {
     Fbx,
     /// Legacy Guanacaste 3D project (`.gr` with the `G3DNATV1` signature), read-only.
     Legacy,
+    /// STL, binary or ASCII (a bare triangle soup).
+    Stl,
+    /// Stanford PLY, ASCII or binary.
+    Ply,
+    /// Collada (`.dae`), the usual SketchUp exchange format.
+    Collada,
+    /// Autodesk 3DS (the old 3D Studio binary format).
+    ThreeDs,
 }
 
 impl SourceFormat {
@@ -24,7 +32,25 @@ impl SourceFormat {
             SourceFormat::Gltf => "glTF",
             SourceFormat::Fbx => "FBX",
             SourceFormat::Legacy => "Guanacaste 3D",
+            SourceFormat::Stl => "STL",
+            SourceFormat::Ply => "PLY",
+            SourceFormat::Collada => "Collada",
+            SourceFormat::ThreeDs => "3DS",
         }
+    }
+
+    /// Whether files of this format usually have Y as the vertical axis (OBJ does; STL, PLY and 3DS come from
+    /// Z-up CAD tools). Used to preselect the axis option; Collada and the BIM formats declare their own.
+    pub fn default_y_up(self) -> bool {
+        self == SourceFormat::Obj
+    }
+
+    /// Whether the user's unit and vertical-axis options apply to this format.
+    pub fn uses_options(self) -> bool {
+        matches!(
+            self,
+            SourceFormat::Obj | SourceFormat::Stl | SourceFormat::Ply | SourceFormat::ThreeDs
+        )
     }
 }
 
@@ -81,6 +107,14 @@ impl ImportError {
 
 impl From<std::io::Error> for ImportError {
     fn from(error: std::io::Error) -> Self {
-        ImportError::Io(error.to_string())
+        use std::io::ErrorKind;
+        ImportError::Io(match error.kind() {
+            ErrorKind::NotFound => "El archivo no existe o se movió de lugar.".into(),
+            ErrorKind::PermissionDenied => {
+                "No hay permiso para leer el archivo (¿está protegido o abierto en otro programa?)."
+                    .into()
+            }
+            _ => error.to_string(),
+        })
     }
 }

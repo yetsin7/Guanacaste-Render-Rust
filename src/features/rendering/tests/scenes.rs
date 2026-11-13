@@ -33,6 +33,7 @@ pub fn paint(r: f32, g: f32, b: f32) -> Material {
     Material {
         name: "paint".into(),
         color: [r, g, b, 1.0],
+        texture: None,
     }
 }
 
@@ -47,6 +48,7 @@ pub fn horizontal_quad(x: [f32; 2], y: [f32; 2], z0: f32, material: usize) -> Me
         ],
         indices: vec![0, 1, 2, 0, 2, 3],
         material: Some(material),
+        uvs: Vec::new(),
     }
 }
 
@@ -61,6 +63,7 @@ pub fn wall_quad(x: [f32; 2], z: [f32; 2], y0: f32, material: usize) -> Mesh {
         ],
         indices: vec![0, 1, 2, 0, 2, 3],
         material: Some(material),
+        uvs: Vec::new(),
     }
 }
 
@@ -90,6 +93,7 @@ pub fn cube(min: [f32; 3], max: [f32; 3], material: usize) -> Mesh {
         positions,
         indices,
         material: Some(material),
+        uvs: Vec::new(),
     }
 }
 

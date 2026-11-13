@@ -144,6 +144,7 @@ pub fn to_scene(
             .map(|m| Material {
                 name: m.name.clone(),
                 color: m.color,
+                texture: None,
             })
             .collect(),
         levels: document

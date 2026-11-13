@@ -74,6 +74,7 @@ impl Builder<'_, '_> {
         self.palette.push(Material {
             name: name.to_owned(),
             color,
+            texture: None,
         });
         self.palette.len() - 1
     }

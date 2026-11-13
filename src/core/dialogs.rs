@@ -96,6 +96,7 @@ impl Default for DialogHost {
 impl DialogHost {
     /// A host whose recent list and recovery copies live in `data_dir`; offers recovery when copies exist.
     pub fn with_data_dir(data_dir: PathBuf) -> Self {
+        let import_dir = data_dir.clone();
         let workspace = Workspace::new(data_dir);
         let active = (!workspace.recovery.is_empty()).then_some(Dialog::Recovery);
         Self {
@@ -109,7 +110,7 @@ impl DialogHost {
             preferences_tab: 0,
             shortcuts_search: String::new(),
             notices: notifications_panel::initial_notices(),
-            import: ImportDialogState::default(),
+            import: ImportDialogState::with_data_dir(&import_dir),
             pending: None,
             workspace,
             render_request: None,
@@ -129,6 +130,7 @@ impl DialogHost {
     /// Serves requests and shortcuts, then draws the menu, the active dialog and the status message.
     pub fn show(&mut self, ctx: &Context, preferences: &mut Preferences) {
         self.intake(ctx);
+        self.take_drops(ctx);
         if self.active.is_none() && !ctx.egui_wants_keyboard_input() {
             let save_as = KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::SHIFT, Key::S);
             if ctx.input_mut(|input| input.consume_shortcut(&save_as)) {

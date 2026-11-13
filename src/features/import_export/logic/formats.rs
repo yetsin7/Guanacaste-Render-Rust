@@ -14,6 +14,18 @@ pub enum Proprietary {
     Navisworks,
     /// Compressed IFC (.ifczip) or IFC XML (.ifcxml): readable after extracting or re-exporting.
     IfcVariant,
+    /// SketchUp model (.skp): closed format, read only through Trimble's licensed SDK.
+    SketchUp,
+    /// 3ds Max scene (.max).
+    Max,
+    /// Rhino model (.3dm).
+    Rhino,
+    /// Blender scene (.blend).
+    Blender,
+    /// ArchiCAD project (.pln, .pla, .tpl).
+    ArchiCad,
+    /// CAD exchange solids (STEP / IGES): need a geometry kernel to tessellate.
+    CadExchange,
 }
 
 impl Proprietary {
@@ -24,6 +36,12 @@ impl Proprietary {
             Proprietary::Dwg => "import.how_dwg",
             Proprietary::Navisworks => "import.how_navis",
             Proprietary::IfcVariant => "import.how_ifc_variant",
+            Proprietary::SketchUp => "import.how_skp",
+            Proprietary::Max => "import.how_max",
+            Proprietary::Rhino => "import.how_rhino",
+            Proprietary::Blender => "import.how_blender",
+            Proprietary::ArchiCad => "import.how_archicad",
+            Proprietary::CadExchange => "import.how_step",
         }
     }
 }
@@ -33,7 +51,7 @@ impl Proprietary {
 pub enum Detected {
     /// A format this application can read.
     Supported(SourceFormat),
-    /// A format that cannot be read without Autodesk software.
+    /// A format that cannot be read directly: the user must export it from its program.
     Proprietary(Proprietary),
     /// Anything else.
     Unknown,
@@ -52,8 +70,18 @@ pub fn detect(path: &Path) -> Detected {
         "gltf" | "glb" => Detected::Supported(SourceFormat::Gltf),
         "fbx" => Detected::Supported(SourceFormat::Fbx),
         "gr" | "g3d" => Detected::Supported(SourceFormat::Legacy),
+        "stl" => Detected::Supported(SourceFormat::Stl),
+        "ply" => Detected::Supported(SourceFormat::Ply),
+        "dae" => Detected::Supported(SourceFormat::Collada),
+        "3ds" => Detected::Supported(SourceFormat::ThreeDs),
         "rvt" | "rfa" | "rte" | "rft" => Detected::Proprietary(Proprietary::Revit),
-        "dwg" => Detected::Proprietary(Proprietary::Dwg),
+        "dwg" | "dxf" => Detected::Proprietary(Proprietary::Dwg),
+        "skp" | "skb" => Detected::Proprietary(Proprietary::SketchUp),
+        "max" => Detected::Proprietary(Proprietary::Max),
+        "3dm" => Detected::Proprietary(Proprietary::Rhino),
+        "blend" => Detected::Proprietary(Proprietary::Blender),
+        "pln" | "pla" | "tpl" => Detected::Proprietary(Proprietary::ArchiCad),
+        "step" | "stp" | "iges" | "igs" => Detected::Proprietary(Proprietary::CadExchange),
         "nwd" | "nwc" => Detected::Proprietary(Proprietary::Navisworks),
         "ifczip" | "ifcxml" => Detected::Proprietary(Proprietary::IfcVariant),
         _ => Detected::Unknown,
@@ -61,7 +89,15 @@ pub fn detect(path: &Path) -> Detected {
 }
 
 /// File extensions offered by the file picker.
-pub const PICKER_EXTENSIONS: [&str; 7] = ["ifc", "obj", "gltf", "glb", "fbx", "gr", "g3d"];
+pub const PICKER_EXTENSIONS: [&str; 11] = [
+    "ifc", "obj", "gltf", "glb", "fbx", "dae", "stl", "ply", "3ds", "gr", "g3d",
+];
+
+/// Extensions of closed formats the picker also lists so the user gets the conversion guide.
+pub const GUIDE_EXTENSIONS: [&str; 15] = [
+    "skp", "rvt", "rfa", "rte", "rft", "dwg", "dxf", "nwd", "nwc", "max", "3dm", "blend", "pln",
+    "step", "stp",
+];
 
 /// Signature of a Guanacaste Render project (`.gr`).
 pub const RENDER_SIGNATURE: &[u8; 8] = b"GRRPROJ1";
@@ -121,6 +157,22 @@ mod tests {
         assert_eq!(
             detect(Path::new("plano.dwg")),
             Detected::Proprietary(Proprietary::Dwg)
+        );
+        assert_eq!(
+            detect(Path::new("Casa.SKP")),
+            Detected::Proprietary(Proprietary::SketchUp)
+        );
+        assert_eq!(
+            detect(Path::new("malla.stl")),
+            Detected::Supported(SourceFormat::Stl)
+        );
+        assert_eq!(
+            detect(Path::new("escena.DAE")),
+            Detected::Supported(SourceFormat::Collada)
+        );
+        assert_eq!(
+            detect(Path::new("viejo.3ds")),
+            Detected::Supported(SourceFormat::ThreeDs)
         );
         assert_eq!(detect(Path::new("notas.txt")), Detected::Unknown);
         assert_eq!(detect(Path::new("sin_extension")), Detected::Unknown);

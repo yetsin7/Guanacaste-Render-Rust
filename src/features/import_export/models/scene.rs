@@ -66,6 +66,9 @@ pub struct Mesh {
     pub indices: Vec<u32>,
     /// Material index.
     pub material: Option<usize>,
+    /// Texture coordinates (U, V; V up, 0..1 inside the image), one per vertex, or empty when the file has none.
+    /// Additive: readers that do not know UVs leave it empty.
+    pub uvs: Vec<[f32; 2]>,
 }
 
 /// A surface material.
@@ -75,6 +78,9 @@ pub struct Material {
     pub name: String,
     /// RGBA, each 0..=1.
     pub color: [f32; 4],
+    /// Diffuse texture image as the file names it, made absolute when it was found next to the model.
+    /// Additive: the image is referenced, not embedded, and readers without texture support leave it `None`.
+    pub texture: Option<String>,
 }
 
 /// A building level.
