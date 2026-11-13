@@ -3,6 +3,8 @@
 use super::ScreenContext;
 use crate::components::{tag::Tag, text};
 use crate::config::theme::{colors, typography};
+use crate::features::camera::components::studio as camera_studio;
+use crate::features::camera::models::state::CameraStudioState;
 use crate::features::rendering::components::{output_panel, queue_table, studio_header};
 use crate::features::rendering::models::RenderStudioState;
 use crate::features::viewport::components::backdrop;
@@ -13,11 +15,13 @@ use eframe::egui::{pos2, vec2, Rect, Ui, UiBuilder};
 /// State of the render studio screen.
 pub struct RenderScreen {
     state: RenderStudioState,
+    camera: CameraStudioState,
 }
 
 impl Default for RenderScreen {
     fn default() -> Self {
         Self {
+            camera: CameraStudioState::default(),
             state: RenderStudioState {
                 tab: 0,
                 jobs: sample::jobs(),
@@ -39,6 +43,10 @@ impl RenderScreen {
             pos2(ui.max_rect().left(), ui.cursor().top()),
             ui.max_rect().max,
         );
+        if self.state.tab == 2 {
+            camera_studio::show(ui, body, &mut self.camera);
+            return;
+        }
         if self.state.tab == 1 {
             queue_table::show(ui, body, &mut self.state);
             return;

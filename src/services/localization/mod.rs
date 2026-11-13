@@ -1,6 +1,7 @@
 //! Spanish text catalog. Every user-visible string is looked up by key with [`tr`]; per-domain tables live in
 //! sibling files so no table grows too large.
 
+mod camera;
 mod common;
 mod dialogs;
 mod help;
@@ -20,6 +21,7 @@ use std::sync::OnceLock;
 /// Every table of the catalog.
 const TABLES: &[&[(&str, &str)]] = &[
     common::ENTRIES,
+    camera::ENTRIES,
     dialogs::ENTRIES,
     import_export::ENTRIES,
     projects::ENTRIES,

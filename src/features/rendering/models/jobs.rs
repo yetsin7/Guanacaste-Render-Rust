@@ -119,7 +119,7 @@ impl Default for ExportState {
 /// UI state of the render studio screen.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenderStudioState {
-    /// Selected tab (0 preview, 1 queue).
+    /// Selected tab (0 preview, 1 queue, 2 camera).
     pub tab: usize,
     /// Jobs of the queue.
     pub jobs: Vec<RenderJob>,
