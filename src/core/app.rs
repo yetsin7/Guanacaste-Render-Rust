@@ -88,6 +88,7 @@ impl eframe::App for StudioApp {
                 let mut context = ScreenContext {
                     textures: &mut self.textures,
                     navigate: &mut requested,
+                    project: self.dialogs.workspace.project.as_mut(),
                 };
                 self.screens.show(ui, self.screen, &mut context);
             });

@@ -82,6 +82,11 @@ impl FilePicker {
         });
     }
 
+    /// Opens a folder picker.
+    pub fn pick_folder(&mut self) {
+        self.spawn(|| rfd::FileDialog::new().pick_folder());
+    }
+
     /// Whether the dialog is open.
     pub fn is_open(&self) -> bool {
         self.receiver.is_some()

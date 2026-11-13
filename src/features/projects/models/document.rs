@@ -1,6 +1,7 @@
 //! The editable part of a project, stored as JSON inside a `.gr` container (`GRRPROJ1`). Heavy geometry lives in binary
 //! blocks (see `services/container.rs`); this document only keeps the metadata of each mesh.
 
+use crate::features::movie::models::Animation;
 use serde::{Deserialize, Serialize};
 
 /// Schema version written by this application.
@@ -235,6 +236,9 @@ pub struct ProjectDocument {
     pub cameras: Vec<CameraDoc>,
     /// Timeline.
     pub timeline: TimelineDoc,
+    /// Camera animation of the movie studio. Files written before it existed lack the field and get an empty
+    /// animation, so no schema bump is needed.
+    pub animation: Animation,
     /// Render settings.
     pub render: RenderSettingsDoc,
     /// Sun and sky.
