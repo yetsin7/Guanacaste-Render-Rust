@@ -177,6 +177,8 @@ fn row(
         .parent()
         .map(|p| p.display().to_string())
         .unwrap_or_default();
+    // Mono 10 pt is about 6 px per character; leave room for the age on the right.
+    let folder = elide_middle(&folder, ((rect.width() - 200.0) / 6.2).max(12.0) as usize);
     let name = file
         .entry
         .path
@@ -217,4 +219,31 @@ fn row(
         colors::OUTLINE,
     );
     response.on_hover_text(file.entry.path.display().to_string())
+}
+
+/// Shortens `text` to at most `max` characters by replacing its middle with an ellipsis.
+pub fn elide_middle(text: &str, max: usize) -> String {
+    let count = text.chars().count();
+    if count <= max {
+        return text.to_owned();
+    }
+    let keep = max.saturating_sub(1);
+    let head = keep / 3;
+    let tail = keep - head;
+    let start: String = text.chars().take(head).collect();
+    let end: String = text.chars().skip(count - tail).collect();
+    format!("{start}…{end}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::elide_middle;
+
+    #[test]
+    fn long_paths_keep_both_ends() {
+        assert_eq!(elide_middle("C:/corto", 20), "C:/corto");
+        let short = elide_middle("C:/Users/alguien/Documentos/Proyectos/Casa", 16);
+        assert_eq!(short.chars().count(), 16);
+        assert!(short.starts_with("C:/U") && short.ends_with("os/Casa"));
+    }
 }
