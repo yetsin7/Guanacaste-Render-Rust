@@ -116,6 +116,7 @@ pub fn water_mesh_with(water: &WaterBody, time: f32, cells: [usize; 2]) -> Mesh 
         positions,
         indices,
         material: None,
+        uvs: Vec::new(),
     }
 }
 
@@ -125,5 +126,6 @@ pub fn water_material(water: &WaterBody) -> Material {
     Material {
         name: tr(water.kind.label_key()).to_owned(),
         color: [r, g, b, water.opacity.clamp(0.0, 1.0)],
+        texture: None,
     }
 }

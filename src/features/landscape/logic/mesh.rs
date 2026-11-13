@@ -39,6 +39,7 @@ pub fn terrain_mesh(terrain: &Terrain) -> Mesh {
         positions,
         indices,
         material: None,
+        uvs: Vec::new(),
     }
 }
 
@@ -87,6 +88,7 @@ pub fn layer_material(layer: SoilLayer) -> Material {
     Material {
         name: trf("landscape.material.terrain", &[tr(layer.label_key())]),
         color: layer.color(),
+        texture: None,
     }
 }
 
