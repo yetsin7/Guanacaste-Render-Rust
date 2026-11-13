@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Add-in de Revit "Exportar a Guanacaste Render". Sin paquetes NuGet: solo la API de Revit instalada.
+      net48            Revit 2021-2024   (.NET Framework 4.8)
+      net8.0-windows   Revit 2025-2026   (.NET 8)
+      net10.0-windows  Revit 2027        (.NET 10)
+    Cada marco se compila contra los RevitAPI.dll / RevitAPIUI.dll de la version indicada abajo. Para usar otra
+    carpeta: dotnet build -p:RevitApiDir="C:\Program Files\Autodesk\Revit 2026" -f net8.0-windows
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>net48;net8.0-windows;net10.0-windows</TargetFrameworks>
+    <AssemblyName>GuanacasteRender.Revit</AssemblyName>
+    <RootNamespace>GuanacasteRender.Revit</RootNamespace>
+    <Version>1.0.0</Version>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Deterministic>true</Deterministic>
+    <Platforms>AnyCPU</Platforms>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' != 'net48'">
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RevitApiDir)' == '' and '$(TargetFramework)' == 'net48'">
+    <RevitApiDir>C:\Program Files\Autodesk\Revit 2024</RevitApiDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RevitApiDir)' == '' and '$(TargetFramework)' == 'net8.0-windows'">
+    <RevitApiDir>C:\Program Files\Autodesk\Revit 2025</RevitApiDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RevitApiDir)' == '' and '$(TargetFramework)' == 'net10.0-windows'">
+    <RevitApiDir>C:\Program Files\Autodesk\Revit 2027</RevitApiDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="src\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>$(RevitApiDir)\RevitAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>$(RevitApiDir)\RevitAPIUI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+
+  <Target Name="CheckRevitApi" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(RevitApiDir)\RevitAPI.dll')">
+    <Error Text="No se encontro RevitAPI.dll en '$(RevitApiDir)'. Instale esa version de Revit o indique la carpeta con -p:RevitApiDir=..." />
+  </Target>
+
+</Project>

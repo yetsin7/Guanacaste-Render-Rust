@@ -1,0 +1,5 @@
+# Salidas de compilacion locales y paquetes de entrega.
+bin/
+obj/
+artifacts/*
+!artifacts/.gitkeep
