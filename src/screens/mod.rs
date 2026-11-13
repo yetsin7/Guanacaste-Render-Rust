@@ -9,6 +9,7 @@ mod projects;
 mod render;
 mod settings;
 
+use crate::features::viewport::ui::ViewportState;
 use crate::models::navigation::Screen;
 use crate::services::textures::Textures;
 use eframe::egui::Ui;
@@ -19,6 +20,8 @@ pub struct ScreenContext<'a> {
     pub textures: &'a mut Textures,
     /// Set by a screen to request navigation to another screen.
     pub navigate: &'a mut Option<Screen>,
+    /// The shared 3D view (camera and scene of the open project).
+    pub viewport: &'a mut ViewportState,
 }
 
 /// State of every screen.

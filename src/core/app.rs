@@ -4,6 +4,8 @@ use crate::components::{title_bar, tool_rail};
 use crate::config::launch::LaunchOptions;
 use crate::config::theme::{self, colors};
 use crate::core::dialogs::DialogHost;
+use crate::features::viewport::services::gpu;
+use crate::features::viewport::ui::{SceneChange, ViewportState};
 use crate::models::navigation::Screen;
 use crate::models::preferences::Preferences;
 use crate::screens::{ScreenContext, Screens};
@@ -16,6 +18,7 @@ pub struct StudioApp {
     screen: Screen,
     screens: Screens,
     textures: Textures,
+    viewport: ViewportState,
     dialogs: DialogHost,
     preferences: Preferences,
     applied_scale: usize,
@@ -34,10 +37,16 @@ impl StudioApp {
         if let Some(path) = &options.open {
             dialogs.open_at_start(path);
         }
+        let mut viewport = ViewportState::new();
+        if let Some(render_state) = &creation.wgpu_render_state {
+            gpu::install(render_state);
+            viewport.gpu_available = true;
+        }
         Self {
             screen: options.screen.unwrap_or_default(),
             screens: Screens::default(),
             textures: Textures::default(),
+            viewport,
             dialogs,
             preferences: Preferences::default(),
             applied_scale: Preferences::default().scale_index,
@@ -54,6 +63,12 @@ impl StudioApp {
 
 impl eframe::App for StudioApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let source =
+            crate::commands::viewport::scene_source(self.dialogs.workspace.project.as_ref());
+        if self.viewport.sync(source) == SceneChange::Loaded && self.screen == Screen::Projects {
+            // A model was imported or opened: show it right away.
+            self.screen = Screen::Build;
+        }
         let bar = egui::Frame::NONE
             .fill(colors::SURFACE_LOW)
             .stroke(egui::Stroke::new(1.0, colors::SURFACE_HIGHEST));
@@ -88,6 +103,7 @@ impl eframe::App for StudioApp {
                 let mut context = ScreenContext {
                     textures: &mut self.textures,
                     navigate: &mut requested,
+                    viewport: &mut self.viewport,
                 };
                 self.screens.show(ui, self.screen, &mut context);
             });
