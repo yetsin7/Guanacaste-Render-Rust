@@ -50,6 +50,21 @@ fn an_ifc_import_survives_save_and_load_unchanged() {
 }
 
 #[test]
+fn every_float_survives_the_json_document_bit_for_bit() {
+    let (_, mut project) = ifc_project();
+    project.document.origin_shift = [0.1 + 0.2, 1.0 / 3.0, 2.743_200_000_000_000_3];
+    project.document.levels[0].elevation = 9_144.000_000_000_002;
+    let path = temp_folder("floats").join("casa.gr");
+    store::save(&path, &project, None).expect("save");
+    let loaded = store::load(&path, Limits::default()).expect("load");
+    assert_eq!(
+        loaded.project.document.origin_shift,
+        project.document.origin_shift
+    );
+    assert_eq!(loaded.project.document.levels, project.document.levels);
+}
+
+#[test]
 fn saving_again_keeps_the_previous_version_as_bak() {
     let (_, mut project) = ifc_project();
     let path = temp_folder("bak").join("casa.gr");
