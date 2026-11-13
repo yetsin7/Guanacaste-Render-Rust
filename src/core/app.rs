@@ -1,26 +1,28 @@
-//! The eframe application: frameless shell (title bar, tool rail) around the active screen.
+//! The eframe application: frameless shell (title bar, mode bar) around the active screen.
 
-use crate::components::{title_bar, tool_rail};
+use crate::components::{mode_bar, title_bar};
 use crate::config::launch::LaunchOptions;
 use crate::config::theme::{self, colors};
 use crate::core::dialogs::DialogHost;
+use crate::core::shortcuts;
 use crate::models::navigation::Screen;
 use crate::models::preferences::Preferences;
-use crate::screens::{ScreenContext, Screens};
+use crate::models::AppState;
+use crate::screens::Screens;
 use crate::services::sample_data::shell;
-use crate::services::textures::Textures;
 use eframe::egui;
 
 /// Application state.
 pub struct StudioApp {
     screen: Screen,
     screens: Screens,
-    textures: Textures,
+    app: AppState,
     dialogs: DialogHost,
     preferences: Preferences,
     applied_scale: usize,
     pending_dialog: Option<crate::models::dialog::Dialog>,
     window_title: String,
+    last_project: Option<[u8; 16]>,
 }
 
 impl StudioApp {
@@ -30,14 +32,20 @@ impl StudioApp {
         if let Some(zoom) = options.zoom {
             creation.egui_ctx.set_zoom_factor(zoom);
         }
-        let mut dialogs = DialogHost::default();
+        let mut app = AppState::default();
+        let mut dialogs = DialogHost::new(&app.workspace);
         if let Some(path) = &options.open {
-            dialogs.open_at_start(path);
+            dialogs.open_at_start(&mut app.workspace, path);
+        }
+        let screen = options.screen.unwrap_or_default();
+        if let Some(mode) = screen.mode() {
+            app.mode = mode;
         }
         Self {
-            screen: options.screen.unwrap_or_default(),
+            screen,
             screens: Screens::default(),
-            textures: Textures::default(),
+            last_project: app.workspace.project.as_ref().map(|p| p.id),
+            app,
             dialogs,
             preferences: Preferences::default(),
             applied_scale: Preferences::default().scale_index,
@@ -50,6 +58,25 @@ impl StudioApp {
     pub fn screen(&self) -> Screen {
         self.screen
     }
+
+    /// Applies a navigation request, remembering the workspace mode.
+    fn go(&mut self, screen: Screen) {
+        self.screen = screen;
+        if let Some(mode) = screen.mode() {
+            self.app.mode = mode;
+        }
+    }
+
+    /// Leaves the start screen when a different project was just created, opened or imported.
+    fn follow_project(&mut self) {
+        let id = self.app.workspace.project.as_ref().map(|p| p.id);
+        if id != self.last_project {
+            self.last_project = id;
+            if id.is_some() && self.screen == Screen::Home {
+                self.go(Screen::Workspace(self.app.mode));
+            }
+        }
+    }
 }
 
 impl eframe::App for StudioApp {
@@ -61,7 +88,7 @@ impl eframe::App for StudioApp {
             .frame(bar)
             .exact_size(title_bar::HEIGHT)
             .show(ui, |ui| {
-                let workspace = &self.dialogs.workspace;
+                let workspace = &self.app.workspace;
                 let info = title_bar::TitleBarInfo {
                     fps: shell::FPS_LABEL,
                     resolution: shell::RESOLUTION_LABEL,
@@ -72,48 +99,50 @@ impl eframe::App for StudioApp {
                     self.dialogs.open_menu(anchor);
                 }
             });
-        let mut requested = None;
-        egui::Panel::left("tool-rail")
-            .frame(bar)
-            .exact_size(tool_rail::WIDTH)
-            .resizable(false)
-            .show(ui, |ui| {
-                if let Some(item) = tool_rail::show(ui, self.screen.rail_item()) {
-                    requested = Some(item.target());
-                }
-            });
+        if self.screen.shows_mode_bar() {
+            egui::Panel::top("mode-bar")
+                .frame(bar)
+                .exact_size(mode_bar::HEIGHT)
+                .show(ui, |ui| {
+                    if let Some(target) = mode_bar::show(ui, self.screen, self.app.mode) {
+                        self.app.navigate(target);
+                    }
+                });
+        }
         egui::CentralPanel::default()
             .frame(egui::Frame::NONE.fill(colors::SURFACE))
-            .show(ui, |ui| {
-                let mut context = ScreenContext {
-                    textures: &mut self.textures,
-                    navigate: &mut requested,
-                };
-                self.screens.show(ui, self.screen, &mut context);
-            });
-        if let Some(target) = requested {
-            self.screen = target;
+            .show(ui, |ui| self.screens.show(ui, self.screen, &mut self.app));
+        let ctx = ui.ctx().clone();
+        shortcuts::handle(
+            &ctx,
+            &mut self.app,
+            self.screen,
+            self.dialogs.active().is_some(),
+        );
+        if let Some(target) = self.app.requests.navigate.take() {
+            self.go(target);
         }
         if let Some(dialog) = self.pending_dialog.take() {
-            crate::commands::request_dialog(ui.ctx(), dialog);
+            crate::commands::request_dialog(&ctx, dialog);
         }
-        let ctx = ui.ctx().clone();
         if ctx.input(|input| input.viewport().close_requested())
-            && self.dialogs.intercept_close(&ctx)
+            && self.dialogs.intercept_close(&ctx, &mut self.app.workspace)
         {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
-        self.dialogs.show(&ctx, &mut self.preferences);
-        let title = self.dialogs.workspace.window_title();
+        self.dialogs
+            .show(&ctx, &mut self.app.workspace, &mut self.preferences);
+        self.follow_project();
+        let title = self.app.workspace.window_title();
         if title != self.window_title {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
             self.window_title = title;
         }
         if self.preferences.scale_index != self.applied_scale {
             self.applied_scale = self.preferences.scale_index;
-            ui.ctx().set_zoom_factor(self.preferences.zoom());
+            ctx.set_zoom_factor(self.preferences.zoom());
         }
-        crate::core::window_frame::resize_edges(ui.ctx());
+        crate::core::window_frame::resize_edges(&ctx);
     }
 }
 

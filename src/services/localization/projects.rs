@@ -18,8 +18,6 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("projects.vram_value", "18.4 / 24.0 GB"),
     ("projects.cache", "Caché NVMe:"),
     ("projects.cache_value", "1.4 TB libres"),
-    ("projects.recent", "Escenas arquitectónicas recientes"),
-    ("projects.view_all", "Ver todos los proyectos"),
     ("projects.more", "Más opciones"),
     ("projects.live", "Escena activa en vivo"),
     ("projects.workspace", "Espacio de trabajo activo"),
@@ -37,10 +35,6 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("projects.settings", "Ajustes del proyecto"),
     ("projects.engine", "Motor:"),
     ("projects.load", "Cargar proyecto"),
-    (
-        "projects.empty",
-        "Ningún proyecto coincide con la búsqueda.",
-    ),
     ("projects.batch_title", "Despachador de render por lotes"),
     (
         "projects.batch_status",

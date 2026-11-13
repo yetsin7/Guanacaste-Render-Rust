@@ -3,6 +3,7 @@
 mod app;
 mod application;
 mod dialogs;
+mod shortcuts;
 pub mod window_frame;
 
 pub use app::{run, StudioApp};

@@ -9,7 +9,6 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("render.export", "Exportar imagen"),
     ("render.no_engine", "Aún no existe el motor de render: esta pantalla solo muestra la interfaz."),
     ("render.sample_title", "Interfaz de demostración"),
-    ("render.sample_preview", "VISTA PREVIA DE MUESTRA · SIN MOTOR DE RENDER"),
     ("render.output", "Ajustes de salida"),
     ("render.resolution", "Resolución"),
     ("render.samples", "Muestras por píxel"),

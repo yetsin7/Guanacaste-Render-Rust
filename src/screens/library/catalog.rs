@@ -6,7 +6,7 @@ use crate::features::library::components::asset_card::CardAction;
 use crate::features::library::components::{asset_card, filter_bar, footer_bar, header_bar};
 use crate::features::library::logic;
 use crate::features::library::models::{LibraryAsset, LibraryState};
-use crate::models::navigation::Screen;
+use crate::models::navigation::{Mode, Screen};
 use crate::services::localization::tr;
 use crate::services::sample_data::library as sample;
 use crate::utils::grid;
@@ -62,7 +62,9 @@ impl LibraryScreen {
                     match asset_card::show(ui, width, &self.assets[index], active, context.textures)
                     {
                         Some(CardAction::Select) => self.state.selected = index,
-                        Some(CardAction::Place) => *context.navigate = Some(Screen::Build),
+                        Some(CardAction::Place) => {
+                            *context.navigate = Some(Screen::Workspace(Mode::Build))
+                        }
                         Some(CardAction::Inspect) => {
                             self.state.selected = index;
                             *context.navigate = Some(Screen::AssetInspector);

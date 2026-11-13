@@ -11,7 +11,6 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("movie.search_hint", "Buscar clips, fotogramas clave, nodos..."),
     ("movie.storyboards", "Guiones gráficos"),
     ("movie.export", "Cola de exportación"),
-    ("movie.sun", "Elevación solar: -4.2° (18:30 crepúsculo)"),
     ("movie.clip", "Clip 04 de 12"),
     ("movie.clip_title", "Órbita cinematográfica con dron"),
     ("movie.clip_body", "Anima la trayectoria de cámara alrededor de Villa Moderna L26 a 30 fps con suavizado y un fotograma clave del ángulo solar a las 18:30."),

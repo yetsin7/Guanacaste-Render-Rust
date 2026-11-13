@@ -1,19 +1,19 @@
-//! Screen composition and navigation. Each screen lives in its own flow folder and only composes components.
+//! Screen composition and navigation. The start screen and the scene workspace read the shared [`AppState`];
+//! the remaining screens keep their own state and only need the texture cache and a way to navigate.
 
-mod build;
 mod help;
+mod home;
 mod library;
 mod materials;
-mod movie;
-mod projects;
-mod render;
 mod settings;
+pub mod workspace;
 
 use crate::models::navigation::Screen;
+use crate::models::AppState;
 use crate::services::textures::Textures;
 use eframe::egui::Ui;
 
-/// What a screen may use while it draws.
+/// What a secondary screen may use while it draws.
 pub struct ScreenContext<'a> {
     /// Placeholder image cache.
     pub textures: &'a mut Textures,
@@ -21,33 +21,35 @@ pub struct ScreenContext<'a> {
     pub navigate: &'a mut Option<Screen>,
 }
 
-/// State of every screen.
+/// State of the secondary screens.
 #[derive(Default)]
 pub struct Screens {
-    projects: projects::ProjectsScreen,
-    build: build::BuildScreen,
     library: library::LibraryScreen,
     inspector: library::InspectorScreen,
     materials: materials::MaterialScreen,
-    movie: movie::MovieScreen,
-    render: render::RenderScreen,
     settings: settings::SettingsScreen,
     help: help::HelpScreen,
 }
 
 impl Screens {
     /// Draws `screen` into `ui`.
-    pub fn show(&mut self, ui: &mut Ui, screen: Screen, context: &mut ScreenContext) {
+    pub fn show(&mut self, ui: &mut Ui, screen: Screen, app: &mut AppState) {
         match screen {
-            Screen::Projects => self.projects.show(ui, context),
-            Screen::Build => self.build.show(ui, context),
-            Screen::Library => self.library.show(ui, context),
-            Screen::AssetInspector => self.inspector.show(ui, context),
-            Screen::MaterialEditor => self.materials.show(ui, context),
-            Screen::MovieStudio => self.movie.show(ui, context),
-            Screen::Render => self.render.show(ui, context),
-            Screen::Settings => self.settings.show(ui, context),
-            Screen::Help => self.help.show(ui, context),
+            Screen::Home => home::show(ui, app),
+            Screen::Workspace(mode) => workspace::show(ui, app, mode),
+            other => {
+                let mut context = ScreenContext {
+                    textures: &mut app.textures,
+                    navigate: &mut app.requests.navigate,
+                };
+                match other {
+                    Screen::Library => self.library.show(ui, &mut context),
+                    Screen::AssetInspector => self.inspector.show(ui, &mut context),
+                    Screen::MaterialEditor => self.materials.show(ui, &mut context),
+                    Screen::Settings => self.settings.show(ui, &mut context),
+                    _ => self.help.show(ui, &mut context),
+                }
+            }
         }
     }
 }

@@ -351,3 +351,6 @@ pub const BLUR: char = '\u{e3a5}';
 
 /// `palette`.
 pub const PALETTE: char = '\u{e40a}';
+
+/// `expand_less`.
+pub const EXPAND_LESS: char = '\u{e5ce}';

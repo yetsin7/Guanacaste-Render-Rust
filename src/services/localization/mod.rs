@@ -11,6 +11,7 @@ mod movie;
 mod projects;
 mod rendering;
 mod settings;
+mod shell;
 mod store;
 mod viewport;
 
@@ -30,6 +31,7 @@ const TABLES: &[&[(&str, &str)]] = &[
     movie::ENTRIES,
     rendering::ENTRIES,
     settings::ENTRIES,
+    shell::ENTRIES,
     help::ENTRIES,
 ];
 
