@@ -1,6 +1,6 @@
-//! The 390 px properties panel: header, scrolling sections and the apply footer.
+//! The 390 px properties panel: header, scrolling sections and the texture-cache footer.
 
-use super::{channel_modifiers, environment_section, shader_section, texture_section};
+use super::{session::Session, surface_section, texture_section, uv_section};
 use crate::components::{
     button::{Button, ButtonStyle},
     icons,
@@ -8,8 +8,9 @@ use crate::components::{
     text,
 };
 use crate::config::theme::{colors, typography};
-use crate::features::materials::{logic, models::MaterialState};
-use crate::services::localization::tr;
+use crate::features::materials::logic::editor;
+use crate::features::materials::models::MaterialState;
+use crate::services::localization::{tr, trf};
 use eframe::egui::{
     self, pos2, vec2, Align, CornerRadius, Layout, Margin, Rect, ScrollArea, Ui, UiBuilder,
 };
@@ -31,7 +32,7 @@ pub fn section(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
 }
 
 /// Draws the panel into `area`.
-pub fn show(ui: &mut Ui, area: Rect, state: &mut MaterialState) {
+pub fn show(ui: &mut Ui, area: Rect, state: &mut MaterialState, session: &mut Session) {
     ui.painter().rect_filled(area, 0.0, colors::SURFACE_LOW);
     let header = Rect::from_min_size(area.min, vec2(area.width(), 36.0));
     ui.painter().rect_filled(header, 0.0, colors::SURFACE_HIGH);
@@ -54,21 +55,19 @@ pub fn show(ui: &mut Ui, area: Rect, state: &mut MaterialState) {
             );
         },
         |ui| {
-            ui.spacing_mut().item_spacing.x = 4.0;
-            text::icon(ui, icons::BOOKMARK, 14.0, colors::ON_SURFACE_VARIANT);
-            if Button::new(tr("material.reset"), ButtonStyle::Quiet)
-                .font(typography::label_sm())
-                .padding(8.0, 2.0)
-                .show(ui)
-                .clicked()
+            if state.current().is_some()
+                && Button::new(tr("material.reset"), ButtonStyle::Quiet)
+                    .font(typography::label_sm())
+                    .padding(8.0, 2.0)
+                    .show(ui)
+                    .clicked()
             {
-                logic::reset(state);
+                editor::reset_selected(state);
             }
         },
     );
 
-    let footer_height = 76.0;
-    let footer = Rect::from_min_max(pos2(area.left(), area.bottom() - footer_height), area.max);
+    let footer = Rect::from_min_max(pos2(area.left(), area.bottom() - 32.0), area.max);
     ui.painter().rect_filled(footer, 0.0, colors::SURFACE_HIGH);
     let body = Rect::from_min_max(
         pos2(area.left(), header.bottom()),
@@ -82,47 +81,47 @@ pub fn show(ui: &mut Ui, area: Rect, state: &mut MaterialState) {
                 .inner_margin(Margin::same(12))
                 .show(ui, |ui| {
                     ui.spacing_mut().item_spacing.y = 12.0;
-                    shader_section::show(ui, state);
-                    texture_section::show(ui);
-                    environment_section::show(ui, state);
-                    channel_modifiers::show(ui, state);
+                    if state.current().is_none() {
+                        text::paragraph(
+                            ui,
+                            tr("material.none_selected"),
+                            typography::body_sm(),
+                            colors::ON_SURFACE_VARIANT,
+                            18.0,
+                        );
+                        return;
+                    }
+                    surface_section::show(ui, state);
+                    texture_section::show(ui, state, session);
+                    uv_section::show(ui, state);
                 });
         });
 
     let mut foot = ui.new_child(
         UiBuilder::new()
-            .max_rect(footer.shrink(12.0))
+            .max_rect(footer.shrink2(vec2(12.0, 0.0)))
             .layout(Layout::top_down(Align::Min)),
     );
-    foot.spacing_mut().item_spacing.y = 4.0;
-    let label = if state.applied {
-        tr("material.applied")
-    } else {
-        tr("material.apply")
-    };
-    if Button::new(label, ButtonStyle::Pale)
-        .icon(icons::CHECK_CIRCLE, 16.0)
-        .colors(colors::PRIMARY_CONTAINER, colors::ON_PRIMARY_CONTAINER)
-        .fill_width()
-        .height(32.0)
-        .show(&mut foot)
-        .clicked()
-    {
-        state.applied = true;
-    }
+    let mib = |bytes: usize| format!("{:.1}", bytes as f64 / (1024.0 * 1024.0));
+    let stats = trf(
+        "material.cache_stats",
+        &[
+            &session.cache.len().to_string(),
+            &mib(session.cache.used_bytes()),
+            &mib(session.cache.budget()),
+        ],
+    );
     split_row(
         &mut foot,
-        18.0,
+        32.0,
         |ui| {
             text::label(
                 ui,
-                tr("material.cache"),
+                stats,
                 typography::mono(10.0),
                 colors::ON_SURFACE_VARIANT,
             );
         },
-        |ui| {
-            text::label(ui, "Δt = 0.8ms", typography::mono(10.0), colors::TERTIARY);
-        },
+        |_| {},
     );
 }

@@ -1,6 +1,7 @@
 //! The editable part of a project, stored as JSON inside a `.gr` container (`GRRPROJ1`). Heavy geometry lives in binary
 //! blocks (see `services/container.rs`); this document only keeps the metadata of each mesh.
 
+use crate::features::materials::models::Material;
 use crate::features::movie::models::Animation;
 use serde::{Deserialize, Serialize};
 
@@ -87,13 +88,17 @@ pub struct LevelDoc {
     pub node: u32,
 }
 
-/// A material.
+/// A material. `name` and `color` are the portable summary every reader understands; `pbr` is the full physically
+/// based material, absent in documents written before the material editor existed (then it is derived from `color`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MaterialDoc {
     /// Name.
     pub name: String,
     /// RGBA 0..=1.
     pub color: [f32; 4],
+    /// The full PBR material (schema 1 extension; older readers ignore it, older files omit it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pbr: Option<Material>,
 }
 
 /// Metadata of a mesh whose vertices and indices are in a binary block.

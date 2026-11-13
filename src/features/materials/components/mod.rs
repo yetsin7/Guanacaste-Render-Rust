@@ -1,10 +1,12 @@
 //! Controls exclusive to the material editor.
 
-pub mod channel_modifiers;
-pub mod environment_section;
 pub mod header_bar;
-pub mod orb_preview;
+pub mod material_list;
+pub mod param;
+pub mod preview_stage;
 pub mod properties_panel;
-pub mod shader_section;
+pub mod session;
+pub mod slot_card;
+pub mod surface_section;
 pub mod texture_section;
-pub mod viewport_overlays;
+pub mod uv_section;
