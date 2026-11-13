@@ -2,6 +2,7 @@
 //! blocks (see `services/container.rs`); this document only keeps the metadata of each mesh.
 
 use crate::features::build::models::ObjectsDoc;
+use crate::features::lighting::models::LightingSetup;
 use crate::features::materials::models::Material;
 use crate::features::movie::models::Animation;
 use serde::{Deserialize, Serialize};
@@ -257,4 +258,7 @@ pub struct ProjectDocument {
     /// it open with no objects, and it is left out of the file while empty, so no migration is needed.
     #[serde(skip_serializing_if = "ObjectsDoc::is_empty")]
     pub objects: ObjectsDoc,
+    /// Artificial lights, groups, emissive materials and lighting scenes (absent in older files; omitted when empty).
+    #[serde(skip_serializing_if = "LightingSetup::is_empty")]
+    pub lighting: LightingSetup,
 }

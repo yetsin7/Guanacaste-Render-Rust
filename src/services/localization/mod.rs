@@ -9,6 +9,7 @@ mod help;
 mod import_export;
 mod landscape;
 mod library;
+mod lighting;
 mod materials;
 mod movie;
 mod objects;
@@ -35,6 +36,7 @@ const TABLES: &[&[(&str, &str)]] = &[
     view3d::ENTRIES,
     landscape::ENTRIES,
     library::ENTRIES,
+    lighting::ENTRIES,
     materials::ENTRIES,
     movie::ENTRIES,
     objects::ENTRIES,
