@@ -9,8 +9,10 @@ use crate::features::environment::EnvironmentSettings;
 
 #[test]
 fn settings_round_trip_through_json() {
-    let mut env = EnvironmentSettings::default();
-    env.hour = 7.25;
+    let mut env = EnvironmentSettings {
+        hour: 7.25,
+        ..EnvironmentSettings::default()
+    };
     env.sky.preset = SkyPreset::Storm;
     env.sky.clouds.coverage = 0.83;
     env.weather.precipitation = Precipitation::Snow;
@@ -35,8 +37,10 @@ fn missing_fields_fall_back_to_defaults() {
 
 #[test]
 fn sanitize_clamps_out_of_range_values() {
-    let mut env = EnvironmentSettings::default();
-    env.hour = 25.5;
+    let mut env = EnvironmentSettings {
+        hour: 25.5,
+        ..EnvironmentSettings::default()
+    };
     env.sky.turbidity = 99.0;
     env.sky.clouds.coverage = -1.0;
     env.weather.fog_density = 4.0;
