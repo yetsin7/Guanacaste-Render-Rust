@@ -9,7 +9,8 @@ mod projects;
 mod render;
 mod settings;
 
-use crate::features::projects::models::Project;
+use crate::commands::rendering::RenderHub;
+use crate::commands::workspace::Workspace;
 use crate::models::navigation::Screen;
 use crate::services::textures::Textures;
 use eframe::egui::Ui;
@@ -20,8 +21,10 @@ pub struct ScreenContext<'a> {
     pub textures: &'a mut Textures,
     /// Set by a screen to request navigation to another screen.
     pub navigate: &'a mut Option<Screen>,
-    /// The open project, when there is one.
-    pub project: Option<&'a mut Project>,
+    /// The open project and its workspace.
+    pub workspace: &'a mut Workspace,
+    /// The render queue.
+    pub render: &'a mut RenderHub,
 }
 
 /// State of every screen.

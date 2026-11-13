@@ -32,6 +32,7 @@ impl MovieScreen {
         self.load_from_project(context);
         ui.spacing_mut().item_spacing.y = 0.0;
         let scene = context
+            .workspace
             .project
             .as_ref()
             .map(|project| project.document.meta.name.clone());
@@ -64,7 +65,7 @@ impl MovieScreen {
 
     /// Takes the animation of the open project when it changed (another project, or the file was reloaded).
     fn load_from_project(&mut self, context: &mut ScreenContext) {
-        let Some(project) = context.project.as_deref_mut() else {
+        let Some(project) = context.workspace.project.as_mut() else {
             self.synced_project = None;
             return;
         };
@@ -88,7 +89,7 @@ impl MovieScreen {
             return;
         }
         self.animation.normalize();
-        if let Some(project) = context.project.as_deref_mut() {
+        if let Some(project) = context.workspace.project.as_mut() {
             if !project.read_only {
                 project.document.animation = self.animation.clone();
                 project.dirty = true;

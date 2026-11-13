@@ -8,7 +8,6 @@ use crate::features::projects::components::{
     recovery_dialog::RecoveryChoice, unsaved_dialog::UnsavedChoice,
 };
 use crate::features::projects::logic::save_plan::{save_target, SaveTarget};
-use crate::features::rendering::models::{ImageFormat, RESOLUTIONS};
 use crate::models::dialog::{Dialog, DialogOutcome};
 use crate::services::localization::tr;
 use eframe::egui::{Context, ViewportCommand};
@@ -158,18 +157,10 @@ impl DialogHost {
         self.shown = self.active;
     }
 
+    /// Hands the export settings to the shell, which queues the render and reports the result.
     fn export(&mut self) {
-        if ImageFormat::ALL[self.export.format] != ImageFormat::Png {
-            self.workspace
-                .notify(tr("workspace.export_only_png").to_owned(), true);
-            return;
-        }
-        let (width, height) = RESOLUTIONS[self.export.resolution.min(RESOLUTIONS.len() - 1)];
-        self.workspace
-            .export_png(&PathBuf::from(self.export.path.trim()), width, height);
-        if self.workspace.status.as_ref().is_some_and(|s| !s.error) {
-            self.active = None;
-        }
+        self.render_request = Some(self.export.clone());
+        self.active = None;
     }
 
     /// Answer of the unsaved-changes dialog.
