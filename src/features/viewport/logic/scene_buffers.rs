@@ -149,12 +149,18 @@ fn append(builder: &mut Builder, mesh: &Mesh, indices: &[u32], bounds: &Bounds, 
 
 /// Builds the buffers of a scene. `material_colors` holds RGBA (0..=1) per material index.
 pub fn build(meshes: &[Mesh], material_colors: &[[f32; 4]]) -> SceneBuffers {
+    build_framed(meshes, material_colors, usize::MAX)
+}
+
+/// Like [`build`], but only the first `framed` meshes count for the bounds (what the camera frames and the grid
+/// follows); the rest, such as a wide ground plane, is drawn without stretching the view.
+pub fn build_framed(meshes: &[Mesh], material_colors: &[[f32; 4]], framed: usize) -> SceneBuffers {
     let mut out = SceneBuffers::default();
     let mut opaque = Builder::default();
     let mut blended = Builder::default();
     let mut opaque_chunks = Vec::new();
     let mut blended_chunks = Vec::new();
-    for mesh in meshes {
+    for (position, mesh) in meshes.iter().enumerate() {
         let too_big = mesh.positions.len() * VERTEX_STRIDE > MAX_BUFFER_BYTES
             || mesh.indices.len() * 4 > MAX_BUFFER_BYTES;
         let (indices, bounds) = valid_triangles(mesh);
@@ -182,7 +188,9 @@ pub fn build(meshes: &[Mesh], material_colors: &[[f32; 4]]) -> SceneBuffers {
             builder.finish(transparent, chunks);
         }
         append(builder, mesh, &indices, &bounds, pack_color(color));
-        merge(&mut out.bounds, &bounds);
+        if position < framed {
+            merge(&mut out.bounds, &bounds);
+        }
         out.triangles += indices.len() / 3;
         out.vertices += mesh.positions.len();
     }

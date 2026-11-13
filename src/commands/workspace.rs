@@ -54,6 +54,8 @@ pub struct Workspace {
     pub status: Option<Status>,
     /// The user accepted to close the window.
     pub close_confirmed: bool,
+    /// Counts every time the open project was replaced (new, open, import, restore), so views know to reload.
+    pub generation: u64,
     last_autosave: Instant,
 }
 
@@ -69,6 +71,7 @@ impl Workspace {
             recovery,
             status: None,
             close_confirmed: false,
+            generation: 0,
             last_autosave: Instant::now(),
         }
     }
@@ -119,6 +122,7 @@ impl Workspace {
         if let Some(old) = &self.project {
             recovery::discard(&self.data_dir, &old.id);
         }
+        self.generation += 1;
         self.project = Some(project);
         self.last_autosave = Instant::now();
     }
@@ -262,6 +266,7 @@ impl Workspace {
                 let mut project = loaded.project;
                 project.path = None;
                 project.dirty = true;
+                self.generation += 1;
                 self.project = Some(project);
                 self.notify(trf("workspace.restored", &[&entry.name]), false);
             }

@@ -49,7 +49,7 @@ impl HelpScreen {
                                 ui.set_width(width);
                                 ui.spacing_mut().item_spacing.y = 12.0;
                                 if header_bar::show(ui, &mut self.state.search) {
-                                    *context.navigate = Some(Screen::Projects);
+                                    *context.navigate = Some(Screen::Home);
                                 }
                                 self.columns(ui, width, context);
                                 status_bar::show(ui);

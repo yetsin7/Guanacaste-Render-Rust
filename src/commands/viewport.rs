@@ -8,6 +8,8 @@ pub fn scene_source(project: Option<&Project>) -> Option<SceneSource<'_>> {
     let project = project?;
     Some(SceneSource {
         id: project.id,
+        revision: 0,
+        framed: usize::MAX,
         meshes: &project.meshes,
         material_colors: project
             .document

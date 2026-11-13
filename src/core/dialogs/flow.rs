@@ -2,7 +2,7 @@
 //! closing the window and recovery copies.
 
 use super::DialogHost;
-use crate::commands::workspace::Pending;
+use crate::commands::workspace::{Pending, Workspace};
 use crate::features::projects::components::open_dialog::OPEN_ERROR;
 use crate::features::projects::components::{
     recovery_dialog::RecoveryChoice, unsaved_dialog::UnsavedChoice,
@@ -23,13 +23,13 @@ fn default_folder() -> String {
 
 impl DialogHost {
     /// Prepares a dialog the first frame it becomes active.
-    pub(super) fn on_change(&mut self, ctx: &Context) {
+    pub(super) fn on_change(&mut self, ctx: &Context, workspace: &mut Workspace) {
         if self.active == self.shown {
             return;
         }
         match self.active {
-            Some(Dialog::SaveProject) => self.prepare_save(ctx, false),
-            Some(Dialog::SaveAs) => self.prepare_save(ctx, true),
+            Some(Dialog::SaveProject) => self.prepare_save(ctx, workspace, false),
+            Some(Dialog::SaveAs) => self.prepare_save(ctx, workspace, true),
             _ => {}
         }
         self.shown = self.active;
@@ -37,19 +37,18 @@ impl DialogHost {
 
     /// "Save" writes straight to the project's own `.gr`; otherwise (first save, "save as", a Guanacaste 3D
     /// original, a read-only project) it asks for a name, explaining why when it was not the user's choice.
-    fn prepare_save(&mut self, ctx: &Context, as_new: bool) {
-        let Some(project) = &self.workspace.project else {
-            self.workspace
-                .notify(tr("workspace.nothing_to_save").to_owned(), true);
+    fn prepare_save(&mut self, ctx: &Context, workspace: &mut Workspace, as_new: bool) {
+        let Some(project) = &workspace.project else {
+            workspace.notify(tr("workspace.nothing_to_save").to_owned(), true);
             self.active = None;
             return;
         };
         let (suggested, reason) = match save_target(project) {
             SaveTarget::Overwrite(path) if !as_new => {
                 self.active = None;
-                if self.workspace.save_to(&path, self.save.thumbnail) {
+                if workspace.save_to(&path, self.save.thumbnail) {
                     if let Some(pending) = self.pending.take() {
-                        self.execute(ctx, pending);
+                        self.execute(ctx, workspace, pending);
                     }
                 }
                 return;
@@ -76,26 +75,26 @@ impl DialogHost {
     }
 
     /// Runs `pending`, or first asks about unsaved changes.
-    fn perform(&mut self, ctx: &Context, pending: Pending) {
-        if self.workspace.dirty() {
+    pub(super) fn perform(&mut self, ctx: &Context, workspace: &mut Workspace, pending: Pending) {
+        if workspace.dirty() {
             self.pending = Some(pending);
             self.active = Some(Dialog::UnsavedChanges);
             self.shown = self.active;
         } else {
-            self.execute(ctx, pending);
+            self.execute(ctx, workspace, pending);
         }
     }
 
-    fn execute(&mut self, ctx: &Context, pending: Pending) {
+    fn execute(&mut self, ctx: &Context, workspace: &mut Workspace, pending: Pending) {
         self.active = None;
         match pending {
             Pending::Close => {
-                self.workspace.close_confirmed = true;
+                workspace.close_confirmed = true;
                 ctx.send_viewport_cmd(ViewportCommand::Close);
             }
-            Pending::New(name) => self.workspace.start_new(&name),
+            Pending::New(name) => workspace.start_new(&name),
             Pending::Open(path) => {
-                if !self.workspace.open_file(&path) {
+                if !workspace.open_file(&path) {
                     self.active = Some(Dialog::Error(OPEN_ERROR));
                 }
             }
@@ -103,7 +102,7 @@ impl DialogHost {
                 if let (Some(Ok(outcome)), Some(path)) =
                     (self.import.result.as_deref(), self.import.path.clone())
                 {
-                    self.workspace.adopt_import(outcome, &path);
+                    workspace.adopt_import(outcome, &path);
                 }
             }
         }
@@ -112,7 +111,7 @@ impl DialogHost {
 
     /// Handles files dropped on the window: a Guanacaste Render project opens as a project, anything else goes
     /// to the import dialog (which explains closed formats). Only the first file is used.
-    pub(super) fn take_drops(&mut self, ctx: &Context) {
+    pub(super) fn take_drops(&mut self, ctx: &Context, workspace: &mut Workspace) {
         use crate::features::import_export::logic::formats::{detect, sniff, Detected, Signature};
         use crate::features::import_export::ui::drop;
         use crate::services::localization::trf;
@@ -128,7 +127,7 @@ impl DialogHost {
             let name = first
                 .file_name()
                 .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-            self.workspace.notify(
+            workspace.notify(
                 trf("import.drop_many", &[&paths.len().to_string(), &name]),
                 false,
             );
@@ -136,7 +135,7 @@ impl DialogHost {
         let is_project = matches!(detect(&first), Detected::Supported(_))
             && sniff(&first).is_ok_and(|s| s == Signature::Render);
         if is_project {
-            self.perform(ctx, Pending::Open(first));
+            self.perform(ctx, workspace, Pending::Open(first));
         } else {
             self.import.choose(first);
             self.active = Some(Dialog::Import);
@@ -145,23 +144,23 @@ impl DialogHost {
     }
 
     /// Opens `path` at start-up (the recovery offer, if any, stays queued behind it).
-    pub fn open_at_start(&mut self, path: &std::path::Path) {
-        if !self.workspace.open_file(path) {
+    pub fn open_at_start(&mut self, workspace: &mut Workspace, path: &std::path::Path) {
+        if !workspace.open_file(path) {
             self.active = Some(Dialog::Error(OPEN_ERROR));
         }
     }
 
     /// Asks before the window closes with unsaved changes. Returns true when the close must be cancelled.
-    pub fn intercept_close(&mut self, ctx: &Context) -> bool {
-        if !self.workspace.dirty() || self.workspace.close_confirmed {
+    pub fn intercept_close(&mut self, ctx: &Context, workspace: &mut Workspace) -> bool {
+        if !workspace.dirty() || workspace.close_confirmed {
             return false;
         }
-        self.perform(ctx, Pending::Close);
+        self.perform(ctx, workspace, Pending::Close);
         true
     }
 
     /// Carries out what the dialogs recorded this frame; dialogs it opens are already prepared.
-    pub(super) fn after(&mut self, ctx: &Context) {
+    pub(super) fn after(&mut self, ctx: &Context, workspace: &mut Workspace) {
         if std::mem::take(&mut self.new_scene.create) {
             let name = self.new_scene.name.trim();
             let name = if name.is_empty() {
@@ -169,19 +168,19 @@ impl DialogHost {
             } else {
                 name.to_owned()
             };
-            self.perform(ctx, Pending::New(name));
+            self.perform(ctx, workspace, Pending::New(name));
         }
         if let Some(path) = self.open.request.take() {
-            self.perform(ctx, Pending::Open(path));
+            self.perform(ctx, workspace, Pending::Open(path));
         }
         if std::mem::take(&mut self.import.adopt) {
-            self.perform(ctx, Pending::Import);
+            self.perform(ctx, workspace, Pending::Import);
         }
         if let Some(path) = self.save.request.take() {
-            if self.workspace.save_to(&path, self.save.thumbnail) {
+            if workspace.save_to(&path, self.save.thumbnail) {
                 self.active = None;
                 if let Some(pending) = self.pending.take() {
-                    self.execute(ctx, pending);
+                    self.execute(ctx, workspace, pending);
                 }
             }
         }
@@ -198,16 +197,21 @@ impl DialogHost {
     }
 
     /// Answer of the unsaved-changes dialog.
-    pub(super) fn settle(&mut self, ctx: &Context, choice: UnsavedChoice) -> DialogOutcome {
+    pub(super) fn settle(
+        &mut self,
+        ctx: &Context,
+        workspace: &mut Workspace,
+        choice: UnsavedChoice,
+    ) -> DialogOutcome {
         match choice {
             UnsavedChoice::Save => {
-                self.prepare_save(ctx, false);
+                self.prepare_save(ctx, workspace, false);
                 self.shown = self.active;
             }
             UnsavedChoice::Discard => {
-                self.workspace.forget_changes();
+                workspace.forget_changes();
                 if let Some(pending) = self.pending.take() {
-                    self.execute(ctx, pending);
+                    self.execute(ctx, workspace, pending);
                 }
             }
             UnsavedChoice::Cancel => {
@@ -219,16 +223,20 @@ impl DialogHost {
     }
 
     /// Answer of the recovery dialog.
-    pub(super) fn recover(&mut self, choice: RecoveryChoice) -> DialogOutcome {
+    pub(super) fn recover(
+        &mut self,
+        workspace: &mut Workspace,
+        choice: RecoveryChoice,
+    ) -> DialogOutcome {
         match choice {
             RecoveryChoice::Restore(index) => {
-                self.workspace.restore(index);
-                if !self.workspace.recovery.is_empty() {
+                workspace.restore(index);
+                if !workspace.recovery.is_empty() {
                     return DialogOutcome::Keep;
                 }
             }
-            RecoveryChoice::DiscardAll => self.workspace.discard_recovery(),
-            RecoveryChoice::Later => self.workspace.recovery.clear(),
+            RecoveryChoice::DiscardAll => workspace.discard_recovery(),
+            RecoveryChoice::Later => workspace.recovery.clear(),
         }
         DialogOutcome::Close
     }

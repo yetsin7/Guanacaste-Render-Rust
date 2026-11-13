@@ -9,6 +9,8 @@ fn source<'a>(
 ) -> SceneSource<'a> {
     SceneSource {
         id: [id; 16],
+        revision: 0,
+        framed: usize::MAX,
         meshes,
         material_colors: vec![[0.5, 0.5, 0.5, 1.0]],
     }

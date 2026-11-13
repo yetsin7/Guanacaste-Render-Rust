@@ -34,7 +34,7 @@ impl Default for VegetationInstance {
 }
 
 /// Everything of the landscape saved in a project.
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Landscape {
     /// Height grid and soil layers.
@@ -43,7 +43,26 @@ pub struct Landscape {
     pub waters: Vec<WaterBody>,
     /// Placed plants.
     pub vegetation: Vec<VegetationInstance>,
+    /// Whether the ground is drawn (the base ground can be hidden; its data is kept).
+    pub visible: bool,
 }
+
+impl Default for Landscape {
+    /// The base ground every project starts with: flat, grass-covered and 200 m wide at Z = 0.
+    fn default() -> Self {
+        Self {
+            terrain: Terrain::flat(BASE_COLUMNS, BASE_COLUMNS, BASE_SPACING),
+            waters: Vec::new(),
+            vegetation: Vec::new(),
+            visible: true,
+        }
+    }
+}
+
+/// Vertices per side of the base ground.
+pub const BASE_COLUMNS: usize = 101;
+/// Distance between the vertices of the base ground, in meters (so it is 200 m wide).
+pub const BASE_SPACING: f32 = 2.0;
 
 impl Landscape {
     /// Makes data read from a file safe to use; returns `true` when something had to be changed.

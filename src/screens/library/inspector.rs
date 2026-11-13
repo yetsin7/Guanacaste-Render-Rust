@@ -6,7 +6,7 @@ use crate::features::library::components::{
     seasonal_presets,
 };
 use crate::features::library::models::{AssetDetails, InspectorState};
-use crate::models::navigation::Screen;
+use crate::models::navigation::{Mode, Screen};
 use crate::services::sample_data::inspector as sample;
 use eframe::egui::{self, vec2, Margin, ScrollArea, Ui};
 
@@ -78,7 +78,7 @@ impl InspectorScreen {
         if let Some(preview_panel::PreviewAction::Place) =
             preview_panel::show(ui, &self.details, &mut self.state, context.textures)
         {
-            *context.navigate = Some(Screen::Build);
+            *context.navigate = Some(Screen::Workspace(Mode::Build));
         }
         metric_cards::show(ui, &self.details);
         absorption_chart::show(ui, &self.details);

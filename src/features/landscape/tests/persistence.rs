@@ -57,6 +57,7 @@ fn oversized_grids_are_clamped() {
         },
         waters: vec![WaterBody::default()],
         vegetation: Vec::new(),
+        visible: true,
     };
     assert!(landscape.repair());
     assert!(landscape.terrain.vertex_count() <= 513 * 513);

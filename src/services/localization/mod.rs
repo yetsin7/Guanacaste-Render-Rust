@@ -16,6 +16,7 @@ mod objects;
 mod projects;
 mod rendering;
 mod settings;
+mod shell;
 mod store;
 mod view3d;
 mod viewport;
@@ -42,6 +43,7 @@ const TABLES: &[&[(&str, &str)]] = &[
     objects::ENTRIES,
     rendering::ENTRIES,
     settings::ENTRIES,
+    shell::ENTRIES,
     help::ENTRIES,
 ];
 

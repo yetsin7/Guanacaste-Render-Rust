@@ -3,19 +3,41 @@
 use super::*;
 use crate::features::projects::models::Project;
 use crate::features::projects::services::{store, util};
+use std::path::PathBuf;
 
-fn temp_host(label: &str) -> (DialogHost, PathBuf) {
+/// A dialog host with the workspace it acts on, as the shell lends it every frame.
+struct Host {
+    dialogs: DialogHost,
+    workspace: Workspace,
+}
+
+impl std::ops::Deref for Host {
+    type Target = DialogHost;
+    fn deref(&self) -> &DialogHost {
+        &self.dialogs
+    }
+}
+
+impl std::ops::DerefMut for Host {
+    fn deref_mut(&mut self) -> &mut DialogHost {
+        &mut self.dialogs
+    }
+}
+
+fn temp_host(label: &str) -> (Host, PathBuf) {
     let folder = std::env::temp_dir().join(format!(
         "gr-host-{label}-{}",
         util::hex(&util::new_document_id())
     ));
     std::fs::create_dir_all(&folder).unwrap();
-    (DialogHost::with_data_dir(folder.join("datos")), folder)
+    let workspace = Workspace::new(folder.join("datos"));
+    let dialogs = DialogHost::new(&workspace);
+    (Host { dialogs, workspace }, folder)
 }
 
-fn frame(host: &mut DialogHost, ctx: &Context) {
-    host.on_change(ctx);
-    host.after(ctx);
+fn frame(host: &mut Host, ctx: &Context) {
+    host.dialogs.on_change(ctx, &mut host.workspace);
+    host.dialogs.after(ctx, &mut host.workspace);
 }
 
 #[test]
@@ -42,26 +64,41 @@ fn a_request_opens_its_dialog() {
     let ctx = Context::default();
     let (mut host, _) = temp_host("request");
     commands::request_dialog(&ctx, Dialog::About);
-    host.intake(&ctx);
+    host.dialogs.intake(&ctx, &mut host.workspace);
     assert_eq!(host.active(), Some(Dialog::About));
 }
+
+#[test]
+fn an_open_request_reports_a_missing_file() {
+    let ctx = Context::default();
+    let (mut host, folder) = temp_host("open");
+    commands::request_open(&ctx, folder.join("no-existe.gr"));
+    host.dialogs.intake(&ctx, &mut host.workspace);
+    assert_eq!(host.active(), Some(Dialog::Error(OPEN_ERROR)));
+}
+
+use crate::features::projects::components::open_dialog::OPEN_ERROR;
 
 #[test]
 fn closing_with_unsaved_changes_asks_first() {
     let ctx = Context::default();
     let (mut host, _) = temp_host("close");
     assert!(
-        !host.intercept_close(&ctx),
+        !host.dialogs.intercept_close(&ctx, &mut host.workspace),
         "nothing open: the window may close"
     );
     host.workspace.start_new("Casa");
-    assert!(host.intercept_close(&ctx));
+    assert!(host.dialogs.intercept_close(&ctx, &mut host.workspace));
     assert_eq!(host.active(), Some(Dialog::UnsavedChanges));
-    host.settle(&ctx, UnsavedChoiceAlias::Cancel);
+    host.dialogs
+        .settle(&ctx, &mut host.workspace, UnsavedChoiceAlias::Cancel);
     assert_eq!(host.active(), None);
-    assert!(host.intercept_close(&ctx));
-    host.settle(&ctx, UnsavedChoiceAlias::Discard);
-    assert!(host.workspace.close_confirmed && !host.intercept_close(&ctx));
+    assert!(host.dialogs.intercept_close(&ctx, &mut host.workspace));
+    host.dialogs
+        .settle(&ctx, &mut host.workspace, UnsavedChoiceAlias::Discard);
+    assert!(
+        host.workspace.close_confirmed && !host.dialogs.intercept_close(&ctx, &mut host.workspace)
+    );
 }
 
 use crate::features::projects::components::unsaved_dialog::UnsavedChoice as UnsavedChoiceAlias;

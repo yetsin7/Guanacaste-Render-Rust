@@ -3,7 +3,6 @@
 /// `(key, text)` pairs.
 pub const ENTRIES: &[(&str, &str)] = &[
     ("build.title", "Construcción"),
-    ("build.scene", "Villa Moderna L26"),
     ("build.close", "Salir del modo construcción"),
     ("build.fullscreen", "Pantalla completa"),
     ("build.camera", "Cámara"),
@@ -36,7 +35,6 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("build.lod_dynamic", "Dinámica"),
     ("build.gizmo", "Gizmo activo"),
     ("build.world_matrix", "Matriz mundial"),
-    ("build.snap", "Imán: Vértice"),
     ("build.tab_objects", "Objetos"),
     ("build.tab_materials", "Materiales"),
     ("build.tab_landscape", "Paisaje"),

@@ -91,11 +91,13 @@ fn selected(ui: &mut Ui, animation: &mut Animation, state: &mut MovieState) -> b
             value_key(ui, animation, state, channel, key)
         }
         _ => {
-            text::label(
+            // Wrapping: a long single line would widen the panel and push the right-aligned fields out of view.
+            text::paragraph(
                 ui,
                 tr("movie.nothing_selected"),
                 typography::body_sm(),
                 colors::OUTLINE,
+                16.0,
             );
             false
         }

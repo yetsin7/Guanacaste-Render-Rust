@@ -4,7 +4,7 @@ Este proyecto usa una organización modular por capas y por dominio, igual que e
 código Rust ejecutable vive en `src/`; `assets/` contiene recursos estáticos y `tests/` contiene pruebas de
 integración. `Cargo.toml` define el paquete y sus puntos de entrada (`src/lib.rs` y `src/main.rs`).
 
-Estado actual: **solo interfaces**. No existe motor 3D, trazado de rayos ni formato de proyecto. Todo dato que se
+Estado actual: **interfaz y proyectos (.gr)**; la vista 3D, el motor y los paneles de contenido son ranuras por llenar. No existe motor 3D, trazado de rayos ni formato de proyecto. Todo dato que se
 muestra sale de `src/services/sample_data/` y las imágenes de `assets/placeholders/` son marcadores de posición.
 
 ## Mapa del proyecto
@@ -37,18 +37,38 @@ muestra sale de `src/services/sample_data/` y las imágenes de `assets/placehold
 `rendering/` contiene el vocabulario de calidad, la cola de render, la exportación de imágenes y el estudio de render,
 y es el lugar de las futuras funciones del motor.
 
-## Pantallas
+## Pantallas y flujo por modos
 
-| Pantalla | Carpeta | Parámetro `--screen=` |
+La app tiene una pantalla de inicio (`home`: nuevo, abrir, importar, proyectos recientes) y un **espacio de trabajo**
+con la vista 3D a pantalla completa y cuatro modos siempre visibles en la barra de modos (`components/mode_bar.rs`,
+teclas F1-F4): Construir, Foto, Película y Exportar. Las pantallas secundarias (biblioteca, inspector de activos, editor
+de materiales, ajustes, ayuda) se abren desde la barra de modos o desde el contenido.
+
+| Pantalla | Código | `--screen=` |
 |---|---|---|
-| Proyectos | `src/screens/projects/` | `projects` |
-| Construcción | `src/screens/build/` | `build` |
+| Inicio | `src/screens/home.rs` | `home` (`projects`) |
+| Construir / Foto / Película / Exportar | `src/screens/workspace/` | `build`, `photo`, `movie`, `render` (`export`) |
 | Biblioteca y inspector de activos | `src/screens/library/` | `library`, `inspector` |
 | Editor de materiales | `src/screens/materials/` | `materials` |
-| Estudio de película | `src/screens/movie/` | `movie` |
-| Ajustes | `src/screens/settings/` | `settings` |
-| Ayuda y diagnóstico | `src/screens/help/` | `help` |
-| Estudio de render (vista previa y cola) | `src/screens/render/` | `render` |
+| Ajustes / Ayuda | `src/screens/settings/`, `src/screens/help/` | `settings`, `help` |
+
+**Estado compartido:** `models::AppState` (`src/models/app_state.rs`) guarda el proyecto abierto (`workspace`), el modo
+y la categoría activos, la cámara actual y las cámaras guardadas (`models::camera`), los efectos de foto, los paneles
+abiertos, las solicitudes al shell (`requests`: encuadrar, navegar) y el estado de cada panel de dominio.
+
+**Vista 3D y herramientas:** la vista 3D real (`features/viewport`) es la misma en todos los modos
+(`workspace/viewport.rs`); sobre ella flotan la paleta de herramientas (`components/tool_palette.rs`,
+`workspace/palette.rs`), los avisos de render (`workspace/render_overlay.rs`) y los paneles. Los rayos del ratón
+(`commands/pointer.rs`) mueven los pinceles de paisaje y la colocación de objetos. `commands/scene.rs` compone la
+escena (modelo + objetos + suelo base), `commands/sync.rs` guarda y carga cada dominio en el `.gr`, y
+`commands/thumbnails.rs` captura las miniaturas de las cámaras guardadas. Todo proyecto tiene un suelo base plano
+de 200 m en Z = 0 (`Landscape::default`), que se puede ocultar; los modelos importados se posan sobre él.
+
+**Ranuras de contenido:** cada modo es un `ModeSlots` (`src/screens/workspace/mod.rs`): un panel derecho, un cajón
+inferior y una superposición, todos `fn(&mut Ui, &mut AppState)`. Para llenar una ranura se sustituye la función en
+`workspace/{build,photo,movie,export}.rs`; la vista 3D es `workspace/viewport.rs`. Los paneles son colapsables
+(`components/dock_panel.rs`) y los atajos visibles viven en `components/tool_hints.rs`. Atajos: `ASDW`/`QE` (vista 3D,
+pendiente de la vista real), `F` encuadrar, `Espacio` reproducir en Película, `F1-F4` modos, `Ctrl+S` guardar.
 
 ## Diálogos y avisos
 

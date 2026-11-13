@@ -1,5 +1,5 @@
-//! Hosts every dialog, the application menu and the keyboard shortcuts that open them, plus the workspace
-//! (the open project) that the project dialogs act on.
+//! Hosts every dialog, the application menu and the keyboard shortcuts that open them. The project dialogs act
+//! on the workspace (the open project), which lives in `AppState` and is lent to each call.
 
 mod flow;
 
@@ -22,7 +22,6 @@ use crate::models::dialog::{Dialog, DialogOutcome};
 use crate::models::preferences::Preferences;
 use crate::services::localization::tr;
 use eframe::egui::{Context, Key, KeyboardShortcut, Modifiers, Pos2};
-use std::path::PathBuf;
 use std::time::Duration;
 
 /// Keyboard shortcuts of the shell and the dialogs they open (Ctrl+Shift+S is checked first, for "save as").
@@ -81,23 +80,13 @@ pub struct DialogHost {
     notices: Vec<Notice>,
     import: ImportDialogState,
     pending: Option<Pending>,
-    /// The open project and its files.
-    pub workspace: Workspace,
     /// Export settings the user confirmed; the shell queues the render and clears this.
     pub render_request: Option<ExportState>,
 }
 
-impl Default for DialogHost {
-    fn default() -> Self {
-        Self::with_data_dir(crate::features::projects::services::recovery::data_dir())
-    }
-}
-
 impl DialogHost {
-    /// A host whose recent list and recovery copies live in `data_dir`; offers recovery when copies exist.
-    pub fn with_data_dir(data_dir: PathBuf) -> Self {
-        let import_dir = data_dir.clone();
-        let workspace = Workspace::new(data_dir);
+    /// A host for `workspace`; offers recovery first when copies exist.
+    pub fn new(workspace: &Workspace) -> Self {
         let active = (!workspace.recovery.is_empty()).then_some(Dialog::Recovery);
         Self {
             active,
@@ -110,9 +99,8 @@ impl DialogHost {
             preferences_tab: 0,
             shortcuts_search: String::new(),
             notices: notifications_panel::initial_notices(),
-            import: ImportDialogState::with_data_dir(&import_dir),
+            import: ImportDialogState::with_data_dir(&workspace.data_dir),
             pending: None,
-            workspace,
             render_request: None,
         }
     }
@@ -128,9 +116,14 @@ impl DialogHost {
     }
 
     /// Serves requests and shortcuts, then draws the menu, the active dialog and the status message.
-    pub fn show(&mut self, ctx: &Context, preferences: &mut Preferences) {
-        self.intake(ctx);
-        self.take_drops(ctx);
+    pub fn show(
+        &mut self,
+        ctx: &Context,
+        workspace: &mut Workspace,
+        preferences: &mut Preferences,
+    ) {
+        self.intake(ctx, workspace);
+        self.take_drops(ctx, workspace);
         if self.active.is_none() && !ctx.egui_wants_keyboard_input() {
             let save_as = KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::SHIFT, Key::S);
             if ctx.input_mut(|input| input.consume_shortcut(&save_as)) {
@@ -145,22 +138,28 @@ impl DialogHost {
             }
         }
         self.show_menu(ctx);
-        self.on_change(ctx);
+        self.on_change(ctx, workspace);
         if let Some(dialog) = self.active {
-            self.draw(ctx, dialog, preferences);
+            self.draw(ctx, workspace, dialog, preferences);
         }
-        self.after(ctx);
-        self.workspace.autosave();
-        if self.workspace.dirty() {
+        self.after(ctx, workspace);
+        workspace.autosave();
+        if workspace.dirty() {
             ctx.request_repaint_after(Duration::from_secs(5));
         }
-        self.show_status(ctx);
+        self.show_status(ctx, workspace);
     }
 
-    fn draw(&mut self, ctx: &Context, dialog: Dialog, preferences: &mut Preferences) {
+    fn draw(
+        &mut self,
+        ctx: &Context,
+        workspace: &mut Workspace,
+        dialog: Dialog,
+        preferences: &mut Preferences,
+    ) {
         let outcome = match dialog {
             Dialog::NewScene => new_scene_dialog::show(ctx, &mut self.new_scene),
-            Dialog::OpenProject => open_dialog::show(ctx, &mut self.open, &self.workspace.recent),
+            Dialog::OpenProject => open_dialog::show(ctx, &mut self.open, &workspace.recent),
             Dialog::Import => import_dialog::show(ctx, &mut self.import),
             Dialog::SaveProject | Dialog::SaveAs => save_dialog::show(ctx, &mut self.save),
             Dialog::ExportImage => export_dialog::show(ctx, &mut self.export),
@@ -175,14 +174,14 @@ impl DialogHost {
             }
             Dialog::Error(error) => error_dialog::show(ctx, &error),
             Dialog::UnsavedChanges => {
-                let name = self.workspace.name().unwrap_or_default().to_owned();
+                let name = workspace.name().unwrap_or_default().to_owned();
                 match unsaved_dialog::show(ctx, &name) {
-                    Some(choice) => self.settle(ctx, choice),
+                    Some(choice) => self.settle(ctx, workspace, choice),
                     None => DialogOutcome::Keep,
                 }
             }
-            Dialog::Recovery => match recovery_dialog::show(ctx, &self.workspace.recovery) {
-                Some(choice) => self.recover(choice),
+            Dialog::Recovery => match recovery_dialog::show(ctx, &workspace.recovery) {
+                Some(choice) => self.recover(workspace, choice),
                 None => DialogOutcome::Keep,
             },
         };
@@ -193,8 +192,8 @@ impl DialogHost {
         }
     }
 
-    fn show_status(&mut self, ctx: &Context) {
-        let Some(status) = &self.workspace.status else {
+    fn show_status(&mut self, ctx: &Context, workspace: &mut Workspace) {
+        let Some(status) = &workspace.status else {
             return;
         };
         let limit = Duration::from_secs(if status.error {
@@ -203,7 +202,7 @@ impl DialogHost {
             STATUS_SECONDS
         });
         if status.at.elapsed() > limit {
-            self.workspace.status = None;
+            workspace.status = None;
             return;
         }
         let level = if status.error {
@@ -215,11 +214,15 @@ impl DialogHost {
         ctx.request_repaint_after(Duration::from_millis(500));
     }
 
-    /// Serves a pending dialog request from any screen.
-    fn intake(&mut self, ctx: &Context) {
+    /// Serves a pending dialog or open-file request from any screen.
+    fn intake(&mut self, ctx: &Context, workspace: &mut Workspace) {
         if let Some(dialog) = commands::take_dialog_request(ctx) {
             self.active = Some(dialog);
             self.menu_anchor = None;
+        }
+        if let Some(path) = commands::take_open_request(ctx) {
+            self.menu_anchor = None;
+            self.perform(ctx, workspace, Pending::Open(path));
         }
     }
 

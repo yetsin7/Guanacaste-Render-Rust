@@ -15,16 +15,21 @@ use std::time::Instant;
 pub struct SceneSource<'a> {
     /// Identifier of the project; a different id means a different scene (the camera is re-framed).
     pub id: [u8; 16],
+    /// Bumped by whoever composes the scene when geometry changed without changing the counts (a moved object).
+    pub revision: u64,
     /// Meshes in meters, Z up.
     pub meshes: &'a [Mesh],
     /// RGBA (0..=1) per material index.
     pub material_colors: Vec<[f32; 4]>,
+    /// How many of the leading meshes the camera frames; the rest is drawn without stretching the view.
+    pub framed: usize,
 }
 
 /// Cheap fingerprint of a scene, compared every frame to know when to rebuild the GPU buffers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct SceneKey {
     id: [u8; 16],
+    revision: u64,
     meshes: usize,
     vertices: usize,
     indices: usize,
@@ -42,6 +47,7 @@ impl SceneKey {
         }
         Self {
             id: source.id,
+            revision: source.revision,
             meshes: source.meshes.len(),
             vertices: source.meshes.iter().map(|m| m.positions.len()).sum(),
             indices: source.meshes.iter().map(|m| m.indices.len()).sum(),
@@ -178,7 +184,9 @@ impl ViewportState {
             return SceneChange::Unchanged;
         }
         let buffers = match &source {
-            Some(source) => scene_buffers::build(source.meshes, &source.material_colors),
+            Some(source) => {
+                scene_buffers::build_framed(source.meshes, &source.material_colors, source.framed)
+            }
             None => scene_buffers::build(&[], &[]),
         };
         let new_id = source.as_ref().map(|s| s.id);

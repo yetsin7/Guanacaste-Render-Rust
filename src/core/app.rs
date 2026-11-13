@@ -1,33 +1,33 @@
-//! The eframe application: frameless shell (title bar, tool rail) around the active screen.
+//! The eframe application: frameless shell (title bar, mode bar) around the active screen.
 
-use crate::commands::rendering::RenderHub;
-use crate::components::{title_bar, tool_rail};
+use crate::commands::sync;
+use crate::components::{mode_bar, title_bar};
 use crate::config::launch::LaunchOptions;
 use crate::config::theme::{self, colors};
 use crate::core::dialogs::DialogHost;
+use crate::core::shortcuts;
 use crate::features::rendering::logic::plan::plan_from_export;
 use crate::features::viewport::services::gpu;
-use crate::features::viewport::ui::{SceneChange, ViewportState};
 use crate::models::navigation::Screen;
 use crate::models::preferences::Preferences;
-use crate::screens::{ScreenContext, Screens};
+use crate::models::AppState;
+use crate::screens::Screens;
 use crate::services::localization::tr;
-use crate::services::sample_data::shell;
-use crate::services::textures::Textures;
 use eframe::egui;
 
 /// Application state.
 pub struct StudioApp {
     screen: Screen,
     screens: Screens,
-    textures: Textures,
-    viewport: ViewportState,
+    app: AppState,
     dialogs: DialogHost,
-    render: RenderHub,
     preferences: Preferences,
     applied_scale: usize,
     pending_dialog: Option<crate::models::dialog::Dialog>,
     window_title: String,
+    last_project: Option<([u8; 16], u64)>,
+    /// Smoothed frames per second while the view is animating, from the real frame time.
+    fps: f32,
 }
 
 impl StudioApp {
@@ -37,22 +37,26 @@ impl StudioApp {
         if let Some(zoom) = options.zoom {
             creation.egui_ctx.set_zoom_factor(zoom);
         }
-        let mut dialogs = DialogHost::default();
+        let mut app = AppState::default();
+        let mut dialogs = DialogHost::new(&app.workspace);
         if let Some(path) = &options.open {
-            dialogs.open_at_start(path);
+            dialogs.open_at_start(&mut app.workspace, path);
         }
-        let mut viewport = ViewportState::new();
         if let Some(render_state) = &creation.wgpu_render_state {
             gpu::install(render_state);
-            viewport.gpu_available = true;
+            app.viewport.gpu_available = true;
+        }
+        let screen = options.screen.unwrap_or_default();
+        if let Some(mode) = screen.mode() {
+            app.mode = mode;
         }
         Self {
-            screen: options.screen.unwrap_or_default(),
+            screen,
             screens: Screens::default(),
-            textures: Textures::default(),
-            viewport,
+            last_project: None,
+            fps: 0.0,
+            app,
             dialogs,
-            render: RenderHub::default(),
             preferences: Preferences::default(),
             applied_scale: Preferences::default().scale_index,
             pending_dialog: options.dialog,
@@ -64,34 +68,91 @@ impl StudioApp {
     pub fn screen(&self) -> Screen {
         self.screen
     }
-}
 
-impl StudioApp {
+    /// Applies a navigation request, remembering the workspace mode.
+    fn go(&mut self, screen: Screen) {
+        self.screen = screen;
+        if let Some(mode) = screen.mode() {
+            self.app.mode = mode;
+        }
+    }
+
+    /// Leaves the start screen when a different project was just created, opened or imported.
+    fn follow_project(&mut self) {
+        let id = self
+            .app
+            .workspace
+            .project
+            .as_ref()
+            .map(|p| (p.id, self.app.workspace.generation));
+        if id != self.last_project {
+            self.last_project = id;
+            if id.is_some() && self.screen == Screen::Home {
+                self.go(Screen::Workspace(self.app.mode));
+            }
+        }
+    }
+
     /// Queues the render the export dialog asked for and tells the user how it went.
     fn queue_export_request(&mut self) {
         let Some(request) = self.dialogs.render_request.take() else {
             return;
         };
         let plan = plan_from_export(&request);
-        let workspace = &mut self.dialogs.workspace;
-        match self.render.enqueue(workspace, &plan, &[plan.view]) {
+        let app = &mut self.app;
+        match app.render.enqueue(&app.workspace, &plan, &[plan.view]) {
             Ok(_) => {
-                workspace.notify(tr("render.queued").to_owned(), false);
-                self.screen = Screen::Render;
+                app.workspace.notify(tr("render.queued").to_owned(), false);
+                self.go(Screen::Workspace(crate::models::navigation::Mode::Export));
             }
-            Err(reason) => workspace.notify(tr(reason).to_owned(), true),
+            Err(reason) => app.workspace.notify(tr(reason).to_owned(), true),
         }
+    }
+
+    /// Updates the frame-rate readout from the time the last frame took. Frames far apart (nothing was
+    /// animating) are not counted, so the number only moves while something is moving.
+    fn measure_frame(&mut self, ctx: &egui::Context) {
+        let dt = ctx.input(|input| input.unstable_dt);
+        if dt > 0.0 && dt < 0.2 {
+            let now = 1.0 / dt;
+            self.fps = if self.fps == 0.0 {
+                now
+            } else {
+                self.fps * 0.9 + now * 0.1
+            };
+        }
+    }
+
+    fn fps_label(&self) -> String {
+        if self.fps > 0.0 {
+            format!("{:.0} FPS", self.fps)
+        } else {
+            "— FPS".to_owned()
+        }
+    }
+
+    fn resolution_label(&self, ctx: &egui::Context) -> String {
+        let size = ctx.content_rect().size() * ctx.pixels_per_point();
+        format!("| {}×{}", size.x.round(), size.y.round())
+    }
+
+    /// Brings the project, the domain states and the 3D view's scene up to date for this frame.
+    fn prepare_scene(&mut self) {
+        sync::step(&mut self.app);
+        let app = &mut self.app;
+        let source = app.composer.compose(
+            app.workspace.project.as_ref(),
+            &app.landscape,
+            &mut app.objects,
+        );
+        app.viewport.sync(source);
     }
 }
 
 impl eframe::App for StudioApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        let source =
-            crate::commands::viewport::scene_source(self.dialogs.workspace.project.as_ref());
-        if self.viewport.sync(source) == SceneChange::Loaded && self.screen == Screen::Projects {
-            // A model was imported or opened: show it right away.
-            self.screen = Screen::Build;
-        }
+        self.measure_frame(ui.ctx());
+        self.prepare_scene();
         let bar = egui::Frame::NONE
             .fill(colors::SURFACE_LOW)
             .stroke(egui::Stroke::new(1.0, colors::SURFACE_HIGHEST));
@@ -99,10 +160,11 @@ impl eframe::App for StudioApp {
             .frame(bar)
             .exact_size(title_bar::HEIGHT)
             .show(ui, |ui| {
-                let workspace = &self.dialogs.workspace;
+                let workspace = &self.app.workspace;
+                let (fps, resolution) = (self.fps_label(), self.resolution_label(ui.ctx()));
                 let info = title_bar::TitleBarInfo {
-                    fps: shell::FPS_LABEL,
-                    resolution: shell::RESOLUTION_LABEL,
+                    fps: &fps,
+                    resolution: &resolution,
                     show_fps: self.preferences.show_fps,
                     project: workspace.name().map(|name| (name, workspace.dirty())),
                 };
@@ -110,52 +172,52 @@ impl eframe::App for StudioApp {
                     self.dialogs.open_menu(anchor);
                 }
             });
-        let mut requested = None;
-        egui::Panel::left("tool-rail")
-            .frame(bar)
-            .exact_size(tool_rail::WIDTH)
-            .resizable(false)
-            .show(ui, |ui| {
-                if let Some(item) = tool_rail::show(ui, self.screen.rail_item()) {
-                    requested = Some(item.target());
-                }
-            });
+        if self.screen.shows_mode_bar() {
+            egui::Panel::top("mode-bar")
+                .frame(bar)
+                .exact_size(mode_bar::HEIGHT)
+                .show(ui, |ui| {
+                    if let Some(target) = mode_bar::show(ui, self.screen, self.app.mode) {
+                        self.app.navigate(target);
+                    }
+                });
+        }
         egui::CentralPanel::default()
             .frame(egui::Frame::NONE.fill(colors::SURFACE))
-            .show(ui, |ui| {
-                let mut context = ScreenContext {
-                    textures: &mut self.textures,
-                    navigate: &mut requested,
-                    workspace: &mut self.dialogs.workspace,
-                    render: &mut self.render,
-                    viewport: &mut self.viewport,
-                };
-                self.screens.show(ui, self.screen, &mut context);
-            });
-        if let Some(target) = requested {
-            self.screen = target;
+            .show(ui, |ui| self.screens.show(ui, self.screen, &mut self.app));
+        let ctx = ui.ctx().clone();
+        shortcuts::handle(
+            &ctx,
+            &mut self.app,
+            self.screen,
+            self.dialogs.active().is_some(),
+        );
+        if let Some(target) = self.app.requests.navigate.take() {
+            self.go(target);
         }
         if let Some(dialog) = self.pending_dialog.take() {
-            crate::commands::request_dialog(ui.ctx(), dialog);
+            crate::commands::request_dialog(&ctx, dialog);
         }
-        let ctx = ui.ctx().clone();
         if ctx.input(|input| input.viewport().close_requested())
-            && self.dialogs.intercept_close(&ctx)
+            && self.dialogs.intercept_close(&ctx, &mut self.app.workspace)
         {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
-        self.dialogs.show(&ctx, &mut self.preferences);
+        self.dialogs
+            .show(&ctx, &mut self.app.workspace, &mut self.preferences);
         self.queue_export_request();
-        let title = self.dialogs.workspace.window_title();
+        crate::commands::thumbnails::update(&ctx, &mut self.app);
+        self.follow_project();
+        let title = self.app.workspace.window_title();
         if title != self.window_title {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
             self.window_title = title;
         }
         if self.preferences.scale_index != self.applied_scale {
             self.applied_scale = self.preferences.scale_index;
-            ui.ctx().set_zoom_factor(self.preferences.zoom());
+            ctx.set_zoom_factor(self.preferences.zoom());
         }
-        crate::core::window_frame::resize_edges(ui.ctx());
+        crate::core::window_frame::resize_edges(&ctx);
     }
 }
 
