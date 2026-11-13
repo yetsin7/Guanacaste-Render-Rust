@@ -4,6 +4,7 @@ pub mod fbx;
 pub mod gltf;
 pub mod ifc;
 pub mod job;
+pub mod legacy;
 pub mod obj;
 pub mod picker;
 pub mod preview_image;

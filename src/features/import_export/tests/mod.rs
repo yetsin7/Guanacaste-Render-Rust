@@ -1,7 +1,7 @@
 //! Unit tests of the import domain. The IFC fixtures are synthetic: written by hand to imitate Revit, never
 //! validated against a real Revit export (see `tests/real_files.rs` for that).
 
-mod fixtures;
+pub(crate) mod fixtures;
 mod formats_tests;
 mod ifc_tests;
 mod robustness_tests;
@@ -12,7 +12,7 @@ use crate::features::import_export::models::{
 use crate::features::import_export::services::{ifc, progress::Progress};
 
 /// Imports IFC text with default options.
-pub(super) fn import_ifc(text: &str) -> ImportOutcome {
+pub(crate) fn import_ifc(text: &str) -> ImportOutcome {
     ifc::import_reader(
         text.as_bytes(),
         text.len() as u64,

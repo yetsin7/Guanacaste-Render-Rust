@@ -10,4 +10,4 @@ pub mod services;
 pub mod ui;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

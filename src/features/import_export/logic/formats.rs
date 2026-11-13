@@ -51,6 +51,7 @@ pub fn detect(path: &Path) -> Detected {
         "obj" => Detected::Supported(SourceFormat::Obj),
         "gltf" | "glb" => Detected::Supported(SourceFormat::Gltf),
         "fbx" => Detected::Supported(SourceFormat::Fbx),
+        "gr" | "g3d" => Detected::Supported(SourceFormat::Legacy),
         "rvt" | "rfa" | "rte" | "rft" => Detected::Proprietary(Proprietary::Revit),
         "dwg" => Detected::Proprietary(Proprietary::Dwg),
         "nwd" | "nwc" => Detected::Proprietary(Proprietary::Navisworks),
@@ -60,7 +61,40 @@ pub fn detect(path: &Path) -> Detected {
 }
 
 /// File extensions offered by the file picker.
-pub const PICKER_EXTENSIONS: [&str; 5] = ["ifc", "obj", "gltf", "glb", "fbx"];
+pub const PICKER_EXTENSIONS: [&str; 7] = ["ifc", "obj", "gltf", "glb", "fbx", "gr", "g3d"];
+
+/// Signature of a Guanacaste Render project (`.gr`).
+pub const RENDER_SIGNATURE: &[u8; 8] = b"GRRPROJ1";
+/// Signature of a Guanacaste 3D project (also `.gr`, read-only here).
+pub const LEGACY_SIGNATURE: &[u8; 8] = b"G3DNATV1";
+
+/// What the first eight bytes of a `.gr` file say it is. The extension is never trusted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Signature {
+    /// A Guanacaste Render project (`GRRPROJ1`).
+    Render,
+    /// A Guanacaste 3D project (`G3DNATV1`).
+    Legacy,
+    /// Anything else, including files shorter than eight bytes.
+    Unknown,
+}
+
+/// Classifies the first bytes of a file.
+pub fn signature_of(head: &[u8]) -> Signature {
+    match head.get(..8) {
+        Some(bytes) if bytes == RENDER_SIGNATURE => Signature::Render,
+        Some(bytes) if bytes == LEGACY_SIGNATURE => Signature::Legacy,
+        _ => Signature::Unknown,
+    }
+}
+
+/// Reads the signature of the file at `path`.
+pub fn sniff(path: &Path) -> std::io::Result<Signature> {
+    use std::io::Read;
+    let mut head = Vec::with_capacity(8);
+    std::fs::File::open(path)?.take(8).read_to_end(&mut head)?;
+    Ok(signature_of(&head))
+}
 
 #[cfg(test)]
 mod tests {

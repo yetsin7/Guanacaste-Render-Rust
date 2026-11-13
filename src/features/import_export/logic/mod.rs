@@ -2,5 +2,6 @@
 
 pub mod formats;
 pub mod geometry;
+pub mod prism;
 pub mod report_text;
 pub mod triangulate;

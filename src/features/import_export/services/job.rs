@@ -1,8 +1,8 @@
 //! Running an import on a background thread with progress and cancellation; panics become errors.
 
 use super::progress::Progress;
-use super::{fbx, gltf, ifc, obj};
-use crate::features::import_export::logic::formats::{detect, Detected};
+use super::{fbx, gltf, ifc, legacy, obj};
+use crate::features::import_export::logic::formats::{detect, sniff, Detected, Signature};
 use crate::features::import_export::models::{
     ImportError, ImportOptions, ImportOutcome, SourceFormat,
 };
@@ -24,11 +24,26 @@ pub fn run(path: &Path, options: &ImportOptions, progress: &Progress) -> JobResu
             ))
         }
     };
+    if format == SourceFormat::Legacy {
+        match sniff(path)? {
+            Signature::Legacy => {}
+            Signature::Render => {
+                return Err(ImportError::Invalid(
+                    "Es un proyecto de Guanacaste Render: ábrelo con Abrir proyecto.".into(),
+                ))
+            }
+            Signature::Unknown => return Err(ImportError::Invalid(
+                "Firma desconocida: no es un proyecto de Guanacaste Render ni de Guanacaste 3D."
+                    .into(),
+            )),
+        }
+    }
     let outcome = catch_unwind(AssertUnwindSafe(|| match format {
         SourceFormat::Ifc => ifc::import(path, options, progress),
         SourceFormat::Obj => obj::import(path, options, progress),
         SourceFormat::Gltf => gltf::import(path, progress),
         SourceFormat::Fbx => fbx::import(path, progress),
+        SourceFormat::Legacy => legacy::import(path, progress),
     }));
     outcome.unwrap_or_else(|payload| {
         let text = payload

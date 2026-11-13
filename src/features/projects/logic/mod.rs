@@ -1,4 +1,8 @@
-//! Rules of the repository: which projects a filter and a search text leave visible.
+//! Rules of the repository and of the project document: filtering, conversion and schema migrations.
+
+pub mod convert;
+pub mod migrations;
+pub mod save_plan;
 
 use super::models::{ProjectFilter, ProjectSummary, ProjectsState};
 

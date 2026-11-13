@@ -11,6 +11,8 @@ pub enum SourceFormat {
     Gltf,
     /// Autodesk FBX, binary encoding.
     Fbx,
+    /// Legacy Guanacaste 3D project (`.gr` with the `G3DNATV1` signature), read-only.
+    Legacy,
 }
 
 impl SourceFormat {
@@ -21,6 +23,7 @@ impl SourceFormat {
             SourceFormat::Obj => "OBJ",
             SourceFormat::Gltf => "glTF",
             SourceFormat::Fbx => "FBX",
+            SourceFormat::Legacy => "Guanacaste 3D",
         }
     }
 }

@@ -65,5 +65,10 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("gltf.draco", "Geometría comprimida con Draco no soportada: la primitiva se omitió."),
     ("gltf.primitive_failed", "Una primitiva glTF no se pudo leer."),
     ("gltf.buffer_missing", "No se encontró el archivo de datos {0}."),
+    ("legacy.degenerate", "Un elemento {0} de Guanacaste 3D no tiene forma válida y se omitió."),
+    ("legacy.roof_flat", "Las cubiertas inclinadas de Guanacaste 3D se muestran planas."),
+    ("legacy.column_box", "Las columnas redondas o en L de Guanacaste 3D se aproximan con prismas rectangulares."),
+    ("legacy.openings_not_cut", "{0} puertas y ventanas no se recortan en los muros."),
+    ("legacy.read_only", "Proyecto de Guanacaste 3D abierto en solo lectura: al guardar se crea un .gr nuevo y el original no se toca."),
     ("fbx.pivots_ignored", "El FBX usa rotaciones previas (PreRotation) que no se aplican: algunas piezas pueden verse giradas."),
 ];

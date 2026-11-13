@@ -11,6 +11,7 @@ mod movie;
 mod projects;
 mod rendering;
 mod settings;
+mod store;
 mod viewport;
 
 use std::collections::HashMap;
@@ -22,6 +23,7 @@ const TABLES: &[&[(&str, &str)]] = &[
     dialogs::ENTRIES,
     import_export::ENTRIES,
     projects::ENTRIES,
+    store::ENTRIES,
     viewport::ENTRIES,
     library::ENTRIES,
     materials::ENTRIES,
