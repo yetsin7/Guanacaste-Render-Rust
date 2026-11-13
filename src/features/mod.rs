@@ -5,6 +5,7 @@ pub mod camera;
 pub mod environment;
 pub mod help;
 pub mod import_export;
+pub mod landscape;
 pub mod library;
 pub mod materials;
 pub mod movie;

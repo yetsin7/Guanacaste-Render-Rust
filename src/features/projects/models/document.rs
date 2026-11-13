@@ -250,4 +250,6 @@ pub struct ProjectDocument {
     pub sun_sky: SunSkyDoc,
     /// Placed vegetation.
     pub vegetation: Vec<VegetationDoc>,
+    /// Terrain, water and scattered vegetation; absent in projects saved before the landscape existed.
+    pub landscape: Option<crate::features::landscape::models::Landscape>,
 }
