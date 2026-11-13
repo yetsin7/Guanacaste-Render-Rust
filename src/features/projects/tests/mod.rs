@@ -3,6 +3,7 @@
 
 mod container_tests;
 mod legacy_tests;
+mod revit_tests;
 mod store_tests;
 
 use super::logic;
