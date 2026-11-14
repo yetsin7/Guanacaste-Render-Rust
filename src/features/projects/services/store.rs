@@ -76,9 +76,14 @@ impl StoreError {
     }
 }
 
-/// Encodes a mesh as `u32 vertices, u32 indices, f32 x3 per vertex, u32 per index` (little endian).
+/// Encodes a mesh as `u32 vertices, u32 indices, f32 x3 per vertex, u32 per index` (little endian), followed by
+/// `f32 x2 per vertex` texture coordinates when the mesh has them. The tail is additive: the length tells the
+/// reader whether it is present, and files written before it existed have none.
 pub fn encode_mesh(mesh: &Mesh) -> Vec<u8> {
-    let mut out = Vec::with_capacity(8 + mesh.positions.len() * 12 + mesh.indices.len() * 4);
+    let with_uvs = !mesh.uvs.is_empty() && mesh.uvs.len() == mesh.positions.len();
+    let mut out = Vec::with_capacity(
+        8 + mesh.positions.len() * 12 + mesh.indices.len() * 4 + mesh.uvs.len() * 8,
+    );
     out.extend_from_slice(&(mesh.positions.len() as u32).to_le_bytes());
     out.extend_from_slice(&(mesh.indices.len() as u32).to_le_bytes());
     for position in &mesh.positions {
@@ -89,16 +94,24 @@ pub fn encode_mesh(mesh: &Mesh) -> Vec<u8> {
     for index in &mesh.indices {
         out.extend_from_slice(&index.to_le_bytes());
     }
+    if with_uvs {
+        for uv in &mesh.uvs {
+            out.extend_from_slice(&uv[0].to_le_bytes());
+            out.extend_from_slice(&uv[1].to_le_bytes());
+        }
+    }
     out
 }
 
 /// Decodes [`encode_mesh`] output, checking that the lengths agree with `vertices` and `indices`.
 pub fn decode_mesh(raw: &[u8], vertices: u32, indices: u32) -> Result<Mesh, StoreError> {
     let count = |at: usize| u32::from_le_bytes([raw[at], raw[at + 1], raw[at + 2], raw[at + 3]]);
+    let base = 8 + vertices as usize * 12 + indices as usize * 4;
+    let with_uvs = vertices > 0 && raw.len() == base + vertices as usize * 8;
     if raw.len() < 8
         || count(0) != vertices
         || count(4) != indices
-        || raw.len() != 8 + vertices as usize * 12 + indices as usize * 4
+        || !(raw.len() == base || with_uvs)
     {
         return Err(StoreError::Mismatch(
             "un bloque de malla no coincide con el documento",
@@ -108,18 +121,27 @@ pub fn decode_mesh(raw: &[u8], vertices: u32, indices: u32) -> Result<Mesh, Stor
     let positions = (0..vertices as usize)
         .map(|v| [float(8 + v * 12), float(12 + v * 12), float(16 + v * 12)])
         .collect();
-    let base = 8 + vertices as usize * 12;
-    let index_list: Vec<u32> = (0..indices as usize).map(|i| count(base + i * 4)).collect();
+    let index_start = 8 + vertices as usize * 12;
+    let index_list: Vec<u32> = (0..indices as usize)
+        .map(|i| count(index_start + i * 4))
+        .collect();
     if index_list.iter().any(|i| *i >= vertices) {
         return Err(StoreError::Mismatch(
             "un índice de malla apunta fuera de los vértices",
         ));
     }
+    let uvs = if with_uvs {
+        (0..vertices as usize)
+            .map(|v| [float(base + v * 8), float(base + v * 8 + 4)])
+            .collect()
+    } else {
+        Vec::new()
+    };
     Ok(Mesh {
         positions,
         indices: index_list,
         material: None,
-        uvs: Vec::new(),
+        uvs,
     })
 }
 

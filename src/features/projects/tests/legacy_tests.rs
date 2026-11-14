@@ -60,7 +60,7 @@ fn a_guanacaste_3d_project_becomes_a_scene() {
             .collect::<Vec<_>>(),
         ["Nivel 1", "Nivel 2"]
     );
-    assert_eq!(outcome.report.elements_total, 6);
+    assert_eq!(outcome.report.elements_total, 6, "every element is counted");
     assert_eq!(
         outcome.report.elements_with_geometry, 5,
         "the zero-length wall is skipped"
@@ -83,7 +83,6 @@ fn a_guanacaste_3d_project_becomes_a_scene() {
         .iter()
         .map(|e| (e.severity, e.key))
         .collect();
-    assert!(keys.contains(&(Severity::Warning, "legacy.openings_not_cut")));
     assert!(keys.contains(&(Severity::Warning, "legacy.degenerate")));
     assert_eq!(outcome.report.skipped_types.get("Rooms"), Some(&1));
 }

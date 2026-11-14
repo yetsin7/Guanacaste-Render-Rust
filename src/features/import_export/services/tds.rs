@@ -103,6 +103,7 @@ fn parse_material(data: &[u8], folder: Option<&Path>) -> Material {
         name: "3DS".into(),
         color: [0.8, 0.8, 0.8, 1.0],
         texture: None,
+        pbr: None,
     };
     for (id, body) in chunks(data).0 {
         match id {

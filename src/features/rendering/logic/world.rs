@@ -138,13 +138,27 @@ fn add_vegetation(builder: &mut Builder, landscape: &Landscape) {
     }
 }
 
+/// A Guanacaste 3D project brings its own site (lawn, street, sidewalk down to -15 cm), so the default landscape
+/// sinks this far below it instead.
+pub const SITE_SINK: f32 = 0.35;
+
+/// Whether the project was imported from Guanacaste 3D and has no landscape of its own.
+fn is_g3d_site(project: &Project) -> bool {
+    project.document.landscape.is_none()
+        && project
+            .document
+            .origin
+            .as_ref()
+            .is_some_and(|o| o.format == "Guanacaste 3D")
+}
+
 /// Half side of the plane that carries the ground out to the horizon, meters.
 const HORIZON: f32 = 30_000.0;
 
 /// A huge flat quad just under the terrain, with the terrain's first material, so the ground meets the sky at the
 /// horizon instead of ending at the edge of the height grid.
-fn horizon_plane(material: usize) -> Mesh {
-    let z = -GROUND_SINK - 0.02;
+fn horizon_plane(material: usize, sink: f32) -> Mesh {
+    let z = -sink - 0.02;
     Mesh {
         positions: vec![
             [-HORIZON, -HORIZON, z],
@@ -169,9 +183,14 @@ pub fn build_world(project: &Project) -> World {
     let landscape = document.landscape.clone().unwrap_or_default();
     let (meshes, materials) = landscape_meshes(&landscape, 0.0);
     let base = builder.add_materials(&materials);
-    builder.add_meshes(&meshes, base, &|p| [p[0], p[1], p[2] - GROUND_SINK]);
+    let sink = if is_g3d_site(project) {
+        SITE_SINK
+    } else {
+        GROUND_SINK
+    };
+    builder.add_meshes(&meshes, base, &|p| [p[0], p[1], p[2] - sink]);
     if !meshes.is_empty() {
-        builder.scene.meshes.push(horizon_plane(base));
+        builder.scene.meshes.push(horizon_plane(base, sink));
     }
     add_vegetation(&mut builder, &landscape);
     let mut world = World::new(builder.scene);

@@ -49,6 +49,7 @@ pub fn build(index: &Index, material_id: &str, folder: Option<&Path>) -> Option<
         name,
         color: [0.8, 0.8, 0.8, 1.0],
         texture: None,
+        pbr: None,
     };
     let Some(effect) = index.get("effect", effect_id) else {
         return Some(out);

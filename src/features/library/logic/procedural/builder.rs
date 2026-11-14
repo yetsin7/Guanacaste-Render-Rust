@@ -52,6 +52,7 @@ impl ShapeBuilder {
             name: name.to_owned(),
             color: [channel(16), channel(8), channel(0), 1.0],
             texture: None,
+            pbr: None,
         });
         self.meshes.push(Mesh {
             material: Some(self.materials.len() - 1),

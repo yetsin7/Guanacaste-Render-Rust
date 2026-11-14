@@ -81,6 +81,9 @@ pub struct Material {
     /// Diffuse texture image as the file names it, made absolute when it was found next to the model.
     /// Additive: the image is referenced, not embedded, and readers without texture support leave it `None`.
     pub texture: Option<String>,
+    /// The full physically based material, when the source describes more than a color (roughness, metalness,
+    /// glass, procedural or embedded textures). Additive: readers that only know colors leave it `None`.
+    pub pbr: Option<Box<crate::features::materials::models::Material>>,
 }
 
 /// A building level.

@@ -89,6 +89,7 @@ pub fn layer_material(layer: SoilLayer) -> Material {
         name: trf("landscape.material.terrain", &[tr(layer.label_key())]),
         color: layer.color(),
         texture: None,
+        pbr: None,
     }
 }
 

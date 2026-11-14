@@ -34,6 +34,7 @@ pub fn paint(r: f32, g: f32, b: f32) -> Material {
         name: "paint".into(),
         color: [r, g, b, 1.0],
         texture: None,
+        pbr: None,
     }
 }
 

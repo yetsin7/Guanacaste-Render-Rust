@@ -301,6 +301,7 @@ pub fn import_bytes(
                     .map_or_else(|| format!("material {i}"), str::to_owned),
                 color: [c[0], c[1], c[2], *c.get(3).unwrap_or(&1.0)],
                 texture: None,
+                pbr: None,
             }
         })
         .collect();
