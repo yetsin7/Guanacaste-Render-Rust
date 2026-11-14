@@ -9,6 +9,26 @@ use crate::features::projects::services::container::{self, BlockSource, Limits};
 use crate::features::projects::services::store::{self, LoadWarning, StoreError};
 use crate::features::projects::services::{recent, recovery, util};
 
+#[test]
+fn texture_coordinates_survive_the_mesh_block_and_old_blocks_still_load() {
+    use crate::features::import_export::models::Mesh;
+    let mesh = Mesh {
+        positions: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        indices: vec![0, 1, 2],
+        material: None,
+        uvs: vec![[0.0, 0.0], [2.5, 0.0], [0.0, 3.5]],
+    };
+    let raw = store::encode_mesh(&mesh);
+    assert_eq!(store::decode_mesh(&raw, 3, 3).unwrap().uvs, mesh.uvs);
+    let plain = Mesh {
+        uvs: Vec::new(),
+        ..mesh
+    };
+    let old = store::encode_mesh(&plain);
+    assert!(store::decode_mesh(&old, 3, 3).unwrap().uvs.is_empty());
+    assert!(store::decode_mesh(&raw[..raw.len() - 4], 3, 3).is_err());
+}
+
 fn ifc_project() -> (ImportedScene, Project) {
     let outcome = crate::features::import_export::tests::import_ifc(IFC2X3_MM);
     let (document, meshes) =

@@ -75,6 +75,7 @@ impl Builder<'_, '_> {
             name: name.to_owned(),
             color,
             texture: None,
+            pbr: None,
         });
         self.palette.len() - 1
     }

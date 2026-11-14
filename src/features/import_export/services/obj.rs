@@ -22,6 +22,7 @@ fn parse_mtl(text: &str, materials: &mut Vec<Material>, names: &mut HashMap<Stri
                     name: name.clone(),
                     color: [0.8, 0.8, 0.8, 1.0],
                     texture: None,
+                    pbr: None,
                 });
                 names.insert(name, materials.len() - 1);
                 current = Some(materials.len() - 1);

@@ -276,6 +276,7 @@ pub fn import_bytes(
                 .as_deref()
                 .filter(|_| !mesh.uvs.is_empty())
                 .map(|file| texture_path(folder, file)),
+            pbr: None,
         });
         mesh.material = Some(0);
     }

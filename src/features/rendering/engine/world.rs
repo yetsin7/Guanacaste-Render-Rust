@@ -27,7 +27,9 @@ impl World {
             .iter()
             .map(|m| {
                 let mut material = convert::from_scene(m);
-                material.roughness = if m.color[3] < 0.99 { 0.05 } else { 0.7 };
+                if m.pbr.is_none() {
+                    material.roughness = if m.color[3] < 0.99 { 0.05 } else { 0.7 };
+                }
                 if let Some(path) = &m.texture {
                     material.maps.albedo = Some(TextureRef::file(path.clone()));
                 }

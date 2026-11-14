@@ -127,5 +127,6 @@ pub fn water_material(water: &WaterBody) -> Material {
         name: tr(water.kind.label_key()).to_owned(),
         color: [r, g, b, water.opacity.clamp(0.0, 1.0)],
         texture: None,
+        pbr: None,
     }
 }

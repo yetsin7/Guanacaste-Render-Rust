@@ -5,6 +5,7 @@ mod dae_tests;
 pub(crate) mod fixtures;
 mod formats_tests;
 mod ifc_tests;
+mod legacy_geometry_tests;
 mod legacy_hardening_tests;
 mod mesh_formats_tests;
 mod robustness_tests;

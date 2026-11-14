@@ -136,6 +136,7 @@ pub fn import_bytes(data: &[u8], progress: &Progress) -> Result<ImportOutcome, I
                     name,
                     color: [c[0] as f32, c[1] as f32, c[2] as f32, 1.0],
                     texture: None,
+                    pbr: None,
                 });
                 material_ids.insert(id, materials.len() - 1);
             }
