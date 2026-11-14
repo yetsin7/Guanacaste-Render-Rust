@@ -219,3 +219,29 @@ fn an_empty_scene_still_renders_with_every_post_effect_on() {
     let image = render_scene(&empty(), &request);
     assert_eq!((image.width(), image.height()), (48, 32));
 }
+
+#[test]
+fn a_panorama_is_twice_as_wide_as_tall_and_looks_all_around() {
+    // A red wall 10 m ahead (+Y) of a camera at the origin; nothing behind it.
+    let wall = scene(
+        vec![wall_quad([-30.0, 30.0], [-30.0, 30.0], 10.0, 0)],
+        vec![paint(0.9, 0.1, 0.1)],
+    );
+    let view = Camera::looking_at([0.0, 0.0, 0.0], [0.0, 5.0, 0.0]);
+    let camera = RenderCamera::panorama(&view, 64);
+    assert_eq!((camera.width, camera.height), (64, 32));
+    let request = RenderRequest::new(camera, RayTracingQuality::Low);
+    let picture = render_scene(&wall, &request);
+    let middle = picture.get_pixel(32, 16).0;
+    assert!(
+        middle[0] > middle[2] + 40,
+        "ahead is the red wall: {middle:?}"
+    );
+    let behind = picture.get_pixel(0, 16).0;
+    assert!(
+        behind[2] >= behind[0],
+        "the seam of the picture is the sky behind: {behind:?}"
+    );
+    let up = picture.get_pixel(32, 1).0;
+    assert!(up[2] >= up[0], "straight up is sky: {up:?}");
+}

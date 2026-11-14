@@ -88,6 +88,7 @@ fn camera_name(plan: &JobPlan, inputs: &RenderInputs) -> String {
             .map_or_else(|| tr("render.view_saved").to_owned(), |c| c.name.clone()),
         CameraChoice::Viewport(_) => tr("render.view_viewport").to_owned(),
         CameraChoice::Photo(..) => tr("render.view_photo").to_owned(),
+        CameraChoice::Panorama(..) => tr("render.view_panorama").to_owned(),
     }
 }
 
@@ -100,7 +101,10 @@ pub fn build_spec(
     plan: &JobPlan,
     suffix: bool,
 ) -> Option<JobSpec> {
-    let size = output_size(plan.resolution, plan.aspect);
+    let size = match &plan.camera {
+        CameraChoice::Panorama(_, width) => (*width, *width / 2),
+        _ => output_size(plan.resolution, plan.aspect),
+    };
     let quality = QUALITIES[plan.quality.min(QUALITIES.len() - 1)];
     let (camera, photo) = inputs.camera(world, &plan.camera, plan.view, size)?;
     let mut request = inputs.request(camera, photo, plan.depth_of_field, quality);

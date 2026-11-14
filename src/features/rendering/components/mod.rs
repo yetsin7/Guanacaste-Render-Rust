@@ -2,6 +2,7 @@
 
 pub mod export_dialog;
 pub mod output_panel;
+pub mod panorama_viewer;
 pub mod preview_view;
 pub mod queue_table;
 pub mod studio_header;

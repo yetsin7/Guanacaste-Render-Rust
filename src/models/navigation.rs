@@ -39,18 +39,21 @@ pub enum PhotoSection {
     Material,
     /// Output quality.
     Quality,
+    /// 360 degree panorama.
+    Panorama,
     /// AI render (not available yet).
     AiRender,
 }
 
 impl PhotoSection {
     /// Every section, in rail order.
-    pub const ALL: [PhotoSection; 6] = [
+    pub const ALL: [PhotoSection; 7] = [
         PhotoSection::Environment,
         PhotoSection::Image,
         PhotoSection::Camera,
         PhotoSection::Material,
         PhotoSection::Quality,
+        PhotoSection::Panorama,
         PhotoSection::AiRender,
     ];
 }

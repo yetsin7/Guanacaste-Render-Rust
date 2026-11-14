@@ -46,6 +46,8 @@ pub struct RenderHub {
     cache: Option<(SceneKey, Arc<World>)>,
     /// The photo filters being edited; renders use them even before they are saved in the project.
     pub live_filters: Option<FilterStack>,
+    /// The id of the job queued last.
+    pub last_job: Option<u64>,
 }
 
 impl RenderHub {
@@ -92,7 +94,7 @@ impl RenderHub {
         let mut queued = 0;
         for plan in plans {
             let spec = build_spec(&world, &inputs, plan, plans.len() > 1).ok_or(NO_SCENE)?;
-            self.queue.enqueue(spec);
+            self.last_job = Some(self.queue.enqueue(spec));
             queued += 1;
         }
         Ok(queued)
@@ -163,6 +165,22 @@ impl RenderHub {
     ) -> Result<usize, &'static str> {
         let plan = JobPlan {
             camera: CameraChoice::Viewport(*camera),
+            ..plan.clone()
+        };
+        self.queue_plans(workspace, &[plan])
+    }
+
+    /// Queues a 360 x 180 degree panorama taken from the 3D view's camera, `width` pixels across.
+    pub fn enqueue_panorama(
+        &mut self,
+        workspace: &Workspace,
+        plan: &JobPlan,
+        camera: &Camera,
+        width: u32,
+    ) -> Result<usize, &'static str> {
+        let plan = JobPlan {
+            camera: CameraChoice::Panorama(*camera, width),
+            depth_of_field: false,
             ..plan.clone()
         };
         self.queue_plans(workspace, &[plan])

@@ -79,6 +79,8 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("photo.material", "Material"),
     ("photo.quality", "Calidad"),
     ("photo.ai", "Render IA"),
+    ("photo.panorama", "Panorama"),
+    ("photo.ai_unavailable", "No disponible"),
     (
         "photo.ai_note",
         "El render con inteligencia artificial todavía no está disponible. El render actual se calcula en el procesador con trazado de rayos.",

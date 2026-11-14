@@ -23,6 +23,8 @@ pub enum CameraChoice {
     Saved(usize),
     /// The camera of the 3D view.
     Viewport(Camera),
+    /// A 360 x 180 degree panorama from the 3D view's eye, with this many pixels across.
+    Panorama(Camera, u32),
     /// A photographic camera standing at `position`, looking at `target`.
     Photo(PhotoCamera, [f32; 3], [f32; 3]),
 }
@@ -91,6 +93,9 @@ impl RenderInputs {
             }
             CameraChoice::Viewport(camera) => {
                 Some((RenderCamera::from_viewport(camera, width, height), None))
+            }
+            CameraChoice::Panorama(camera, width) => {
+                Some((RenderCamera::panorama(camera, *width), None))
             }
             CameraChoice::Photo(photo, position, target) => {
                 let mut camera = RenderCamera::from_photo(photo, *position, *target, width);

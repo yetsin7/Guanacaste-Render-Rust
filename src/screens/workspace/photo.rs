@@ -4,6 +4,7 @@
 //! button. Saving takes the real camera of the 3D view; recalling glides the view there.
 
 use super::photo_bar;
+use super::photo_panorama;
 use super::{ModeSlots, Panel, Slot};
 use crate::components::button::{Button, ButtonStyle};
 use crate::components::{icons, text};
@@ -24,12 +25,13 @@ const PANEL_WIDTH: f32 = 340.0;
 const WIDE_PANEL_WIDTH: f32 = 640.0;
 
 /// Icon and label key of each section, in [`PhotoSection::ALL`] order.
-pub const SECTIONS: [(char, &str); 6] = [
+pub const SECTIONS: [(char, &str); 7] = [
     (icons::SUN, "photo.environment"),
     (icons::IMAGE, "photo.image"),
     (icons::CAMERA, "photo.camera"),
     (icons::TEXTURE, "photo.material"),
     (icons::TUNE, "photo.quality"),
+    (icons::VIEW_IN_AR, "photo.panorama"),
     (icons::BOLT, "photo.ai"),
 ];
 
@@ -128,7 +130,14 @@ fn content(ui: &mut Ui, app: &mut AppState) {
             ui.allocate_space(vec2(rect.width(), 0.0));
             let _ = output_panel::show(ui, rect, &mut app.studio.state);
         }
+        PhotoSection::Panorama => photo_panorama::show(ui, app),
         PhotoSection::AiRender => {
+            text::label(
+                ui,
+                text::caps(tr("photo.ai_unavailable")),
+                typography::label_md(),
+                colors::ERROR,
+            );
             text::paragraph(
                 ui,
                 tr("photo.ai_note"),
