@@ -20,6 +20,8 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("render.view_corner", "Perspectiva de esquina"),
     ("render.view_front", "Frontal"),
     ("render.view_side", "Lateral"),
+    ("render.view_aerial", "Aérea"),
+    ("render.view_interior", "Interior"),
     ("render.view_plan", "Planta"),
     ("render.view_saved", "Cámara guardada"),
     ("render.view_viewport", "Vista 3D"),

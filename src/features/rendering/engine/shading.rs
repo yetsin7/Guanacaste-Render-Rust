@@ -14,6 +14,8 @@ const BIAS: f32 = 1e-3;
 const FIREFLY_LIMIT: f32 = 12.0;
 /// Radius of the sun disc as seen from the ground, in radians (softens shadow edges very slightly).
 const SUN_RADIUS: f32 = 0.0047;
+/// How far outside a window the sky must be reachable for its light to count, meters.
+const PORTAL_REACH: f32 = 40.0;
 
 /// What one camera ray brought back.
 #[derive(Debug, Clone, Copy)]
@@ -127,7 +129,35 @@ impl<'a> Shader<'a> {
                 sum += self.brdf(s, dir, view).mul_v(incoming.irradiance);
             }
         }
-        sum
+        sum + self.sky_through_windows(s, origin, view, rng)
+    }
+
+    /// Sky light reaching `origin` through one randomly chosen window pane (next-event estimation): the pane is
+    /// sampled as an area light of sky radiance, if the point is on its indoor side and both the way to the pane
+    /// and the way from the pane out to the open air are clear.
+    fn sky_through_windows(&self, s: &Surf, origin: Vec3, view: Vec3, rng: &mut Rng) -> Vec3 {
+        let Some(portal) = self.scene.portals.sample(rng) else {
+            return Vec3::ZERO;
+        };
+        let to = portal.point - origin;
+        let distance2 = to.dot(to).max(0.01);
+        let distance = distance2.sqrt();
+        let dir = to / distance;
+        let (cos_surface, cos_pane) = (s.normal.dot(dir), dir.dot(portal.outward));
+        if cos_surface <= 0.02 || cos_pane <= 0.02 {
+            return Vec3::ZERO;
+        }
+        if !self.visible(origin, dir, distance - 2.0 * BIAS, rng) {
+            return Vec3::ZERO;
+        }
+        let outside = portal.point + dir * (2.0 * BIAS + 0.02);
+        if !self.visible(outside, dir, PORTAL_REACH, rng) {
+            return Vec3::ZERO;
+        }
+        let solid_angle = cos_pane * portal.total_area / distance2;
+        self.brdf(s, dir, view)
+            .mul_v(self.atmosphere.sky(dir, false))
+            * (cos_surface * solid_angle.min(2.0 * std::f32::consts::PI) / std::f32::consts::PI)
     }
 
     /// Traces one ray: `t_min`/`t_max` bound the first segment only; `axis_cos` is the cosine between the ray and
@@ -147,12 +177,16 @@ impl<'a> Shader<'a> {
         let mut color = Vec3::ZERO;
         let mut covered = false;
         let mut mirror_chain = true;
+        // A diffuse path that went through a pane: the sky it reaches is already counted by the window sampling.
+        let mut via_pane = false;
         let mut depth = 0;
         let mut travelled = 0.0f32;
         let mut first: Option<(f32, Vec3)> = None;
         for _ in 0..self.bounces + 24 {
             let Some(hit) = self.scene.bvh.closest(origin, dir, t_min, t_max) else {
-                color += throughput.mul_v(self.atmosphere.sky(dir, mirror_chain));
+                if !(via_pane && !self.scene.portals.is_empty()) {
+                    color += throughput.mul_v(self.atmosphere.sky(dir, mirror_chain));
+                }
                 break;
             };
             let tri = &self.scene.bvh.triangles[hit.triangle];
@@ -161,7 +195,14 @@ impl<'a> Shader<'a> {
                 normal = -normal;
             }
             travelled += hit.t;
-            let s = evaluate(self.scene, tri, &hit, normal, travelled * self.pixel_angle);
+            let s = evaluate(
+                self.scene,
+                tri,
+                &hit,
+                normal,
+                travelled * self.pixel_angle,
+                depth == 0 || mirror_chain,
+            );
             let point = origin + dir * hit.t;
             let view = -dir;
             if rng.next_f32() > s.alpha {
@@ -176,6 +217,7 @@ impl<'a> Shader<'a> {
                     continue;
                 }
                 throughput = throughput.mul_v(Vec3::ONE.lerp(s.albedo, 0.5));
+                via_pane |= !mirror_chain;
                 origin = point + dir * BIAS;
                 t_min = 0.0;
                 t_max = (t_max - hit.t).max(0.0);
@@ -185,7 +227,8 @@ impl<'a> Shader<'a> {
                 covered = true;
             }
             if first.is_none() {
-                first = Some((travelled, s.normal));
+                // The geometric normal guides the denoiser: bump detail must not look like an edge.
+                first = Some((travelled, normal));
             }
             let material = &self.scene.materials[tri.material as usize];
             let glow = s.emission
@@ -228,7 +271,9 @@ impl<'a> Shader<'a> {
             }
         }
         let (distance, normal) = first.unwrap_or((self.far, Vec3::ZERO));
-        color = self.atmosphere.fog(color, distance);
+        if first.is_some() {
+            color = self.atmosphere.fog(color, distance);
+        }
         if !color.is_finite() {
             color = Vec3::ZERO;
         }

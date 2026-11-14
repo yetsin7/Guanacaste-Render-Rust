@@ -74,18 +74,59 @@ pub struct Hit {
     pub v: f32,
 }
 
+/// A node of 32 bytes: the box and two packed words. A leaf stores its first triangle (flagged with [`LEAF`]) and
+/// its triangle count; an inner node stores the left child with the split axis in the top bits, and the right child.
 #[derive(Debug, Clone, Copy)]
 struct Node {
     min: Vec3,
     max: Vec3,
-    /// First triangle of a leaf, or index of the left child of an inner node.
-    first: u32,
-    /// Triangle count of a leaf; zero for an inner node.
-    count: u32,
-    /// Index of the right child of an inner node.
-    right: u32,
+    a: u32,
+    b: u32,
+}
+
+/// Marks a leaf in [`Node::a`].
+const LEAF: u32 = 1 << 31;
+/// Bits of [`Node::a`] that hold the split axis of an inner node.
+const AXIS_SHIFT: u32 = 29;
+
+impl Node {
+    fn leaf(min: Vec3, max: Vec3, start: usize, count: usize) -> Self {
+        Self {
+            min,
+            max,
+            a: LEAF | start as u32,
+            b: count as u32,
+        }
+    }
+
+    fn is_leaf(&self) -> bool {
+        self.a & LEAF != 0
+    }
+
+    /// First triangle of a leaf.
+    fn start(&self) -> usize {
+        (self.a & !LEAF) as usize
+    }
+
+    /// Triangle count of a leaf.
+    fn count(&self) -> usize {
+        self.b as usize
+    }
+
+    /// Left child of an inner node.
+    fn left(&self) -> u32 {
+        self.a & ((1 << AXIS_SHIFT) - 1)
+    }
+
+    /// Right child of an inner node.
+    fn right(&self) -> u32 {
+        self.b
+    }
+
     /// Split axis of an inner node.
-    axis: u32,
+    fn axis(&self) -> usize {
+        ((self.a >> AXIS_SHIFT) & 3) as usize
+    }
 }
 
 const LEAF_SIZE: usize = 4;
@@ -169,17 +210,22 @@ impl Bvh {
         let negative = [dir.x < 0.0, dir.y < 0.0, dir.z < 0.0];
         let mut best: Option<Hit> = None;
         let mut limit = t_max;
-        let mut stack = [0u32; 64];
+        // Nodes still to visit with the distance at which the ray enters their box: once a closer hit is known,
+        // everything that starts beyond it is skipped without touching it.
+        let mut stack = [(0u32, 0.0f32); 64];
+        let root = entry(&self.nodes[0], origin, inv, t_min, limit)?;
+        stack[0] = (0, root);
         let mut top = 1;
         while top > 0 {
             top -= 1;
-            let node = &self.nodes[stack[top] as usize];
-            if !hits_box(node, origin, inv, t_min, limit) {
+            let (index, enters) = stack[top];
+            if enters > limit {
                 continue;
             }
-            if node.count > 0 {
-                let start = node.first as usize;
-                for (offset, tri) in self.triangles[start..start + node.count as usize]
+            let node = &self.nodes[index as usize];
+            if node.is_leaf() {
+                let start = node.start();
+                for (offset, tri) in self.triangles[start..start + node.count()]
                     .iter()
                     .enumerate()
                 {
@@ -197,39 +243,57 @@ impl Bvh {
                     }
                 }
             } else if top + 2 <= stack.len() {
-                let (near, far) = if negative[node.axis as usize] {
-                    (node.right, node.first)
+                let (near, far) = if negative[node.axis()] {
+                    (node.right(), node.left())
                 } else {
-                    (node.first, node.right)
+                    (node.left(), node.right())
                 };
-                stack[top] = far;
-                stack[top + 1] = near;
-                top += 2;
+                let near_hit = entry(&self.nodes[near as usize], origin, inv, t_min, limit);
+                let far_hit = entry(&self.nodes[far as usize], origin, inv, t_min, limit);
+                match (near_hit, far_hit) {
+                    (Some(a), Some(b)) => {
+                        // The closer box is visited first (it is pushed last).
+                        let (first, second) = if a <= b {
+                            ((near, a), (far, b))
+                        } else {
+                            ((far, b), (near, a))
+                        };
+                        stack[top] = second;
+                        stack[top + 1] = first;
+                        top += 2;
+                    }
+                    (Some(a), None) => {
+                        stack[top] = (near, a);
+                        top += 1;
+                    }
+                    (None, Some(b)) => {
+                        stack[top] = (far, b);
+                        top += 1;
+                    }
+                    (None, None) => {}
+                }
             }
         }
         best
     }
 }
 
-fn hits_box(node: &Node, origin: Vec3, inv: Vec3, t_min: f32, t_max: f32) -> bool {
-    let mut near = t_min;
-    let mut far = t_max;
-    for axis in 0..3 {
-        let o = origin.axis(axis);
-        let i = inv.axis(axis);
-        let mut t0 = (node.min.axis(axis) - o) * i;
-        let mut t1 = (node.max.axis(axis) - o) * i;
-        if t0 > t1 {
-            std::mem::swap(&mut t0, &mut t1);
-        }
-        // `max`/`min` ignore a NaN produced by 0 * inf, which keeps rays parallel to a slab inside it.
-        near = near.max(t0);
-        far = far.min(t1);
-        if near > far {
-            return false;
-        }
-    }
-    true
+/// The distance at which the ray enters the node's box within `t_min..t_max`, or `None` when it misses.
+fn entry(node: &Node, origin: Vec3, inv: Vec3, t_min: f32, t_max: f32) -> Option<f32> {
+    let t0 = (node.min - origin).mul_v(inv);
+    let t1 = (node.max - origin).mul_v(inv);
+    // `max`/`min` ignore a NaN produced by 0 * inf, which keeps rays parallel to a slab inside it.
+    let near =
+        t0.x.min(t1.x)
+            .max(t0.y.min(t1.y))
+            .max(t0.z.min(t1.z))
+            .max(t_min);
+    let far =
+        t0.x.max(t1.x)
+            .min(t0.y.max(t1.y))
+            .min(t0.z.max(t1.z))
+            .min(t_max);
+    (near <= far).then_some(near)
 }
 
 /// The best binned split: `(axis, bin boundary)` or `None` when no split beats a leaf.
@@ -297,14 +361,7 @@ fn build_node(
         cmax = cmax.max(p.center);
     }
     let index = nodes.len() as u32;
-    nodes.push(Node {
-        min,
-        max,
-        first: start as u32,
-        count: (end - start) as u32,
-        right: 0,
-        axis: 0,
-    });
+    nodes.push(Node::leaf(min, max, start, end - start));
     if end - start <= LEAF_SIZE {
         return index;
     }
@@ -337,9 +394,7 @@ fn build_node(
     let left = build_node(prims, order, start, mid, nodes);
     let right = build_node(prims, order, mid, end, nodes);
     let node = &mut nodes[index as usize];
-    node.count = 0;
-    node.first = left;
-    node.right = right;
-    node.axis = axis as u32;
+    node.a = left | ((axis as u32) << AXIS_SHIFT);
+    node.b = right;
     index
 }

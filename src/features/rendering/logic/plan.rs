@@ -109,6 +109,9 @@ pub fn build_spec(
     let (camera, photo) = inputs.camera(world, &plan.camera, plan.view, size)?;
     let mut request = inputs.request(camera, photo, plan.depth_of_field, quality);
     request.transparent_background = plan.transparent;
+    // Rooms lit through windows are far dimmer than the street: expose for the room.
+    request.post.auto_exposure =
+        plan.camera == CameraChoice::Preset && plan.view == ViewPreset::Interior;
     // A saved camera renders with the filters it was saved with.
     if let CameraChoice::Saved(index) = &plan.camera {
         if let Some(filters) = inputs.cameras.get(*index).and_then(|c| c.filters.clone()) {

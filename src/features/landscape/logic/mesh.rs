@@ -4,6 +4,7 @@ use super::generate::dominant_layer;
 use super::sample::normalize;
 use crate::features::import_export::models::{Material, Mesh};
 use crate::features::landscape::models::{SoilLayer, Terrain};
+use crate::features::materials::logic::derive::{derive, SurfaceInfo};
 use crate::services::localization::{tr, trf};
 
 /// Corner indices of the two triangles of cell `(column, row)`, split along its (0,0)-(1,1) diagonal.
@@ -85,11 +86,24 @@ pub fn terrain_vertex_colors(terrain: &Terrain) -> Vec<[f32; 4]> {
 
 /// Material of a soil layer, named as in the interface catalog.
 pub fn layer_material(layer: SoilLayer) -> Material {
+    let name = trf("landscape.material.terrain", &[tr(layer.label_key())]);
+    // The lawn renders as a soft textured turf; the other layers stay plain colors.
+    let pbr = (layer == SoilLayer::Grass).then(|| {
+        let mut turf = derive(&SurfaceInfo {
+            name: "grass",
+            type_name: None,
+            element: None,
+            class: "IFCSLAB",
+            color: layer.color(),
+        });
+        turf.name = name.clone();
+        Box::new(turf)
+    });
     Material {
-        name: trf("landscape.material.terrain", &[tr(layer.label_key())]),
+        name,
         color: layer.color(),
         texture: None,
-        pbr: None,
+        pbr,
     }
 }
 

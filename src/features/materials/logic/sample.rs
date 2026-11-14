@@ -39,6 +39,18 @@ pub fn sample(material: &Material, maps: &MaterialMaps, uv: [f32; 2]) -> Rgba {
 /// Every channel of `material` at `uv`. `footprint` is the UV size of one output pixel (0 for the sharpest
 /// lookup); it selects the mip level so tiled textures do not shimmer.
 pub fn surface(material: &Material, maps: &MaterialMaps, uv: [f32; 2], footprint: f32) -> Surface {
+    surface_with(material, maps, uv, footprint, true)
+}
+
+/// Like [`surface`]; with `with_normal` false the normal map is not read (the normal stays flat), which is enough
+/// for light that bounces off a surface instead of being seen directly.
+pub fn surface_with(
+    material: &Material,
+    maps: &MaterialMaps,
+    uv: [f32; 2],
+    footprint: f32,
+    with_normal: bool,
+) -> Surface {
     let wrap = material.uv.wrap;
     let point = transform_uv(&material.uv, uv);
     let read = |chain: &MipChain, decode: Decode| {
@@ -62,7 +74,7 @@ pub fn surface(material: &Material, maps: &MaterialMaps, uv: [f32; 2], footprint
     let roughness = scalar(&maps.roughness, material.roughness).clamp(0.0, 1.0);
     let metallic = scalar(&maps.metallic, material.metallic).clamp(0.0, 1.0);
     let ao = scalar(&maps.ao, 1.0).clamp(0.0, 1.0);
-    let normal = match &maps.normal {
+    let normal = match maps.normal.as_ref().filter(|_| with_normal) {
         Some(chain) => {
             let t = read(chain, Decode::Linear);
             let n = [

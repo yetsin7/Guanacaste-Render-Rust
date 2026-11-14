@@ -103,6 +103,8 @@ fn render_pixel(
     let mut covered = 0u32;
     let mut depth = 0.0f32;
     let mut normal = Vec3::ZERO;
+    let (mut luma_sum, mut luma_squares) = (0.0f32, 0.0f32);
+    let mut taken = 0u32;
     for s in 0..samples {
         let mut rng = Rng::for_sample(request.seed, y * frame.width + x, s);
         let (jx, jy) = if samples == 1 {
@@ -120,11 +122,24 @@ fn render_pixel(
             &mut rng,
             scratch,
         );
+        taken += 1;
+        let luma = display_luma(sample.color);
+        luma_sum += luma;
+        luma_squares += luma * luma;
         if sample.covered || !request.transparent_background {
             sum += sample.color;
             covered += 1;
             depth += sample.depth;
             normal += sample.normal;
+        }
+        let coverage_agrees = covered == 0 || covered == taken;
+        if taken >= min_samples(samples) && taken.is_multiple_of(2) && coverage_agrees {
+            let n = taken as f32;
+            let mean = luma_sum / n;
+            let variance = (luma_squares / n - mean * mean).max(0.0);
+            if (variance / n).sqrt() < CONVERGED {
+                break;
+            }
         }
     }
     if covered == 0 {
@@ -136,7 +151,7 @@ fn render_pixel(
     }
     let color = sum / covered as f32;
     let alpha = if request.transparent_background {
-        covered as f32 / samples as f32
+        covered as f32 / taken as f32
     } else {
         1.0
     };
@@ -146,6 +161,20 @@ fn render_pixel(
         depth: depth / covered as f32,
         normal: [n.x, n.y, n.z],
     }
+}
+
+/// Fewest samples a pixel takes before it may stop early: half of its budget, between 4 and 16.
+fn min_samples(budget: u32) -> u32 {
+    (budget / 2).clamp(4, 16).min(budget)
+}
+/// A pixel stops sampling when the standard error of its display brightness is below this: smooth areas such as
+/// sky and flat walls finish after a few samples, noisy ones (edges, glass, shadows) take them all.
+const CONVERGED: f32 = 0.006;
+
+/// Brightness as it will look on screen (a soft tone curve), so noise is judged where the eye sees it.
+fn display_luma(color: Vec3) -> f32 {
+    let l = (0.2126 * color.x + 0.7152 * color.y + 0.0722 * color.z).max(0.0);
+    l / (1.0 + l)
 }
 
 /// The preview bytes of a linear pixel: exposure and the default tone curve, no filters.

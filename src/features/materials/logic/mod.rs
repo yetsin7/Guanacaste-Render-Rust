@@ -2,6 +2,7 @@
 
 pub mod color;
 pub mod convert;
+pub mod derive;
 pub mod editor;
 pub mod maps;
 pub mod presets;

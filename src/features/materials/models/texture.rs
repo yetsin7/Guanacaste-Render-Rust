@@ -18,17 +18,29 @@ pub enum ProceduralKind {
     Grass,
     /// Plain fractal noise.
     Noise,
+    /// Sand-finish stucco, pale so the base color tints it.
+    Stucco,
+    /// Clay barrel roof tile.
+    RoofTile,
+    /// Cut stone blocks in courses.
+    StoneBlock,
+    /// Soft, well-kept lawn.
+    Lawn,
 }
 
 impl ProceduralKind {
     /// Every pattern, in menu order.
-    pub const ALL: [ProceduralKind; 6] = [
+    pub const ALL: [ProceduralKind; 10] = [
         ProceduralKind::Brick,
         ProceduralKind::Wood,
         ProceduralKind::Concrete,
         ProceduralKind::Marble,
         ProceduralKind::Grass,
         ProceduralKind::Noise,
+        ProceduralKind::Stucco,
+        ProceduralKind::RoofTile,
+        ProceduralKind::StoneBlock,
+        ProceduralKind::Lawn,
     ];
 
     /// Localization key of the pattern's name.
@@ -40,6 +52,10 @@ impl ProceduralKind {
             ProceduralKind::Marble => "material.proc_marble",
             ProceduralKind::Grass => "material.proc_grass",
             ProceduralKind::Noise => "material.proc_noise",
+            ProceduralKind::Stucco => "material.proc_stucco",
+            ProceduralKind::RoofTile => "material.proc_roof_tile",
+            ProceduralKind::StoneBlock => "material.proc_stone_block",
+            ProceduralKind::Lawn => "material.proc_lawn",
         }
     }
 }

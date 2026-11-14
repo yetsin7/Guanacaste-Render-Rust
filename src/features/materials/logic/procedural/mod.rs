@@ -1,5 +1,6 @@
 //! CPU procedural textures: brick, wood, concrete, marble, grass and noise. Every pattern tiles seamlessly.
 
+mod architecture;
 mod noise;
 mod patterns;
 
@@ -23,6 +24,10 @@ pub fn color_at(procedural: &Procedural, u: f32, v: f32) -> [f32; 3] {
         ProceduralKind::Marble => patterns::marble(u, v, n, seed),
         ProceduralKind::Grass => patterns::grass(u, v, n, seed),
         ProceduralKind::Noise => patterns::noise(u, v, n, seed),
+        ProceduralKind::Stucco => architecture::stucco(u, v, n, seed),
+        ProceduralKind::RoofTile => architecture::roof_tile(u, v, n, seed),
+        ProceduralKind::StoneBlock => architecture::stone_block(u, v, n, seed),
+        ProceduralKind::Lawn => architecture::lawn(u, v, n, seed),
     };
     rgb.map(|c| c.clamp(0.0, 1.0))
 }

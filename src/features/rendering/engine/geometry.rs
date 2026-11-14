@@ -1,7 +1,10 @@
 //! The renderer's view of a world: triangles in a BVH, linear materials, texture maps and corner UVs.
 
 use super::bvh::{Bvh, Triangle, NO_UV};
+use super::portals::Portals;
+use super::split::{split, Piece};
 use super::types::{RenderMaterial, NO_MAPS};
+use super::uvmap;
 use super::vec3::Vec3;
 use super::world::World;
 use crate::features::lighting::logic::emissive_radiance;
@@ -24,6 +27,8 @@ pub struct RenderScene {
     pub maps: Vec<MaterialMaps>,
     /// Corner UVs, three per textured triangle (`Triangle::uv` is the first).
     pub uvs: Vec<[f32; 2]>,
+    /// Windows and glazed doors that let the sky into rooms.
+    pub portals: Portals,
 }
 
 /// The tracer's flat material for a PBR one.
@@ -96,13 +101,19 @@ impl RenderScene {
         materials.push(RenderMaterial::default());
         let mut triangles = Vec::with_capacity(scene.triangle_count());
         let mut uvs = Vec::new();
-        for mesh in &scene.meshes {
+        let mut pieces = Vec::new();
+        for (mesh_index, mesh) in scene.meshes.iter().enumerate() {
+            if !world.is_visible(mesh_index) {
+                continue;
+            }
             let material = mesh
                 .material
                 .filter(|m| *m < default_material as usize)
                 .map_or(default_material, |m| m as u32);
-            let textured = materials[material as usize].maps != NO_MAPS
-                && mesh.uvs.len() == mesh.positions.len();
+            let has_maps = materials[material as usize].maps != NO_MAPS;
+            let textured = has_maps && mesh.uvs.len() == mesh.positions.len();
+            // Meshes without UVs get meters-based planar coordinates per triangle.
+            let projected = has_maps && mesh.uvs.is_empty();
             let corner = |index: u32| {
                 mesh.positions
                     .get(index as usize)
@@ -114,29 +125,47 @@ impl RenderScene {
                 else {
                     continue;
                 };
-                let mut triangle = Triangle {
-                    v0: a,
-                    e1: b - a,
-                    e2: c - a,
-                    material,
-                    uv: NO_UV,
-                };
-                if triangle.e1.cross(triangle.e2).length() <= 1e-12 {
+                if (b - a).cross(c - a).length() <= 1e-12 {
                     continue;
                 }
-                if textured {
-                    triangle.uv = uvs.len() as u32;
-                    uvs.extend(tri.iter().map(|&i| mesh.uvs[i as usize]));
+                let corner_uvs = textured.then(|| tri.map(|i| mesh.uvs[i as usize]));
+                pieces.clear();
+                split(
+                    Piece {
+                        p: [a, b, c],
+                        uv: corner_uvs,
+                    },
+                    &mut pieces,
+                );
+                for piece in &pieces {
+                    let [a, b, c] = piece.p;
+                    let mut triangle = Triangle {
+                        v0: a,
+                        e1: b - a,
+                        e2: c - a,
+                        material,
+                        uv: NO_UV,
+                    };
+                    if let Some(corners) = piece.uv {
+                        triangle.uv = uvs.len() as u32;
+                        uvs.extend(corners);
+                    } else if projected {
+                        triangle.uv = uvs.len() as u32;
+                        uvs.extend(uvmap::planar(a, b, c));
+                    }
+                    triangles.push(triangle);
                 }
-                triangles.push(triangle);
             }
         }
+        let bvh = Bvh::build(triangles);
+        let portals = Portals::build(&bvh, &materials);
         Self {
-            bvh: Bvh::build(triangles),
+            bvh,
             materials,
             pbr,
             maps,
             uvs,
+            portals,
         }
     }
 

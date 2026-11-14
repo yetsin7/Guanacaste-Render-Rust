@@ -56,7 +56,7 @@ impl SoilLayer {
     /// Base color of the layer, RGBA 0..=1.
     pub fn color(self) -> [f32; 4] {
         match self {
-            SoilLayer::Grass => [0.30, 0.45, 0.18, 1.0],
+            SoilLayer::Grass => [0.40, 0.52, 0.27, 1.0],
             SoilLayer::Dirt => [0.42, 0.32, 0.22, 1.0],
             SoilLayer::Sand => [0.82, 0.74, 0.55, 1.0],
             SoilLayer::Rock => [0.48, 0.47, 0.45, 1.0],

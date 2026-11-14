@@ -9,7 +9,7 @@ pub mod services;
 
 pub use crate::services::texture_cache::TextureCache;
 pub use logic::maps::MaterialMaps;
-pub use logic::sample::{sample, surface, Rgba, Surface};
+pub use logic::sample::{sample, surface, surface_with, Rgba, Surface};
 pub use models::{Material, MaterialLibrary};
 
 #[cfg(test)]

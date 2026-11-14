@@ -26,6 +26,34 @@ pub fn exposure_gain(post: &PostSettings) -> f32 {
     })
 }
 
+/// Mid-gray the automatic exposure aims for (linear, before tone mapping).
+const AUTO_KEY: f32 = 0.22;
+/// The most the automatic exposure brightens a picture (about 3.5 stops).
+const AUTO_MAX_GAIN: f32 = 20.0;
+
+/// The gain that brings the geometric mean brightness of the surfaces (not the sky) to [`AUTO_KEY`], between 1 and
+/// [`AUTO_MAX_GAIN`]. Bright pictures are left alone.
+fn auto_gain(frame: &FrameBuffers) -> f32 {
+    let (mut log_sum, mut count) = (0.0f64, 0usize);
+    for (px, normal) in frame
+        .color
+        .chunks_exact(4)
+        .zip(frame.normal.chunks_exact(3))
+    {
+        if normal == [0.0, 0.0, 0.0] {
+            continue;
+        }
+        let luma = 0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2];
+        log_sum += f64::from(luma.max(1e-4)).ln();
+        count += 1;
+    }
+    if count == 0 {
+        return 1.0;
+    }
+    let mean = (log_sum / count as f64).exp() as f32;
+    (AUTO_KEY / mean).clamp(1.0, AUTO_MAX_GAIN)
+}
+
 /// Blurs pixels by their distance from the focus plane: each pixel gathers the neighbors whose own blur disc
 /// reaches it, so sharp foreground objects do not smear into a blurred background.
 fn depth_of_field(frame: &mut FrameBuffers, photo: &PhotoCamera) {
@@ -79,7 +107,10 @@ pub fn finish(mut frame: FrameBuffers, request: &RenderRequest) -> RgbaImage {
     if post.denoise {
         denoise(&mut frame);
     }
-    let gain = exposure_gain(post);
+    let mut gain = exposure_gain(post);
+    if post.auto_exposure {
+        gain *= auto_gain(&frame);
+    }
     if (gain - 1.0).abs() > 1e-6 {
         for px in frame.color.chunks_exact_mut(4) {
             for c in &mut px[..3] {

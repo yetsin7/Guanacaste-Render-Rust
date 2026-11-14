@@ -6,6 +6,7 @@ use crate::features::import_export::logic::formats::{detect, sniff, Detected, Si
 use crate::features::import_export::models::{
     ImportError, ImportOptions, ImportOutcome, SourceFormat,
 };
+use crate::features::materials::logic::derive;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
@@ -56,6 +57,12 @@ pub fn run(path: &Path, options: &ImportOptions, progress: &Progress) -> JobResu
         SourceFormat::Collada => dae::import(path, progress),
         SourceFormat::ThreeDs => tds::import(path, options, progress),
     }));
+    let outcome = outcome.map(|result| {
+        result.map(|mut outcome| {
+            derive::enrich_scene(&mut outcome.scene);
+            outcome
+        })
+    });
     outcome.unwrap_or_else(|payload| {
         let text = payload
             .downcast_ref::<&str>()

@@ -7,7 +7,7 @@ use crate::features::lighting::logic::active_lights;
 use crate::features::lighting::models::Light;
 use crate::features::projects::models::{CameraDoc, ProjectDocument};
 use crate::features::rendering::engine::{
-    frame_bounds, saved_photo, PostSettings, RenderCamera, RenderRequest, ViewPreset, World,
+    frame_facing, saved_photo, PostSettings, RenderCamera, RenderRequest, ViewPreset, World,
 };
 use crate::features::rendering::models::RayTracingQuality;
 use crate::features::viewport::models::Camera;
@@ -82,7 +82,15 @@ impl RenderInputs {
         match choice {
             CameraChoice::Preset => {
                 let bounds = world.focus.or_else(|| world.scene.bounds())?;
-                Some((frame_bounds(&bounds, preset, width, height), None))
+                if preset == ViewPreset::Interior {
+                    if let Some(camera) = world.interior_camera(width, height) {
+                        return Some((camera, None));
+                    }
+                }
+                Some((
+                    frame_facing(&bounds, world.facade, preset, width, height),
+                    None,
+                ))
             }
             CameraChoice::Saved(index) => {
                 let saved = self.cameras.get(*index)?;
@@ -121,6 +129,7 @@ impl RenderInputs {
             depth_of_field: depth_of_field && photo.is_some(),
             filters: self.filters.clone(),
             denoise: self.denoise,
+            auto_exposure: false,
         };
         request
     }

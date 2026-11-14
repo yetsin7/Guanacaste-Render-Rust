@@ -42,7 +42,8 @@ fn ground() -> ImportedScene {
 }
 
 fn night(camera: RenderCamera) -> RenderRequest {
-    let mut request = RenderRequest::new(camera, RayTracingQuality::Medium);
+    // High: the sample count and bounces that Medium had before the presets were retuned for faster renders.
+    let mut request = RenderRequest::new(camera, RayTracingQuality::High);
     request.environment.hour = 0.5;
     request
 }
@@ -289,7 +290,7 @@ fn wall_request_at(y: f32) -> RenderRequest {
 }
 
 #[test]
-fn meshes_without_uvs_fall_back_to_the_flat_color() {
+fn meshes_without_uvs_are_textured_in_meters() {
     let mut world = textured_wall(Some(TextureRef::procedural(Procedural::new(
         ProceduralKind::Brick,
     ))));
@@ -297,6 +298,9 @@ fn meshes_without_uvs_fall_back_to_the_flat_color() {
         uvs: Vec::new(),
         ..world.scene.meshes[0].clone()
     };
+    // One tile every 2.5 m of wall: the bricks are as big as in the UV-mapped wall.
+    world.pbr[0].uv.scale = [0.4, 0.4];
     let image = render_world(&world, &wall_request());
-    assert!(spread(&image) < 40);
+    let flat = render_world(&textured_wall(None), &wall_request());
+    assert!(spread(&image) > spread(&flat) + 60);
 }

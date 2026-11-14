@@ -9,10 +9,11 @@ use crate::features::landscape::models::Landscape;
 use crate::features::library::logic::procedural;
 use crate::features::library::models::{AssetRef, ProceduralKind};
 use crate::features::library::services::custom_asset;
+use crate::features::materials::logic::derive::is_hidden;
 use crate::features::materials::logic::project_io::library_from_docs;
 use crate::features::projects::logic::convert;
 use crate::features::projects::models::Project;
-use crate::features::rendering::engine::World;
+use crate::features::rendering::engine::{measure_site, Site, World};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -154,10 +155,10 @@ pub fn plant_meshes(landscape: &Landscape, budget: usize) -> (Vec<Mesh>, Vec<Sce
 }
 
 /// Places the scattered vegetation of the landscape within the triangle budget.
-fn add_vegetation(builder: &mut Builder, landscape: &Landscape) {
+fn add_vegetation(builder: &mut Builder, landscape: &Landscape, ground_z: f32) {
     let (meshes, materials) = plant_meshes(landscape, VEGETATION_TRIANGLES);
     let base = builder.add_materials(&materials);
-    builder.add_meshes(&meshes, base, &|p| p);
+    builder.add_meshes(&meshes, base, &|p| [p[0], p[1], p[2] + ground_z]);
 }
 
 /// A Guanacaste 3D project brings its own site (lawn, street, sidewalk down to -15 cm), so the default landscape
@@ -194,14 +195,42 @@ fn horizon_plane(material: usize, sink: f32) -> Mesh {
     }
 }
 
+/// The site of `project`'s model: the building bounds without hidden soil or stray objects, and the ground
+/// height. Needs only the document's materials, so the 3D view and the renderer agree.
+pub fn project_site(project: &Project) -> Site {
+    let library = library_from_docs(&project.document.materials);
+    let visible: Vec<bool> = project
+        .meshes
+        .iter()
+        .map(|mesh| {
+            mesh.material
+                .and_then(|i| library.get(i))
+                .is_none_or(|material| !is_hidden(material))
+        })
+        .collect();
+    let openings: Vec<usize> = project
+        .document
+        .nodes
+        .iter()
+        .filter(|n| n.class == "IFCDOOR" || n.class == "IFCWINDOW")
+        .flat_map(|n| n.meshes.iter().map(|m| *m as usize))
+        .collect();
+    measure_site(&project.meshes, &visible, &openings)
+}
+
 /// The world of `project`: its model, ground, landscape and objects, with the materials the project defines.
 pub fn build_world(project: &Project) -> World {
     let document = &project.document;
     let model = convert::to_scene(document, &project.meshes, 0);
     let project_materials = model.materials.len();
+    let ground_z = if is_g3d_site(project) {
+        0.0
+    } else {
+        project_site(project).ground_z
+    };
     let mut builder = Builder { scene: model };
     add_objects(&mut builder, project);
-    let focus = builder.scene.bounds();
+    let model_meshes = builder.scene.meshes.len();
     let landscape = document.landscape.clone().unwrap_or_default();
     if landscape.visible {
         let (meshes, materials) = landscape_meshes(&landscape, 0.0);
@@ -211,11 +240,12 @@ pub fn build_world(project: &Project) -> World {
         } else {
             GROUND_SINK
         };
-        builder.add_meshes(&meshes, base, &|p| [p[0], p[1], p[2] - sink]);
+        let lift = ground_z - sink;
+        builder.add_meshes(&meshes, base, &|p| [p[0], p[1], p[2] + lift]);
         if !meshes.is_empty() {
-            builder.scene.meshes.push(horizon_plane(base, sink));
+            builder.scene.meshes.push(horizon_plane(base, -lift));
         }
-        add_vegetation(&mut builder, &landscape);
+        add_vegetation(&mut builder, &landscape, ground_z);
     }
     let mut world = World::new(builder.scene);
     let library = library_from_docs(&document.materials);
@@ -228,6 +258,6 @@ pub fn build_world(project: &Project) -> World {
         *slot = material.clone();
     }
     world.emissive = document.lighting.emissive.clone();
-    world.focus = focus;
+    world.measure_site_in(model_meshes);
     world
 }

@@ -5,7 +5,7 @@ use super::bvh::{Hit, Triangle, NO_UV};
 use super::geometry::RenderScene;
 use super::types::NO_MAPS;
 use super::vec3::Vec3;
-use crate::features::materials::surface;
+use crate::features::materials::surface_with;
 
 /// Everything the shader needs to know about the point that was hit.
 #[derive(Debug, Clone, Copy)]
@@ -42,13 +42,15 @@ fn tangent_frame(tri: &Triangle, uv: &[[f32; 2]; 3]) -> Option<(Vec3, Vec3)> {
 }
 
 /// Evaluates the material of `tri` at `hit`. `normal` is the geometric normal facing the viewer; `pixel_world` is
-/// the size in meters of one pixel at the hit, which picks the texture detail level.
+/// the size in meters of one pixel at the hit, which picks the texture detail level. `seen` is false for surfaces
+/// only lit by bounced light: they read a coarser texture level and skip the normal map.
 pub fn evaluate(
     scene: &RenderScene,
     tri: &Triangle,
     hit: &Hit,
     normal: Vec3,
     pixel_world: f32,
+    seen: bool,
 ) -> Surf {
     let material = &scene.materials[tri.material as usize];
     let mut out = Surf {
@@ -80,13 +82,14 @@ pub fn evaluate(
         - (uv[2][0] - uv[0][0]) * (uv[1][1] - uv[0][1]))
         .abs();
     let per_meter = (area_uv / area_world.max(1e-12)).sqrt();
-    let footprint = pixel_world * per_meter;
+    let footprint = pixel_world * per_meter * if seen { 1.0 } else { 4.0 };
     // Mesh coordinates have V up; the texture lookup counts rows downward.
-    let s = surface(
+    let s = surface_with(
         &scene.pbr[tri.material as usize],
         &scene.maps[material.maps as usize],
         [point[0], 1.0 - point[1]],
         footprint,
+        seen,
     );
     out.albedo = Vec3::from_array(s.albedo);
     out.alpha = s.alpha;
@@ -94,7 +97,7 @@ pub fn evaluate(
     out.metallic = s.metallic;
     out.occlusion = s.ao;
     out.emission = Vec3::from_array(s.emission);
-    if s.normal != [0.0, 0.0, 1.0] {
+    if seen && s.normal != [0.0, 0.0, 1.0] {
         if let Some((t, bitangent)) = frame {
             let t = (t - normal * normal.dot(t)).normalized();
             let mut b = normal.cross(t);

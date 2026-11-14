@@ -58,7 +58,7 @@ pub struct RenderSettings {
 }
 
 /// Camera samples taken per unit of [`RayTracingQuality::samples`]: the preset counts are tuned for a GPU.
-pub const SAMPLE_SCALE: u32 = 4;
+pub const SAMPLE_SCALE: u32 = 2;
 
 impl RenderSettings {
     /// The settings of a quality preset.
@@ -66,10 +66,9 @@ impl RenderSettings {
         Self {
             samples: quality.samples() * SAMPLE_SCALE,
             bounces: match quality {
-                RayTracingQuality::Low => 1,
-                RayTracingQuality::Medium => 2,
-                RayTracingQuality::High => 3,
-                RayTracingQuality::Ultra => 4,
+                RayTracingQuality::Low | RayTracingQuality::Medium => 1,
+                RayTracingQuality::High => 2,
+                RayTracingQuality::Ultra => 3,
             },
         }
     }
@@ -86,12 +85,18 @@ pub struct PostSettings {
     pub filters: FilterStack,
     /// Remove sampling noise with an edge-preserving filter.
     pub denoise: bool,
+    /// Brighten dim pictures (interiors lit only through windows) so the average surface reads as mid-gray, the way
+    /// a camera's auto exposure would. Never darkens.
+    pub auto_exposure: bool,
 }
 
 impl PostSettings {
     /// True when the post stage would leave the tone-mapped picture exactly as the tracer produced it.
     pub fn is_identity(&self) -> bool {
-        self.photo.is_none() && self.filters.active_count() == 0 && !self.denoise
+        self.photo.is_none()
+            && self.filters.active_count() == 0
+            && !self.denoise
+            && !self.auto_exposure
     }
 }
 
