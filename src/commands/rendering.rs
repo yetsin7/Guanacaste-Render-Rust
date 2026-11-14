@@ -2,6 +2,7 @@
 //! remembers the world it built so several photos of the same project share it (and its acceleration structure).
 
 use crate::commands::workspace::Workspace;
+use crate::features::camera::models::stack::FilterStack;
 use crate::features::projects::models::Project;
 use crate::features::rendering::engine::{ViewPreset, World};
 use crate::features::rendering::logic::inputs::{CameraChoice, RenderInputs};
@@ -43,6 +44,8 @@ pub struct RenderHub {
     /// The background queue.
     pub queue: RenderQueue,
     cache: Option<(SceneKey, Arc<World>)>,
+    /// The photo filters being edited; renders use them even before they are saved in the project.
+    pub live_filters: Option<FilterStack>,
 }
 
 impl RenderHub {
@@ -69,6 +72,15 @@ impl RenderHub {
         Some(world)
     }
 
+    /// The render inputs of `project`, with the live photo filters.
+    fn inputs(&self, project: &Project) -> RenderInputs {
+        let mut inputs = RenderInputs::from_document(&project.document);
+        if let Some(filters) = &self.live_filters {
+            inputs.filters = filters.clone();
+        }
+        inputs
+    }
+
     fn queue_plans(
         &mut self,
         workspace: &Workspace,
@@ -76,7 +88,7 @@ impl RenderHub {
     ) -> Result<usize, &'static str> {
         let world = self.world(workspace).ok_or(NO_SCENE)?;
         let project = workspace.project.as_ref().ok_or(NO_SCENE)?;
-        let inputs = RenderInputs::from_document(&project.document);
+        let inputs = self.inputs(project);
         let mut queued = 0;
         for plan in plans {
             let spec = build_spec(&world, &inputs, plan, plans.len() > 1).ok_or(NO_SCENE)?;
@@ -164,7 +176,7 @@ impl RenderHub {
         quality: usize,
     ) -> Option<Box<dyn FrameSource>> {
         let world = self.world(workspace)?;
-        let inputs = RenderInputs::from_document(&workspace.project.as_ref()?.document);
+        let inputs = self.inputs(workspace.project.as_ref()?);
         let quality: RayTracingQuality = QUALITIES[quality.min(QUALITIES.len() - 1)];
         Some(Box::new(PhotoFrameSource::new(world, inputs, quality)))
     }

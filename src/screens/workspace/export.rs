@@ -106,6 +106,28 @@ fn queue(ui: &mut Ui, app: &mut AppState) {
     }
 }
 
+/// The photo mode's render button: one picture per saved camera (each with its own filters), or of the 3D view
+/// when no camera is saved. The result is reported in the notices.
+pub(super) fn render_photos(app: &mut AppState) {
+    let plan = plan_from_studio(&app.studio.state);
+    if safe_stem(&plan.output.file_name) != plan.output.file_name.trim() {
+        app.studio.state.file_name = safe_stem(&plan.output.file_name);
+    }
+    let plan = plan_from_studio(&app.studio.state);
+    let camera = *app.viewport.camera();
+    let result = if app.cameras.is_empty() {
+        app.render.enqueue_viewport(&app.workspace, &plan, &camera)
+    } else {
+        app.render.enqueue_saved_cameras(&app.workspace, &plan)
+    };
+    let (text, error) = match result {
+        Ok(count) => (trf("render.queued_n", &[&count.to_string()]), false),
+        Err(reason) => (tr(reason).to_owned(), true),
+    };
+    app.workspace.notify(text.clone(), error);
+    app.studio.state.notice = Some((text, error));
+}
+
 pub(super) fn start(app: &mut AppState, action: HeaderAction) {
     let plan = plan_from_studio(&app.studio.state);
     if safe_stem(&plan.output.file_name) != plan.output.file_name.trim() {

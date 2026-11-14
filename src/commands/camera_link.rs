@@ -110,8 +110,12 @@ pub fn save_current(app: &mut AppState) -> usize {
         target: camera.target.map(f64::from),
         focal_mm: focal,
         aperture: app.camera_studio.camera.lens.aperture,
+        filters: Some(app.camera_studio.stack.clone()),
+        thumbnail: None,
     });
-    app.cameras.len() - 1
+    let index = app.cameras.len() - 1;
+    app.thumbs.request(index);
+    index
 }
 
 /// Moves the 3D view to saved camera `index`, gliding there.
@@ -135,6 +139,10 @@ pub fn recall(app: &mut AppState, index: usize) {
     if camera.is_valid() {
         app.viewport.controller.go_to(camera, true);
         app.camera_studio.camera.set_aperture(saved.aperture);
+        if let Some(filters) = saved.filters {
+            app.camera_studio.stack = filters;
+            app.camera_studio.mark_custom();
+        }
     }
 }
 

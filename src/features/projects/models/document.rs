@@ -1,7 +1,9 @@
 //! The editable part of a project, stored as JSON inside a `.gr` container (`GRRPROJ1`). Heavy geometry lives in binary
 //! blocks (see `services/container.rs`); this document only keeps the metadata of each mesh.
 
+use super::studio_doc::StudioDoc;
 use crate::features::build::models::ObjectsDoc;
+use crate::features::camera::models::camera::PhotoCamera;
 use crate::features::camera::models::stack::FilterStack;
 use crate::features::environment::models::EnvironmentSettings;
 use crate::features::lighting::models::LightingSetup;
@@ -130,6 +132,12 @@ pub struct CameraDoc {
     pub focal_mm: f32,
     /// Aperture f-number.
     pub aperture: f32,
+    /// The photo filters this camera was saved with (absent in older files: the project filters apply).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub filters: Option<FilterStack>,
+    /// Thumbnail of the view as base64 PNG (absent in older files).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thumbnail: Option<String>,
 }
 
 /// A timeline keyframe.
@@ -270,4 +278,10 @@ pub struct ProjectDocument {
     /// Filters applied to every render of the project (absent in older files; omitted when empty).
     #[serde(skip_serializing_if = "FilterStack::is_empty")]
     pub filters: FilterStack,
+    /// Photographic camera (lens, sensor, exposure) of the photo mode; absent in older files.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub photo_camera: Option<PhotoCamera>,
+    /// Quality and output choices of the photo mode; absent in older files.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub studio: Option<StudioDoc>,
 }

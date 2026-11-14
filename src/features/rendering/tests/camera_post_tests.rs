@@ -74,6 +74,8 @@ fn saved_cameras_keep_their_lens_and_become_queue_jobs() {
         target: [0.0, 0.0, 1.6],
         focal_mm: 35.0,
         aperture: 5.6,
+        filters: None,
+        thumbnail: None,
     };
     let camera = RenderCamera::from_saved(&saved, 1280, 720);
     // 35 mm on a 36 mm wide sensor and a 16:9 picture.

@@ -79,3 +79,64 @@ fn an_untouched_project_keeps_a_visible_base_ground_and_stays_clean() {
     assert!(project.document.landscape.is_none());
     let _ = std::fs::remove_dir_all(&folder);
 }
+
+#[test]
+fn photo_filters_cameras_and_studio_survive_save_and_open() {
+    use crate::features::camera::models::filter::FilterKind;
+    let folder = temp_folder("photo");
+    let mut app = AppState::with_data_dir(folder.join("datos"));
+    app.workspace.start_new("Foto");
+    step(&mut app);
+    assert!(app
+        .workspace
+        .project
+        .as_ref()
+        .unwrap()
+        .document
+        .studio
+        .is_none());
+    app.camera_studio.stack.push(FilterKind::ALL[0]);
+    app.camera_studio.camera.set_aperture(2.0);
+    app.studio.state.quality = 2;
+    app.studio.state.resolution = 3;
+    app.environment.hour = 18.0;
+    camera_link::save_current(&mut app);
+    app.cameras[0].thumbnail = Some("AAAA".into());
+    step(&mut app);
+    let file = folder.join("Foto.gr");
+    assert!(app.workspace.save_to(&file, false));
+    let mut other = AppState::with_data_dir(folder.join("otros"));
+    assert!(other.workspace.open_file(&file));
+    step(&mut other);
+    assert_eq!(other.camera_studio.stack, app.camera_studio.stack);
+    assert_eq!(other.camera_studio.camera.lens.aperture, 2.0);
+    assert_eq!(other.studio.state.quality, 2);
+    assert_eq!(other.studio.state.resolution, 3);
+    assert_eq!(other.environment.hour, 18.0);
+    assert_eq!(
+        other.cameras[0].filters,
+        Some(app.camera_studio.stack.clone())
+    );
+    assert_eq!(other.cameras[0].thumbnail.as_deref(), Some("AAAA"));
+    assert!(!other.workspace.dirty());
+    let _ = std::fs::remove_dir_all(&folder);
+}
+
+#[test]
+fn an_environment_set_back_to_the_default_is_still_saved() {
+    let folder = temp_folder("env-default");
+    let mut app = AppState::with_data_dir(folder.join("datos"));
+    app.workspace.start_new("Cielo");
+    step(&mut app);
+    app.environment.hour = 7.0;
+    step(&mut app);
+    app.environment = EnvironmentSettings::default();
+    step(&mut app);
+    let file = folder.join("Cielo.gr");
+    assert!(app.workspace.save_to(&file, false));
+    let mut other = AppState::with_data_dir(folder.join("otros"));
+    assert!(other.workspace.open_file(&file));
+    step(&mut other);
+    assert_eq!(other.environment, EnvironmentSettings::default());
+    let _ = std::fs::remove_dir_all(&folder);
+}

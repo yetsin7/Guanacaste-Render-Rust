@@ -15,6 +15,7 @@ use crate::features::movie::models::{Animation, MovieState};
 use crate::features::projects::models::CameraDoc;
 use crate::models::AppState;
 
+pub mod photo;
 #[cfg(test)]
 mod tests;
 
@@ -26,6 +27,7 @@ pub struct Baselines {
     animation: Animation,
     cameras: Vec<CameraDoc>,
     environment: Option<EnvironmentSettings>,
+    photo: photo::PhotoBaseline,
     landscape_revision: u64,
     /// Meters the imported model was moved by hand since it was loaded (shown in the model section).
     pub model_shift: [f32; 3],
@@ -43,9 +45,12 @@ pub fn step(app: &mut AppState) {
     if key != app.baselines.key {
         app.baselines.key = key;
         load(app);
+        let doc = app.workspace.project.as_ref().map(|p| p.document.clone());
+        photo::load(app, doc.as_ref());
     } else {
         flush(app);
     }
+    app.render.live_filters = Some(app.camera_studio.stack.clone());
     material_sync::adopt(&mut app.materials, app.workspace.project.as_ref());
     material_sync::flush(&mut app.materials, app.workspace.project.as_mut());
 }
@@ -135,11 +140,19 @@ fn flush(app: &mut AppState) {
         changed = true;
     }
     let environment = Some(app.environment);
-    if environment != b.environment && environment != Some(EnvironmentSettings::default()) {
+    let loaded = b.environment.or(Some(EnvironmentSettings::default()));
+    if environment != loaded {
         project.document.environment = environment;
         b.environment = environment;
         changed = true;
     }
+    changed |= photo::flush(
+        &mut b.photo,
+        &app.camera_studio.stack,
+        &app.camera_studio.camera,
+        &app.studio.state,
+        &mut project.document,
+    );
     if changed {
         project.dirty = true;
     }
