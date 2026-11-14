@@ -1,10 +1,13 @@
 //! IFC (STEP) importer: units, hierarchy, materials, styles and geometry into the common scene model.
 
+mod boolean;
 mod brep;
 mod build;
 mod context;
+mod csg;
 mod finish;
 mod items;
+mod openings;
 mod piece;
 mod profile;
 mod representation;

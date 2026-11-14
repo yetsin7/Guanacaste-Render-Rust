@@ -48,7 +48,10 @@ fn extruded_wall_has_the_expected_size_color_and_material() {
     let scene = &outcome.scene;
     let wall = element(scene, "Muro básico:Genérico - 200mm");
     assert_eq!(wall.class, "IFCWALLSTANDARDCASE");
-    assert_eq!(triangles(scene, wall), 12);
+    assert!(
+        triangles(scene, wall) > 12,
+        "the opening is cut out of the wall"
+    );
     let (min, max) = world_bounds(scene, wall);
     assert!(
         close(max[0] - min[0], 5.0) && close(max[1] - min[1], 0.2) && close(max[2] - min[2], 3.0)
@@ -76,7 +79,7 @@ fn doors_windows_count_and_openings_are_reported_not_hidden() {
     assert_eq!(outcome.report.elements_total, 4);
     assert_eq!(outcome.report.elements_with_geometry, 4);
     let keys: Vec<&str> = outcome.report.entries.iter().map(|e| e.key).collect();
-    assert!(keys.contains(&"ifc.openings_not_cut"));
+    assert!(keys.contains(&"ifc.openings_cut"));
     assert!(keys.contains(&"ifc.skipped_product"));
     assert_eq!(
         outcome.report.skipped_types.get("IFCPROPERTYSINGLEVALUE"),

@@ -68,10 +68,7 @@ pub fn item(
             return;
         }
         "IFCBOOLEANRESULT" | "IFCBOOLEANCLIPPINGRESULT" => {
-            ctx.note(Severity::Warning, "ifc.boolean_ignored", &[]);
-            if let Some(first) = entity.arg(1).as_ref() {
-                item(ctx, first, matrix, color, depth + 1, out);
-            }
+            super::boolean::apply(ctx, entity, matrix, color, depth, out);
             return;
         }
         "IFCGEOMETRICSET"

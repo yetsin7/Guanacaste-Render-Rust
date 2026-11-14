@@ -26,6 +26,7 @@ pub(super) struct Builder<'a, 'b> {
     pub(super) children: HashMap<u32, Vec<u32>>,
     pub(super) materials_of: HashMap<u32, u32>,
     pub(super) types_of: HashMap<u32, String>,
+    pub(super) voids: HashMap<u32, Vec<u32>>,
     pub(super) visited: HashSet<u32>,
     pub(super) palette: Vec<Material>,
     pub(super) world: Vec<(usize, usize, Piece)>,
@@ -151,7 +152,10 @@ impl Builder<'_, '_> {
             Some(placement) => self.ctx.local_placement(placement, 0),
             None => crate::features::import_export::logic::geometry::Mat4::IDENTITY,
         };
-        let pieces = representation::body(&mut self.ctx, entity, &world);
+        let mut pieces = representation::body(&mut self.ctx, entity, &world);
+        if let Some(openings) = self.voids.get(&id).cloned() {
+            pieces = super::openings::cut(&mut self.ctx, &openings, pieces);
+        }
         let material = self.materials_of.get(&id).copied();
         let (material_name, material_color) =
             material.map_or(("Predeterminado".to_owned(), None), |m| {
@@ -177,9 +181,11 @@ impl Builder<'_, '_> {
     }
 }
 
-fn relation_children(file: &StepFile) -> (HashMap<u32, Vec<u32>>, usize) {
+type Relations = (HashMap<u32, Vec<u32>>, HashMap<u32, Vec<u32>>);
+
+fn relation_children(file: &StepFile) -> Relations {
     let mut children: HashMap<u32, Vec<u32>> = HashMap::new();
-    let mut voids = 0;
+    let mut voids: HashMap<u32, Vec<u32>> = HashMap::new();
     let mut ids: Vec<&u32> = file.entities.keys().collect();
     ids.sort();
     for id in ids {
@@ -201,7 +207,13 @@ fn relation_children(file: &StepFile) -> (HashMap<u32, Vec<u32>>, usize) {
                         .extend(relation.arg(4).refs());
                 }
             }
-            "IFCRELVOIDSELEMENT" => voids += 1,
+            "IFCRELVOIDSELEMENT" => {
+                if let (Some(host), Some(opening)) =
+                    (relation.arg(4).as_ref(), relation.arg(5).as_ref())
+                {
+                    voids.entry(host).or_default().push(opening);
+                }
+            }
             _ => {}
         }
     }
@@ -241,6 +253,7 @@ pub fn scene(
         children,
         materials_of,
         types_of,
+        voids,
         visited: HashSet::new(),
         palette: Vec::new(),
         world: Vec::new(),
@@ -305,13 +318,6 @@ pub fn scene(
         builder
             .ctx
             .note(Severity::Info, "ifc.skipped_product", &[ty]);
-    }
-    if voids > 0 {
-        builder.ctx.note(
-            Severity::Warning,
-            "ifc.openings_not_cut",
-            &[&voids.to_string()],
-        );
     }
     super::finish::finish(builder, file, file_size)
 }
