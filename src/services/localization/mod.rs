@@ -18,6 +18,7 @@ mod rendering;
 mod settings;
 mod shell;
 mod store;
+mod usability;
 mod view3d;
 mod viewport;
 
@@ -45,6 +46,7 @@ const TABLES: &[&[(&str, &str)]] = &[
     settings::ENTRIES,
     shell::ENTRIES,
     help::ENTRIES,
+    usability::ENTRIES,
 ];
 
 /// All `(key, text)` pairs of the catalog.

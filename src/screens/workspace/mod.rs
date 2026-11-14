@@ -12,6 +12,7 @@ mod palette;
 mod photo;
 mod photo_bar;
 mod render_overlay;
+mod selection_overlay;
 mod viewport;
 
 use crate::components::dock_panel::{DockPanel, Edge};
@@ -139,6 +140,9 @@ pub fn show(ui: &mut Ui, app: &mut AppState, mode: Mode) {
     let places = layout(rect, &slots, app);
     app.thumbs.view = Some(places.free);
     viewport::panel(ui, rect, app);
+    if !app.thumbs.capturing() {
+        selection_overlay::show(ui, rect, app);
+    }
     (slots.overlay)(ui, rect, app);
     if !app.thumbs.capturing() {
         palette::show(ui.ctx(), places.free.left_top() + vec2(12.0, 10.0), app);

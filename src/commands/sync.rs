@@ -48,6 +48,8 @@ pub fn step(app: &mut AppState) {
         load(app);
         let doc = app.workspace.project.as_ref().map(|p| p.document.clone());
         photo::load(app, doc.as_ref());
+        link_ground(app);
+        app.undo = super::undo::UndoHub::new(app);
     } else {
         flush(app);
     }

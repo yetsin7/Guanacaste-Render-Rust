@@ -206,6 +206,8 @@ impl eframe::App for StudioApp {
         self.dialogs
             .show(&ctx, &mut self.app.workspace, &mut self.preferences);
         self.queue_export_request();
+        let editing = ctx.input(|input| input.pointer.any_down());
+        crate::commands::undo::track(&mut self.app, editing);
         crate::commands::thumbnails::update(&ctx, &mut self.app);
         self.follow_project();
         let title = self.app.workspace.window_title();

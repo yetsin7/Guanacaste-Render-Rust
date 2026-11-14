@@ -70,16 +70,23 @@ fn set_transforms(
 pub struct History {
     undo: Vec<Command>,
     redo: Vec<Command>,
+    recorded: u64,
 }
 
 impl History {
     /// Records a command that was just applied; the redo stack is cleared.
     pub fn record(&mut self, command: Command) {
+        self.recorded += 1;
         self.redo.clear();
         self.undo.push(command);
         if self.undo.len() > HISTORY_LIMIT {
             self.undo.remove(0);
         }
+    }
+
+    /// How many commands were recorded so far (it only grows, even when the oldest are dropped).
+    pub fn recorded(&self) -> u64 {
+        self.recorded
     }
 
     /// Whether there is something to undo.
