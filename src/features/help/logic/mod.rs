@@ -1,18 +1,8 @@
-//! Help rules: tutorial navigation and shortcut search.
+//! Help rules: the real controls and the shortcut search.
 
-use super::models::{HelpState, Shortcut};
+pub mod controls;
 
-/// Moves to the next tutorial step, if any.
-pub fn next_step(state: &mut HelpState, total: usize) {
-    if state.step + 1 < total {
-        state.step += 1;
-    }
-}
-
-/// Moves to the previous tutorial step, if any.
-pub fn previous_step(state: &mut HelpState) {
-    state.step = state.step.saturating_sub(1);
-}
+use super::models::Shortcut;
 
 /// The shortcuts whose action or keys contain the search text (case-insensitive).
 pub fn filter_shortcuts<'a>(shortcuts: &'a [Shortcut], search: &str) -> Vec<&'a Shortcut> {

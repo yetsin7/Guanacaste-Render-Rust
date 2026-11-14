@@ -110,8 +110,69 @@ pub fn save_current(app: &mut AppState) -> usize {
         target: camera.target.map(f64::from),
         focal_mm: focal,
         aperture: app.camera_studio.camera.lens.aperture,
+        filters: Some(app.camera_studio.stack.clone()),
+        thumbnail: None,
     });
-    app.cameras.len() - 1
+    let index = app.cameras.len() - 1;
+    app.thumbs.request(index);
+    index
+}
+
+/// Replaces saved camera `index` with the 3D view as it is now (position, lens, filters and thumbnail).
+pub fn overwrite(app: &mut AppState, index: usize) {
+    if index >= app.cameras.len() {
+        return;
+    }
+    let name = app.cameras[index].name.clone();
+    let last = save_current(app);
+    let mut fresh = app.cameras.remove(last);
+    fresh.name = name;
+    app.cameras[index] = fresh;
+    // `save_current` asked for the thumbnail of the last slot: it is the replaced one now.
+    app.thumbs.request(index);
+}
+
+/// Handles the number keys over the 3D view: `1`-`9` go to the saved camera of that number and `Ctrl+1`-`9`
+/// save the current view there (the next free number appends a camera).
+pub fn number_keys(ctx: &eframe::egui::Context, app: &mut AppState, over_view: bool) {
+    use eframe::egui::{Key, Modifiers};
+    if !over_view || ctx.egui_wants_keyboard_input() {
+        return;
+    }
+    const DIGITS: [Key; 9] = [
+        Key::Num1,
+        Key::Num2,
+        Key::Num3,
+        Key::Num4,
+        Key::Num5,
+        Key::Num6,
+        Key::Num7,
+        Key::Num8,
+        Key::Num9,
+    ];
+    for (slot, key) in DIGITS.into_iter().enumerate() {
+        let number = (slot + 1).to_string();
+        if ctx.input_mut(|input| input.consume_key(Modifiers::COMMAND, key)) {
+            let text = if slot < app.cameras.len() {
+                overwrite(app, slot);
+                trf("cam.saved", &[&number])
+            } else if slot == app.cameras.len() {
+                save_current(app);
+                trf("cam.saved", &[&number])
+            } else {
+                trf("cam.gap", &[&number, &(app.cameras.len() + 1).to_string()])
+            };
+            app.workspace.notify(text, false);
+        } else if ctx.input_mut(|input| input.consume_key(Modifiers::NONE, key)) {
+            let text = if slot < app.cameras.len() {
+                recall(app, slot);
+                trf("cam.recalled", &[&number])
+            } else {
+                trf("cam.empty", &[&number])
+            };
+            app.workspace.notify(text, false);
+        }
+    }
 }
 
 /// Moves the 3D view to saved camera `index`, gliding there.
@@ -135,6 +196,10 @@ pub fn recall(app: &mut AppState, index: usize) {
     if camera.is_valid() {
         app.viewport.controller.go_to(camera, true);
         app.camera_studio.camera.set_aperture(saved.aperture);
+        if let Some(filters) = saved.filters {
+            app.camera_studio.stack = filters;
+            app.camera_studio.mark_custom();
+        }
     }
 }
 

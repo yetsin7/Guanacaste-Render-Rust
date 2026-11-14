@@ -127,6 +127,8 @@ fn renders_the_real_model() {
         target: [f64::from(cx), f64::from(focus.min[1]), 2.0],
         focal_mm: 35.0,
         aperture: 2.8,
+        filters: None,
+        thumbnail: None,
     });
     studio.shot(&inputs, &CameraChoice::Saved(0), true, medium, "saved_dof");
     // Late afternoon, and fog with rain.

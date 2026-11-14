@@ -58,7 +58,7 @@ impl ObjectsState {
         let hit = if self.placement.snap_to_surface {
             self.surface_hit(ray, &Default::default())?
         } else {
-            let t = super::math::ray_plane(ray, [0.0; 3], [0.0, 0.0, 1.0])?;
+            let t = self.ray_ground(ray)?;
             super::picking::SurfaceHit {
                 point: ray.at(t),
                 normal: [0.0, 0.0, 1.0],
@@ -87,6 +87,9 @@ impl ObjectsState {
                 for axis in 0..3 {
                     copy.position[axis] += offset[axis] * f64::from(step);
                 }
+                // The copies follow the relief: keep the height above the ground of the original.
+                copy.position[2] += self.ground_height(copy.position[0], copy.position[1])
+                    - self.ground_height(transform.position[0], transform.position[1]);
                 objects.push((*asset, copy));
             }
         }
@@ -110,7 +113,7 @@ impl ObjectsState {
             let z = if self.placement.snap_to_surface {
                 self.surface_height(x, y, &Default::default())
             } else {
-                center[2]
+                center[2] + self.ground_height(x, y) - self.ground_height(center[0], center[1])
             };
             let asset = self.fresh_asset(active);
             objects.push((asset, self.varied_transform([x, y, z])));

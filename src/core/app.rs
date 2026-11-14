@@ -71,6 +71,18 @@ impl StudioApp {
 
     /// Applies a navigation request, remembering the workspace mode.
     fn go(&mut self, screen: Screen) {
+        let screen = match screen {
+            // The library and the settings are not screens of their own: they open the tools that do the work.
+            Screen::Library => {
+                self.app.category = crate::models::navigation::BuildCategory::Objects;
+                Screen::Workspace(crate::models::navigation::Mode::Build)
+            }
+            Screen::Settings => {
+                self.pending_dialog = Some(crate::models::dialog::Dialog::Preferences);
+                return;
+            }
+            other => other,
+        };
         self.screen = screen;
         if let Some(mode) = screen.mode() {
             self.app.mode = mode;
@@ -206,6 +218,8 @@ impl eframe::App for StudioApp {
         self.dialogs
             .show(&ctx, &mut self.app.workspace, &mut self.preferences);
         self.queue_export_request();
+        let editing = ctx.input(|input| input.pointer.any_down());
+        crate::commands::undo::track(&mut self.app, editing);
         crate::commands::thumbnails::update(&ctx, &mut self.app);
         self.follow_project();
         let title = self.app.workspace.window_title();

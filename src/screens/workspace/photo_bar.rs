@@ -7,7 +7,6 @@ use crate::commands::camera_link;
 use crate::components::button::{Button, ButtonStyle};
 use crate::components::{checkbox, text};
 use crate::config::theme::{colors, typography};
-use crate::features::rendering::components::studio_header::HeaderAction;
 use crate::models::navigation::{Mode, PhotoSection, Screen};
 use crate::models::AppState;
 use crate::services::localization::{tr, trf};
@@ -88,7 +87,7 @@ pub fn actions(ui: &mut Ui, app: &mut AppState) {
             .show(ui)
             .clicked()
         {
-            export::start(app, HeaderAction::Render);
+            export::render_photos(app);
         }
         if Button::new(tr("photo.save"), ButtonStyle::Container)
             .show(ui)
@@ -172,11 +171,11 @@ pub fn show(ui: &mut Ui, app: &mut AppState) {
             button = button.disabled(tr("render.no_scene"));
         }
         if button.show(ui).clicked() {
-            export::start(app, HeaderAction::Render);
+            export::render_photos(app);
         }
         text::label(
             ui,
-            trf("bar.photos", &["1"]),
+            trf("bar.photos", &[&app.cameras.len().max(1).to_string()]),
             typography::label_sm(),
             colors::OUTLINE,
         );

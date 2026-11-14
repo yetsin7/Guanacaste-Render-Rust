@@ -1,6 +1,7 @@
 //! Rendering rules: export size estimates, queue summaries and the text of job times.
 
 pub mod inputs;
+pub mod panorama_view;
 pub mod plan;
 pub mod world;
 

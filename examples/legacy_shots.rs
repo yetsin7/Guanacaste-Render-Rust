@@ -68,6 +68,8 @@ fn main() {
             target,
             focal_mm: focal,
             aperture: 8.0,
+            filters: None,
+            thumbnail: None,
         });
         let (camera, photo) = inputs
             .camera(

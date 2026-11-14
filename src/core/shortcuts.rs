@@ -3,6 +3,7 @@
 //! (`Ctrl+N/O/I/S/E`) live in the dialog host. Nothing fires while a dialog is open or a text field has the
 //! keyboard.
 
+use crate::commands::undo;
 use crate::models::navigation::{Mode, Screen};
 use crate::models::AppState;
 use eframe::egui::{Context, Key, Modifiers};
@@ -13,6 +14,29 @@ const MODE_KEYS: [Key; 4] = [Key::F1, Key::F2, Key::F3, Key::F4];
 pub fn handle(ctx: &Context, app: &mut AppState, screen: Screen, dialog_open: bool) {
     if dialog_open || ctx.egui_wants_keyboard_input() || screen == Screen::Home {
         return;
+    }
+    if ctx.input_mut(|input| input.consume_key(Modifiers::COMMAND | Modifiers::SHIFT, Key::Z))
+        || ctx.input_mut(|input| input.consume_key(Modifiers::COMMAND, Key::Y))
+    {
+        undo::run(app, true);
+    } else if ctx.input_mut(|input| input.consume_key(Modifiers::COMMAND, Key::Z)) {
+        undo::run(app, false);
+    }
+    if app.mode == Mode::Build
+        && ctx.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Delete))
+    {
+        let key = if app.objects.selection.is_empty() {
+            "delete.nothing"
+        } else {
+            app.objects.delete_selected();
+            "delete.done"
+        };
+        app.workspace
+            .notify(crate::services::localization::tr(key).to_owned(), false);
+    }
+    if ctx.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape)) {
+        app.objects.pointer_cancel();
+        app.objects.clear_selection();
     }
     for (index, key) in MODE_KEYS.into_iter().enumerate() {
         if ctx.input_mut(|input| input.consume_key(Modifiers::NONE, key)) {

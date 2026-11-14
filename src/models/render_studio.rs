@@ -1,7 +1,7 @@
 //! The render studio of export mode: output settings, the folder picker and the live preview of the queue.
 
 use crate::features::rendering::components::preview_view::PreviewView;
-use crate::features::rendering::models::RenderStudioState;
+use crate::features::rendering::models::{PanoramaPanel, RenderStudioState};
 use crate::features::rendering::services::FolderPicker;
 
 /// Everything export mode keeps between frames.
@@ -13,4 +13,6 @@ pub struct RenderStudio {
     pub picker: FolderPicker,
     /// Live picture of the running job.
     pub preview: PreviewView,
+    /// The 360 degree panorama tab.
+    pub panorama: PanoramaPanel,
 }

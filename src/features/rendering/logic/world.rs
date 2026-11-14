@@ -103,16 +103,18 @@ fn add_objects(builder: &mut Builder, project: &Project) {
     }
 }
 
-/// Places the scattered vegetation of the landscape within the triangle budget.
-fn add_vegetation(builder: &mut Builder, landscape: &Landscape) {
+/// The scattered vegetation of `landscape` as meshes (material indices local to the returned list), thinned
+/// evenly so they fit in `budget` triangles. Shared by the 3D view and the renderer.
+pub fn plant_meshes(landscape: &Landscape, budget: usize) -> (Vec<Mesh>, Vec<SceneMaterial>) {
     let mut assets: HashMap<ProceduralKind, (ImportedScene, usize)> = HashMap::new();
-    let mut budget = VEGETATION_TRIANGLES;
+    let (mut meshes, mut materials) = (Vec::new(), Vec::new());
+    let mut remaining = budget;
     let total = landscape.vegetation.len().max(1);
     let stride = {
         let sample = procedural::generate(ProceduralKind::Tree, 0)
             .triangle_count()
             .max(1);
-        (total * sample).div_ceil(VEGETATION_TRIANGLES).max(1)
+        (total * sample).div_ceil(budget.max(1)).max(1)
     };
     for (index, plant) in landscape.vegetation.iter().enumerate() {
         if index % stride != 0 {
@@ -121,21 +123,41 @@ fn add_vegetation(builder: &mut Builder, landscape: &Landscape) {
         let kind = vegetation_kind(&plant.asset);
         let (scene, base) = assets.entry(kind).or_insert_with(|| {
             let scene = procedural::generate(kind, 0);
-            let base = builder.add_materials(&scene.materials);
+            let base = materials.len();
+            materials.extend_from_slice(&scene.materials);
             (scene, base)
         });
         let cost = scene.triangle_count();
-        if cost > budget {
+        if cost > remaining {
             break;
         }
-        budget -= cost;
+        remaining -= cost;
         let transform = Transform {
             position: plant.position.map(f64::from),
             rotation: [0.0, 0.0, plant.rotation_deg],
             scale: [plant.scale; 3],
         };
-        builder.add_meshes(&scene.meshes, *base, &|p| transform_point(&transform, p));
+        for mesh in &scene.meshes {
+            meshes.push(Mesh {
+                positions: mesh
+                    .positions
+                    .iter()
+                    .map(|p| transform_point(&transform, *p))
+                    .collect(),
+                indices: mesh.indices.clone(),
+                material: mesh.material.map(|m| m + *base),
+                uvs: mesh.uvs.clone(),
+            });
+        }
     }
+    (meshes, materials)
+}
+
+/// Places the scattered vegetation of the landscape within the triangle budget.
+fn add_vegetation(builder: &mut Builder, landscape: &Landscape) {
+    let (meshes, materials) = plant_meshes(landscape, VEGETATION_TRIANGLES);
+    let base = builder.add_materials(&materials);
+    builder.add_meshes(&meshes, base, &|p| p);
 }
 
 /// A Guanacaste 3D project brings its own site (lawn, street, sidewalk down to -15 cm), so the default landscape
@@ -181,18 +203,20 @@ pub fn build_world(project: &Project) -> World {
     add_objects(&mut builder, project);
     let focus = builder.scene.bounds();
     let landscape = document.landscape.clone().unwrap_or_default();
-    let (meshes, materials) = landscape_meshes(&landscape, 0.0);
-    let base = builder.add_materials(&materials);
-    let sink = if is_g3d_site(project) {
-        SITE_SINK
-    } else {
-        GROUND_SINK
-    };
-    builder.add_meshes(&meshes, base, &|p| [p[0], p[1], p[2] - sink]);
-    if !meshes.is_empty() {
-        builder.scene.meshes.push(horizon_plane(base, sink));
+    if landscape.visible {
+        let (meshes, materials) = landscape_meshes(&landscape, 0.0);
+        let base = builder.add_materials(&materials);
+        let sink = if is_g3d_site(project) {
+            SITE_SINK
+        } else {
+            GROUND_SINK
+        };
+        builder.add_meshes(&meshes, base, &|p| [p[0], p[1], p[2] - sink]);
+        if !meshes.is_empty() {
+            builder.scene.meshes.push(horizon_plane(base, sink));
+        }
+        add_vegetation(&mut builder, &landscape);
     }
-    add_vegetation(&mut builder, &landscape);
     let mut world = World::new(builder.scene);
     let library = library_from_docs(&document.materials);
     for (slot, material) in world

@@ -9,6 +9,7 @@ pub mod sample_model;
 pub mod scene;
 pub mod sync;
 pub mod thumbnails;
+pub mod undo;
 pub mod viewport;
 pub mod workspace;
 

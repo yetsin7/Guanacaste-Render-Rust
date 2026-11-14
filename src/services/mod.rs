@@ -1,6 +1,5 @@
-//! Cross-cutting services: localization, texture cache and the sample data that stands in for real data.
+//! Cross-cutting services: localization, texture cache.
 
 pub mod localization;
-pub mod sample_data;
 pub mod texture_cache;
 pub mod textures;

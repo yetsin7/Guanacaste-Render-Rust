@@ -29,6 +29,7 @@ struct Frame {
     height: u32,
     near: f32,
     far: f32,
+    panoramic: bool,
 }
 
 impl Frame {
@@ -62,11 +63,19 @@ impl Frame {
             height,
             near: camera.near.max(0.0),
             far: camera.far.max(camera.near + 1e-3),
+            panoramic: camera.panoramic,
         }
     }
 
     /// Unit direction through the image point `(x, y)` in pixels, and the cosine with the view axis.
     fn ray(&self, x: f32, y: f32) -> (Vec3, f32) {
+        if self.panoramic {
+            // Equirectangular: longitude across the picture, latitude down it.
+            let lon = (2.0 * x / self.width as f32 - 1.0) * std::f32::consts::PI;
+            let lat = (0.5 - y / self.height as f32) * std::f32::consts::PI;
+            let flat = self.forward * lon.cos() + self.right * lon.sin();
+            return ((flat * lat.cos() + self.up * lat.sin()).normalized(), 1.0);
+        }
         let sx = (2.0 * x / self.width as f32 - 1.0) * self.half_width;
         let sy = (1.0 - 2.0 * y / self.height as f32) * self.half_height;
         let dir = (self.forward + self.right * sx + self.up * sy).normalized();

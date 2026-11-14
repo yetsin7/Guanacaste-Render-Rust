@@ -9,10 +9,16 @@ impl ObjectsState {
     /// the ray (`additive` toggles it in the selection) and starts a drag of the selection.
     pub fn pointer_press(&mut self, ray: &Ray, additive: bool) {
         self.drag = None;
-        if self.mode == GizmoMode::Place {
+        if self.mode == GizmoMode::Place && self.browser.active.is_some() {
             self.place_at_ray(ray);
             return;
         }
+        // Without an asset to place, a click selects and a drag moves, like the move tool.
+        let mode = if self.mode == GizmoMode::Place {
+            GizmoMode::Move
+        } else {
+            self.mode
+        };
         let hit = self.pick(ray, &Default::default());
         match hit.and_then(|h| h.id) {
             Some(id) => {
@@ -45,7 +51,7 @@ impl ObjectsState {
         let pivot = math::scale(sum, 1.0 / start.len() as f64);
         let horizontal = math::normalize([ray.direction[0], ray.direction[1], 0.0]);
         self.drag = Some(Drag {
-            mode: self.mode,
+            mode,
             start,
             anchor,
             pivot,
@@ -131,6 +137,7 @@ impl ObjectsState {
                 delta
             }
         };
+        let follow_relief = self.axis != AxisLock::Z && !self.placement.snap_to_surface;
         Some(
             drag.start
                 .iter()
@@ -143,6 +150,12 @@ impl ObjectsState {
                         } else {
                             moved
                         };
+                    }
+                    if follow_relief {
+                        // Moving along the ground keeps the height above it.
+                        let [x, y, z] = transform.position;
+                        transform.position[2] = z + self.ground_height(x, y)
+                            - self.ground_height(start.position[0], start.position[1]);
                     }
                     (*id, transform)
                 })

@@ -39,18 +39,21 @@ pub enum PhotoSection {
     Material,
     /// Output quality.
     Quality,
+    /// 360 degree panorama.
+    Panorama,
     /// AI render (not available yet).
     AiRender,
 }
 
 impl PhotoSection {
     /// Every section, in rail order.
-    pub const ALL: [PhotoSection; 6] = [
+    pub const ALL: [PhotoSection; 7] = [
         PhotoSection::Environment,
         PhotoSection::Image,
         PhotoSection::Camera,
         PhotoSection::Material,
         PhotoSection::Quality,
+        PhotoSection::Panorama,
         PhotoSection::AiRender,
     ];
 }
@@ -93,13 +96,11 @@ pub enum Screen {
     Home,
     /// The full-screen 3D view in one of its modes.
     Workspace(Mode),
-    /// Nature asset library.
+    /// The object library: opens the objects tools of build mode.
     Library,
-    /// Detail view of one library asset.
-    AssetInspector,
     /// Full PBR material editor.
     MaterialEditor,
-    /// Engine and viewport settings.
+    /// Preferences: opens the preferences dialog.
     Settings,
     /// Help, shortcuts and diagnostics.
     Help,
@@ -107,14 +108,13 @@ pub enum Screen {
 
 impl Screen {
     /// Every screen, in navigation order.
-    pub const ALL: [Screen; 10] = [
+    pub const ALL: [Screen; 9] = [
         Screen::Home,
         Screen::Workspace(Mode::Build),
         Screen::Workspace(Mode::Photo),
         Screen::Workspace(Mode::Movie),
         Screen::Workspace(Mode::Export),
         Screen::Library,
-        Screen::AssetInspector,
         Screen::MaterialEditor,
         Screen::Settings,
         Screen::Help,
@@ -129,7 +129,6 @@ impl Screen {
             Screen::Workspace(Mode::Movie) => "movie",
             Screen::Workspace(Mode::Export) => "render",
             Screen::Library => "library",
-            Screen::AssetInspector => "inspector",
             Screen::MaterialEditor => "materials",
             Screen::Settings => "settings",
             Screen::Help => "help",

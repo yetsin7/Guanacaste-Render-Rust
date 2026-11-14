@@ -9,6 +9,7 @@ use crate::features::landscape::logic::actions::landscape_meshes;
 use crate::features::landscape::models::LandscapeState;
 use crate::features::library::models::AssetRef;
 use crate::features::projects::models::Project;
+use crate::features::rendering::logic::world::plant_meshes;
 use crate::features::viewport::ui::SceneSource;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
@@ -19,6 +20,9 @@ const SCRATCH_ID: [u8; 16] = [0; 16];
 
 /// How far the ground is drawn below Z = 0, in meters.
 const GROUND_SINK: f32 = 0.02;
+
+/// Triangle budget of the vegetation drawn in the 3D view (the renderer has a larger one).
+const VIEW_PLANT_TRIANGLES: usize = 400_000;
 
 /// Identity of the copied project geometry.
 type BaseKey = ([u8; 16], usize, usize);
@@ -141,6 +145,15 @@ impl SceneComposer {
             for position in &mut mesh.positions {
                 position[2] -= GROUND_SINK;
             }
+            mesh.material = mesh.material.map(|index| offset + first + index);
+            self.meshes.push(mesh);
+        }
+        // The plants stand on the terrain, so they are not sunk with it.
+        let (plants, materials) = plant_meshes(&landscape.landscape, VIEW_PLANT_TRIANGLES);
+        let first = self.extra_colors.len();
+        self.extra_colors
+            .extend(materials.iter().map(|material| material.color));
+        for mut mesh in plants {
             mesh.material = mesh.material.map(|index| offset + first + index);
             self.meshes.push(mesh);
         }

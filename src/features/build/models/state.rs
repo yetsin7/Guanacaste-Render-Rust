@@ -11,8 +11,12 @@ use crate::features::library::services::{custom_asset, geometry_cache::GeometryC
 use eframe::egui::TextureHandle;
 use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
+use std::sync::Arc;
 
 use super::drag::Drag;
+
+/// Height of the ground under a horizontal position `(x, y)`, in meters (the sculpted terrain).
+pub type Ground = Arc<dyn Fn(f64, f64) -> f64 + Send + Sync>;
 
 /// Everything the objects panel and the viewport interaction need.
 pub struct ObjectsState {
@@ -40,6 +44,8 @@ pub struct ObjectsState {
     pub message: Option<&'static str>,
     /// True when the objects changed since they were loaded or saved.
     pub dirty: bool,
+    /// The ground the objects rest on; `None` is the flat plane at Z = 0.
+    pub ground: Option<Ground>,
     pub(crate) drag: Option<Drag>,
     pub(crate) picker: FilePicker,
     pub(crate) rng: Rng,
@@ -77,6 +83,7 @@ impl ObjectsState {
             missing,
             message: None,
             dirty: false,
+            ground: None,
             drag: None,
             picker: FilePicker::default(),
             rng: Rng::new(0x6A09_E667),

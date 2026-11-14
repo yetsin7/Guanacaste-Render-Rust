@@ -26,6 +26,9 @@ pub struct RenderCamera {
     pub near: f32,
     /// Farthest visible depth in meters.
     pub far: f32,
+    /// Equirectangular panorama: the picture spans 360 degrees across and 180 down (twice as wide as tall),
+    /// centered on the viewing direction. The field of view is ignored.
+    pub panoramic: bool,
 }
 
 impl Default for RenderCamera {
@@ -39,6 +42,7 @@ impl Default for RenderCamera {
             height: 360,
             near: 0.05,
             far: 5000.0,
+            panoramic: false,
         }
     }
 }
@@ -67,6 +71,18 @@ impl RenderCamera {
             height,
             near: camera.near,
             far: camera.far,
+            panoramic: false,
+        }
+    }
+
+    /// A 360 x 180 degree panorama taken from the position of the 3D view's camera, `width` pixels wide.
+    pub fn panorama(camera: &Camera, width: u32) -> Self {
+        let width = width.max(2);
+        Self {
+            width,
+            height: width / 2,
+            panoramic: true,
+            ..Self::from_viewport(camera, width, width / 2)
         }
     }
 
@@ -93,6 +109,7 @@ impl RenderCamera {
             height,
             near: photo.near_m,
             far: photo.far_m,
+            panoramic: false,
         }
     }
 

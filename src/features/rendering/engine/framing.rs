@@ -80,5 +80,6 @@ pub fn frame_bounds(bounds: &Bounds, preset: ViewPreset, width: u32, height: u32
         height,
         near: (distance * 0.01).max(0.01),
         far: distance + radius * 4.0,
+        panoramic: false,
     }
 }

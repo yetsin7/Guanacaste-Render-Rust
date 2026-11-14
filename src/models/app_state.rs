@@ -12,6 +12,7 @@ use crate::commands::rendering::RenderHub;
 use crate::commands::scene::SceneComposer;
 use crate::commands::sync::Baselines;
 use crate::commands::thumbnails::Thumbnails;
+use crate::commands::undo::UndoHub;
 use crate::commands::workspace::Workspace;
 use crate::features::build::models::ObjectsState;
 use crate::features::camera::models::state::CameraStudioState;
@@ -109,6 +110,8 @@ pub struct AppState {
     pub render: RenderHub,
     /// What each domain state looked like when it last matched the project document.
     pub baselines: Baselines,
+    /// Global undo and redo of objects and landscape.
+    pub undo: UndoHub,
 }
 
 impl AppState {
@@ -141,6 +144,7 @@ impl AppState {
             studio: RenderStudio::default(),
             render: RenderHub::default(),
             baselines: Baselines::default(),
+            undo: UndoHub::default(),
         }
     }
 
