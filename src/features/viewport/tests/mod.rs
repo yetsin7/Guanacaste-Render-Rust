@@ -3,6 +3,7 @@
 mod buffers_tests;
 mod camera_tests;
 mod controller_tests;
+mod culling_tests;
 mod framing_tests;
 mod state_tests;
 

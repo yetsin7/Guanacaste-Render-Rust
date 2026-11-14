@@ -168,7 +168,7 @@ fn spatial_order(meshes: &[Mesh]) -> Vec<(usize, &Mesh)> {
         return meshes.iter().enumerate().collect();
     };
     let cell = |value: f32, axis: usize| -> u32 {
-        let extent = (all.max[axis] - all.min[axis]).max(1e-3);
+        let extent = (0..3).map(|k| all.max[k] - all.min[k]).fold(1e-3, f32::max);
         (((value - all.min[axis]) / extent).clamp(0.0, 1.0) * 1023.0) as u32
     };
     let spread = |mut v: u32| -> u32 {

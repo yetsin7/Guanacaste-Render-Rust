@@ -124,3 +124,9 @@ aún no existen se muestran desactivados con su motivo (`Button::disabled`, `for
 - Panorama 360° (pestaña de Foto): `RenderCamera::panorama` (equirrectangular) y visor en `rendering/components/panorama_viewer.rs`.
 - `core/qa_tests.rs`: pruebas de extremo a extremo con eventos sintéticos de egui (colocar, seleccionar, borrar,
   deshacer, renderizar cada cámara guardada, panorama, guardar y reabrir, reposo sin repintado continuo).
+## Materiales realistas y render de modelos IFC
+
+- `features/materials/logic/derive/`: clasifica cada superficie (nombre de material/tipo en español e inglés, luego clase IFC) en estuco, teja, madera, piedra, vidrio, césped..., y construye el material PBR con texturas procedurales (`procedural/architecture.rs`). La importación IFC lo aplica elemento por elemento (`job::run`); el talud de tierra y las tuberías quedan invisibles (transparencia 1) y el visor y el motor los omiten.
+- Motor (`rendering/engine`): UV planares en metros para mallas sin UV (`uvmap.rs`), troceado de triángulos largos (`split.rs`), muestreo adaptativo, luz de cielo por ventanas (`portals.rs`), `site.rs` (límites del edificio sin atípicos, nivel del suelo, fachada principal), `interior.rs` (cámara interior automática) y vistas Aérea/Interior.
+- `rendering/logic/garden.rs`: jardín opcional (palmas, arbustos, árboles) como objetos de la biblioteca.
+- `examples/ifc_shots.rs` renderiza vistas de un IFC a PNG; `examples/inspect_ifc.rs` resume sus materiales.

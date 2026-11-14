@@ -25,14 +25,14 @@ pub enum ViewPreset {
 }
 
 impl ViewPreset {
-    /// Presets in display order.
-    pub const ALL: [ViewPreset; 6] = [
+    /// Presets in display order. [`ViewPreset::Interior`] is not listed: finding a room builds the whole
+    /// acceleration structure, which is too slow for the interface thread.
+    pub const ALL: [ViewPreset; 5] = [
         ViewPreset::Corner,
         ViewPreset::Front,
         ViewPreset::Side,
         ViewPreset::Plan,
         ViewPreset::Aerial,
-        ViewPreset::Interior,
     ];
 
     /// Localization key of the preset name.
