@@ -4,11 +4,11 @@ use crate::components::{
     form, icons, key_cap::KeyCap, layout::split_row, modal, search_field::SearchField, text,
 };
 use crate::config::theme::{colors, typography};
+use crate::features::help::logic::controls;
 use crate::features::help::logic::filter_shortcuts;
 use crate::features::help::models::Shortcut;
 use crate::models::dialog::DialogOutcome;
 use crate::services::localization::tr;
-use crate::services::sample_data::help as sample;
 use eframe::egui::{Context, ScrollArea, Ui};
 
 fn group(ui: &mut Ui, title: &'static str, shortcuts: &[Shortcut], search: &str) {
@@ -41,11 +41,11 @@ fn group(ui: &mut Ui, title: &'static str, shortcuts: &[Shortcut], search: &str)
 
 /// Draws the dialog; `search` is its filter text.
 pub fn show(ctx: &Context, search: &mut String) -> DialogOutcome {
-    let app = sample::app_shortcuts();
-    let view: Vec<Shortcut> = sample::placement_shortcuts()
+    let app = controls::application();
+    let view: Vec<Shortcut> = controls::navigation()
         .into_iter()
-        .chain(sample::transform_shortcuts())
-        .chain(sample::navigation_shortcuts())
+        .chain(controls::cameras())
+        .chain(controls::objects())
         .collect();
     let closed = modal::show(
         ctx,

@@ -1,8 +1,3 @@
-//! Settings domain: render engine, viewport precision controls and hardware telemetry panels.
+//! Settings domain: the preferences dialog.
 
 pub mod components;
-pub mod logic;
-pub mod models;
-
-#[cfg(test)]
-mod tests;

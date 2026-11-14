@@ -4,12 +4,11 @@
 
 mod help;
 mod home;
-mod library;
 mod materials;
-mod settings;
 pub mod workspace;
 
 use crate::commands::workspace::Workspace;
+use crate::features::help::models::Diagnostics;
 use crate::models::navigation::Screen;
 use crate::models::AppState;
 use crate::services::textures::Textures;
@@ -28,10 +27,7 @@ pub struct ScreenContext<'a> {
 /// State of the secondary screens.
 #[derive(Default)]
 pub struct Screens {
-    library: library::LibraryScreen,
-    inspector: library::InspectorScreen,
     materials: materials::MaterialScreen,
-    settings: settings::SettingsScreen,
     help: help::HelpScreen,
 }
 
@@ -42,19 +38,32 @@ impl Screens {
             Screen::Home => home::show(ui, app),
             Screen::Workspace(mode) => workspace::show(ui, app, mode),
             other => {
+                let diagnostics = diagnostics(app);
                 let mut context = ScreenContext {
                     textures: &mut app.textures,
                     navigate: &mut app.requests.navigate,
                     workspace: &mut app.workspace,
                 };
                 match other {
-                    Screen::Library => self.library.show(ui, &mut context),
-                    Screen::AssetInspector => self.inspector.show(ui, &mut context),
                     Screen::MaterialEditor => self.materials.show(ui, &mut context),
-                    Screen::Settings => self.settings.show(ui, &mut context),
-                    _ => self.help.show(ui, &mut context),
+                    _ => self.help.show(ui, &mut context, &diagnostics),
                 }
             }
         }
+    }
+}
+
+/// Facts about the session for the help screen.
+fn diagnostics(app: &AppState) -> Diagnostics {
+    let project = app.workspace.project.as_ref();
+    Diagnostics {
+        gpu: app.viewport.gpu_available,
+        threads: std::thread::available_parallelism().map_or(1, |n| n.get()),
+        project: app.workspace.name().map(str::to_owned),
+        meshes: project.map_or(0, |p| p.meshes.len()),
+        triangles: project.map_or(0, |p| p.meshes.iter().map(|m| m.indices.len() / 3).sum()),
+        objects: app.objects.instances().len(),
+        plants: app.landscape.landscape.vegetation.len(),
+        cameras: app.cameras.len(),
     }
 }

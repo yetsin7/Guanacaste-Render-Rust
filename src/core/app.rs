@@ -71,6 +71,18 @@ impl StudioApp {
 
     /// Applies a navigation request, remembering the workspace mode.
     fn go(&mut self, screen: Screen) {
+        let screen = match screen {
+            // The library and the settings are not screens of their own: they open the tools that do the work.
+            Screen::Library => {
+                self.app.category = crate::models::navigation::BuildCategory::Objects;
+                Screen::Workspace(crate::models::navigation::Mode::Build)
+            }
+            Screen::Settings => {
+                self.pending_dialog = Some(crate::models::dialog::Dialog::Preferences);
+                return;
+            }
+            other => other,
+        };
         self.screen = screen;
         if let Some(mode) = screen.mode() {
             self.app.mode = mode;
