@@ -4,8 +4,7 @@ Este proyecto usa una organización modular por capas y por dominio, igual que e
 código Rust ejecutable vive en `src/`; `assets/` contiene recursos estáticos y `tests/` contiene pruebas de
 integración. `Cargo.toml` define el paquete y sus puntos de entrada (`src/lib.rs` y `src/main.rs`).
 
-Estado actual: **interfaz y proyectos (.gr)**; la vista 3D, el motor y los paneles de contenido son ranuras por llenar. No existe motor 3D, trazado de rayos ni formato de proyecto. Todo dato que se
-muestra sale de `src/services/sample_data/` y las imágenes de `assets/placeholders/` son marcadores de posición.
+Estado actual: software funcional por modos (Construir, Foto, Película, Exportar) con vista 3D real, render por CPU, proyectos `.gr` e importadores. Ya no hay datos de muestra: `services/sample_data` se eliminó; solo la imagen ilustrativa de la pantalla de inicio es de ejemplo y está rotulada como tal.
 
 ## Mapa del proyecto
 
@@ -115,3 +114,13 @@ aún no existen se muestran desactivados con su motivo (`Button::disabled`, `for
 
 `src/main.rs` inicia el ejecutable y `src/lib.rs` expone la biblioteca. El arranque y el cableado global viven en
 `core`; no pongas lógica de dominio en `main.rs`.
+
+## Control de calidad, deshacer y panorama
+
+- `commands/undo.rs`: deshacer/rehacer global (Ctrl+Z, Ctrl+Y) de objetos y paisaje en el orden en que se hicieron.
+- `commands/sync/photo.rs`: filtros, cámara fotográfica y calidad del modo Foto viajan en el `.gr`; cada cámara guardada
+  lleva sus filtros y su miniatura (base64 PNG), todo retrocompatible.
+- Los objetos se apoyan en el relieve (`ObjectsState::ground`, enlazado en `sync::link_ground`) y lo siguen al esculpir.
+- Panorama 360° (pestaña de Foto): `RenderCamera::panorama` (equirrectangular) y visor en `rendering/components/panorama_viewer.rs`.
+- `core/qa_tests.rs`: pruebas de extremo a extremo con eventos sintéticos de egui (colocar, seleccionar, borrar,
+  deshacer, renderizar cada cámara guardada, panorama, guardar y reabrir, reposo sin repintado continuo).

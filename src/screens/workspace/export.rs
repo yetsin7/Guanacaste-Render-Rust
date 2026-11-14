@@ -108,7 +108,7 @@ fn queue(ui: &mut Ui, app: &mut AppState) {
 
 /// The photo mode's render button: one picture per saved camera (each with its own filters), or of the 3D view
 /// when no camera is saved. The result is reported in the notices.
-pub(super) fn render_photos(app: &mut AppState) {
+pub fn render_photos(app: &mut AppState) {
     let plan = plan_from_studio(&app.studio.state);
     if safe_stem(&plan.output.file_name) != plan.output.file_name.trim() {
         app.studio.state.file_name = safe_stem(&plan.output.file_name);

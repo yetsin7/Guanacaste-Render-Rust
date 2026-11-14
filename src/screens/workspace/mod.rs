@@ -6,6 +6,7 @@
 
 mod build;
 mod export;
+pub use export::render_photos;
 mod ground_section;
 mod movie;
 mod palette;
