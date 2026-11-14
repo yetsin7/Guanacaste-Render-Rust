@@ -34,6 +34,33 @@ impl ObjectsState {
         ids
     }
 
+    /// Changes the ground the objects rest on. Objects keep their height above it: when a ground was already set
+    /// (the terrain was sculpted) every instance follows the change; the first ground only records itself.
+    pub fn set_ground(&mut self, ground: Option<super::super::models::Ground>) {
+        let old = self.ground.take();
+        let moved: Vec<(usize, f64)> = match (&old, &ground) {
+            (Some(before), Some(after)) => self
+                .doc
+                .instances
+                .iter()
+                .enumerate()
+                .map(|(index, i)| {
+                    let [x, y, _] = i.transform.position;
+                    (index, after(x, y) - before(x, y))
+                })
+                .filter(|(_, delta)| delta.abs() > 1e-6)
+                .collect(),
+            _ => Vec::new(),
+        };
+        for (index, delta) in &moved {
+            self.doc.instances[*index].transform.position[2] += delta;
+        }
+        if !moved.is_empty() {
+            self.dirty = true;
+        }
+        self.ground = ground;
+    }
+
     /// Deletes the selected instances.
     pub fn delete_selected(&mut self) {
         let removed: Vec<(usize, PlacedObject)> = self

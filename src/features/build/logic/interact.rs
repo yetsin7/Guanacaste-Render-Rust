@@ -131,6 +131,7 @@ impl ObjectsState {
                 delta
             }
         };
+        let follow_relief = self.axis != AxisLock::Z && !self.placement.snap_to_surface;
         Some(
             drag.start
                 .iter()
@@ -143,6 +144,12 @@ impl ObjectsState {
                         } else {
                             moved
                         };
+                    }
+                    if follow_relief {
+                        // Moving along the ground keeps the height above it.
+                        let [x, y, z] = transform.position;
+                        transform.position[2] = z + self.ground_height(x, y)
+                            - self.ground_height(start.position[0], start.position[1]);
                     }
                     (*id, transform)
                 })

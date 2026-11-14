@@ -140,3 +140,42 @@ fn an_environment_set_back_to_the_default_is_still_saved() {
     assert_eq!(other.environment, EnvironmentSettings::default());
     let _ = std::fs::remove_dir_all(&folder);
 }
+
+#[test]
+fn objects_rest_on_the_sculpted_terrain_and_follow_it() {
+    use crate::features::build::logic::math::Ray;
+    let folder = temp_folder("relief");
+    let mut app = AppState::with_data_dir(folder.join("datos"));
+    app.workspace.start_new("Relieve");
+    step(&mut app);
+    actions::new_flat(&mut app.landscape, 51, 51, 2.0);
+    for h in app.landscape.landscape.terrain.heights.iter_mut() {
+        *h = 3.0;
+    }
+    app.landscape.touch();
+    step(&mut app);
+    app.objects.browser.active = Some(AssetRef::Procedural {
+        kind: ProceduralKind::Tree,
+        seed: 1,
+    });
+    let ray = Ray::new([10.0, 10.0, 50.0], [0.0, 0.0, -1.0]);
+    let id = app.objects.place_at_ray(&ray).expect("placed");
+    let z = |app: &AppState| app.objects.instance(id).unwrap().transform.position[2];
+    assert!(
+        (z(&app) - 3.0).abs() < 0.05,
+        "placed on the hill, not at Z=0: {}",
+        z(&app)
+    );
+    for h in app.landscape.landscape.terrain.heights.iter_mut() {
+        *h = 5.0;
+    }
+    app.landscape.touch();
+    step(&mut app);
+    assert!(
+        (z(&app) - 5.0).abs() < 0.05,
+        "follows the sculpting: {}",
+        z(&app)
+    );
+    assert!(app.objects.dirty || app.workspace.dirty());
+    let _ = std::fs::remove_dir_all(&folder);
+}

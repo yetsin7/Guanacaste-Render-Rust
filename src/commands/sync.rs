@@ -29,6 +29,7 @@ pub struct Baselines {
     environment: Option<EnvironmentSettings>,
     photo: photo::PhotoBaseline,
     landscape_revision: u64,
+    ground_revision: Option<u64>,
     /// Meters the imported model was moved by hand since it was loaded (shown in the model section).
     pub model_shift: [f32; 3],
     /// Last values exchanged between the movie camera and the 3D view.
@@ -50,9 +51,35 @@ pub fn step(app: &mut AppState) {
     } else {
         flush(app);
     }
+    link_ground(app);
     app.render.live_filters = Some(app.camera_studio.stack.clone());
     material_sync::adopt(&mut app.materials, app.workspace.project.as_ref());
     material_sync::flush(&mut app.materials, app.workspace.project.as_mut());
+}
+
+/// Gives the placed objects the sculpted terrain as their ground, so they rest on the relief and follow it when
+/// it is edited. Hidden ground means the flat plane.
+fn link_ground(app: &mut AppState) {
+    let visible = app.landscape.landscape.visible;
+    if !visible {
+        if app.objects.ground.is_some() {
+            app.objects.set_ground(None);
+        }
+        app.baselines.ground_revision = None;
+        return;
+    }
+    let revision = app.landscape.revision;
+    if app.objects.ground.is_some() && app.baselines.ground_revision == Some(revision) {
+        return;
+    }
+    let terrain = std::sync::Arc::new(app.landscape.landscape.terrain.clone());
+    app.objects
+        .set_ground(Some(std::sync::Arc::new(move |x, y| {
+            f64::from(crate::features::landscape::height_at(
+                &terrain, x as f32, y as f32,
+            ))
+        })));
+    app.baselines.ground_revision = Some(revision);
 }
 
 /// Replaces the live states with the content of the (new) project, or with empty ones without a project.

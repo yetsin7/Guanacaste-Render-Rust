@@ -69,10 +69,46 @@ impl ObjectsState {
         best
     }
 
-    /// The nearest of the instances (not in `exclude`) and the ground plane along `ray`.
+    /// Height of the ground under `(x, y)`: the sculpted terrain, or 0 on the flat plane.
+    pub fn ground_height(&self, x: f64, y: f64) -> f64 {
+        self.ground.as_ref().map_or(0.0, |ground| ground(x, y))
+    }
+
+    /// Where `ray` meets the ground: the plane at Z = 0, or the terrain (marched, then refined by bisection).
+    pub fn ray_ground(&self, ray: &Ray) -> Option<f64> {
+        if self.ground.is_none() {
+            return math::ray_plane(ray, [0.0; 3], [0.0, 0.0, 1.0]);
+        }
+        let above = |t: f64| {
+            let p = ray.at(t);
+            p[2] - self.ground_height(p[0], p[1])
+        };
+        let (mut near, mut previous, mut t) = (0.0_f64, above(0.0), 0.5_f64);
+        while t < 3000.0 {
+            let current = above(t);
+            if previous > 0.0 && current <= 0.0 {
+                let (mut low, mut high) = (near, t);
+                for _ in 0..20 {
+                    let middle = (low + high) / 2.0;
+                    if above(middle) > 0.0 {
+                        low = middle;
+                    } else {
+                        high = middle;
+                    }
+                }
+                return Some(high);
+            }
+            near = t;
+            previous = current;
+            t += 0.5 + t * 0.01;
+        }
+        None
+    }
+
+    /// The nearest of the instances (not in `exclude`) and the ground along `ray`.
     pub fn surface_hit(&mut self, ray: &Ray, exclude: &BTreeSet<u64>) -> Option<SurfaceHit> {
         let object = self.pick(ray, exclude);
-        let ground = math::ray_plane(ray, [0.0; 3], [0.0, 0.0, 1.0]).map(|t| SurfaceHit {
+        let ground = self.ray_ground(ray).map(|t| SurfaceHit {
             point: ray.at(t),
             normal: [0.0, 0.0, 1.0],
             id: None,
