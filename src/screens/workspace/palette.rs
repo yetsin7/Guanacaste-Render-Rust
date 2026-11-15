@@ -11,6 +11,14 @@ use crate::models::AppState;
 use crate::services::localization::tr;
 use eframe::egui::{Pos2, ViewportCommand};
 
+/// Identifier of the palette's area, so other overlays can read where it sits.
+pub const PALETTE_ID: &str = "view-palette";
+
+/// Where the palette was drawn last frame.
+pub fn last_rect(ctx: &eframe::egui::Context) -> Option<eframe::egui::Rect> {
+    ctx.memory(|memory| memory.area_rect(eframe::egui::Id::new(PALETTE_ID)))
+}
+
 /// View presets in the matrix, in order, with their icon and tooltip key.
 const PRESETS: [(ViewPreset, char, &str); 6] = [
     (ViewPreset::Isometric, icons::VIEW_IN_AR, "view3d.tip_iso"),
@@ -96,7 +104,7 @@ pub fn show(ctx: &eframe::egui::Context, corner: Pos2, app: &mut AppState) {
         import_tip: tr("palette.import_tip"),
         right: &right,
     };
-    let Some(click) = tool_palette::show(ctx, "view-palette", corner, &palette) else {
+    let Some(click) = tool_palette::show(ctx, PALETTE_ID, corner, &palette) else {
         return;
     };
     let aspect = app.viewport.aspect();

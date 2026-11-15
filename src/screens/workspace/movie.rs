@@ -2,7 +2,7 @@
 //! camera is the 3D view's camera: playing or scrubbing flies the view along the animation, and recording a key
 //! stores where the view is. The animation is kept in the project document.
 
-use super::{ModeSlots, Panel, Slot};
+use super::{anchors, ModeSlots, Panel, Slot};
 use crate::commands::camera_link;
 use crate::components::icons;
 use crate::config::theme::colors;
@@ -78,7 +78,9 @@ fn keyboard(ui: &Ui, app: &mut AppState) {
 
 fn overlay(ui: &mut Ui, rect: Rect, app: &mut AppState) {
     camera_path::show(ui, rect, &mut app.animation, &mut app.movie);
-    clip_card::show(ui, rect.min + vec2(12.0, 12.0), &mut app.animation);
+    // The tool palette owns the top-left corner, so the sequence card sits right under it.
+    let origin = anchors::below_palette(rect, super::palette::last_rect(ui.ctx()));
+    clip_card::show(ui, origin, &mut app.animation);
 }
 
 fn inspector(ui: &mut Ui, app: &mut AppState) {

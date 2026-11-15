@@ -1,5 +1,5 @@
 //! GPU resources of the 3D view, kept in egui's callback resources: pipelines, the offscreen target and the scene
-//! buffers. Meshes are uploaded once per scene; per frame only a 144-byte uniform block is written.
+//! buffers. Meshes are uploaded once per scene; per frame only a small uniform block is written.
 
 use super::globals::{Globals, GLOBALS_SIZE};
 use super::pipelines::{Pipelines, COLOR_FORMAT, DEPTH_FORMAT, SAMPLES};
@@ -16,6 +16,7 @@ use eframe::wgpu::{self, util::DeviceExt};
 struct Target {
     size: [u32; 2],
     msaa_view: wgpu::TextureView,
+    resolve_texture: wgpu::Texture,
     resolve_view: wgpu::TextureView,
     depth_view: wgpu::TextureView,
     blit_group: wgpu::BindGroup,
@@ -59,23 +60,25 @@ fn texture(
     format: wgpu::TextureFormat,
     samples: u32,
     usage: wgpu::TextureUsages,
-) -> wgpu::TextureView {
-    device
-        .create_texture(&wgpu::TextureDescriptor {
-            label: Some("viewport-target"),
-            size: wgpu::Extent3d {
-                width: size[0],
-                height: size[1],
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: samples,
-            dimension: wgpu::TextureDimension::D2,
-            format,
-            usage,
-            view_formats: &[],
-        })
-        .create_view(&wgpu::TextureViewDescriptor::default())
+) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("viewport-target"),
+        size: wgpu::Extent3d {
+            width: size[0],
+            height: size[1],
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: samples,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage,
+        view_formats: &[],
+    })
+}
+
+fn view(texture: &wgpu::Texture) -> wgpu::TextureView {
+    texture.create_view(&wgpu::TextureViewDescriptor::default())
 }
 
 fn buffer(device: &wgpu::Device, bytes: &[u8], usage: wgpu::BufferUsages) -> wgpu::Buffer {
@@ -123,13 +126,14 @@ impl ViewportGpu {
             return;
         }
         let attachment = wgpu::TextureUsages::RENDER_ATTACHMENT;
-        let resolve_view = texture(
+        let resolve_texture = texture(
             device,
             size,
             COLOR_FORMAT,
             1,
-            attachment | wgpu::TextureUsages::TEXTURE_BINDING,
+            attachment | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC,
         );
+        let resolve_view = view(&resolve_texture);
         let blit_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("viewport-blit-group"),
             layout: &self.pipelines.blit_layout,
@@ -146,8 +150,9 @@ impl ViewportGpu {
         });
         self.target = Some(Target {
             size,
-            msaa_view: texture(device, size, COLOR_FORMAT, SAMPLES, attachment),
-            depth_view: texture(device, size, DEPTH_FORMAT, SAMPLES, attachment),
+            msaa_view: view(&texture(device, size, COLOR_FORMAT, SAMPLES, attachment)),
+            depth_view: view(&texture(device, size, DEPTH_FORMAT, SAMPLES, attachment)),
+            resolve_texture,
             resolve_view,
             blit_group,
         });
@@ -271,6 +276,35 @@ impl ViewportGpu {
             let end = scene.grid_vertices + scene.axes_vertices;
             pass.draw(scene.grid_vertices..end, 0..1);
         }
+    }
+
+    /// Builds the GPU state on a bare device (no window), for the headless benchmark.
+    pub(super) fn headless(device: &wgpu::Device) -> Self {
+        Self::new(device, COLOR_FORMAT)
+    }
+
+    /// The finished color image of the last render (for reading it back).
+    pub(super) fn resolved(&self) -> Option<&wgpu::Texture> {
+        self.target.as_ref().map(|t| &t.resolve_texture)
+    }
+
+    /// Chunks held on the GPU.
+    pub(super) fn chunk_count(&self) -> usize {
+        self.scene.as_ref().map_or(0, |s| s.chunks.len())
+    }
+
+    /// Chunks and triangles the passes would draw for `view_proj` after frustum culling.
+    pub(super) fn visible(&self, view_proj: &Mat4) -> (usize, usize) {
+        let Some(scene) = &self.scene else {
+            return (0, 0);
+        };
+        scene
+            .chunks
+            .iter()
+            .filter(|c| frustum::may_be_visible(view_proj, &c.bounds))
+            .fold((0, 0), |(n, t), c| {
+                (n + 1, t + (c.index_count / 3) as usize)
+            })
     }
 
     /// Copies the finished 3D target into egui's pass.

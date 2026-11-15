@@ -160,14 +160,16 @@ fn draw_view(
             .and_then(|m| scene.materials.get(m))
             .map_or([0.7, 0.7, 0.72], |m| [m.color[0], m.color[1], m.color[2]]);
         for t in mesh.indices.chunks_exact(3) {
-            let world: Vec<[f32; 3]> = t
-                .iter()
-                .filter_map(|i| mesh.positions.get(*i as usize))
-                .map(|p| [p[0] - center[0], p[1] - center[1], p[2] - center[2]])
-                .collect();
-            if world.len() != 3 {
+            // No allocation per triangle: a big model has hundreds of thousands of them.
+            let corner = |i: u32| {
+                mesh.positions
+                    .get(i as usize)
+                    .map(|p| [p[0] - center[0], p[1] - center[1], p[2] - center[2]])
+            };
+            let (Some(a), Some(b), Some(c)) = (corner(t[0]), corner(t[1]), corner(t[2])) else {
                 continue;
-            }
+            };
+            let world = [a, b, c];
             let e1 = [
                 world[1][0] - world[0][0],
                 world[1][1] - world[0][1],
@@ -191,25 +193,15 @@ fn draw_view(
                 (base[1] * shade * 255.0) as u8,
                 (base[2] * shade * 255.0) as u8,
             ];
-            let tri: Vec<Vertex> = world
-                .iter()
-                .map(|p| {
-                    let (x, y, d) = camera(*p, view);
-                    (
-                        size.0 as f32 / 2.0 + x * scale,
-                        size.1 as f32 / 2.0 - y * scale,
-                        d,
-                    )
-                })
-                .collect();
-            fill(
-                image,
-                &mut depth,
-                origin,
-                size,
-                [tri[0], tri[1], tri[2]],
-                color,
-            );
+            let tri: [Vertex; 3] = world.map(|p| {
+                let (x, y, d) = camera(p, view);
+                (
+                    size.0 as f32 / 2.0 + x * scale,
+                    size.1 as f32 / 2.0 - y * scale,
+                    d,
+                )
+            });
+            fill(image, &mut depth, origin, size, tri, color);
         }
     }
 }

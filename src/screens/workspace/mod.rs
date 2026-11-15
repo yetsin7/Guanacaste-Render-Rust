@@ -4,6 +4,7 @@
 //! draws into the space the shell gives it. To change what a mode shows, replace the function in that mode's
 //! file (`build.rs`, `photo.rs`, `movie.rs`, `export.rs`); the 3D view itself is the same for every mode.
 
+mod anchors;
 mod build;
 mod export;
 pub use export::render_photos;

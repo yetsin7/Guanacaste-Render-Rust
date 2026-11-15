@@ -126,3 +126,33 @@ fn uniform_block_has_the_wgsl_size_and_carries_the_eye() {
     let length = (light[0] * light[0] + light[1] * light[1] + light[2] * light[2]).sqrt();
     assert!((length - 1.0).abs() < 1e-5 && light[2] > 0.0);
 }
+
+#[test]
+fn uniform_block_carries_the_camera_basis_lens_and_haze_for_the_sky() {
+    let camera = Camera::looking_at([0.0, -10.0, 2.0], [0.0, 0.0, 2.0]);
+    let globals = Globals::new(&camera, 2.0, 5.0);
+    let bytes = globals.to_bytes();
+    let float = |i: usize| f32::from_ne_bytes(bytes[i * 4..i * 4 + 4].try_into().unwrap());
+    // Offsets in floats: right 36, up 40, forward 44, lens 48, ground color 52.
+    assert_eq!([float(36), float(37), float(38)], [1.0, 0.0, 0.0]);
+    assert!(
+        (float(42) - 1.0).abs() < 1e-5,
+        "up is +Z for a level camera"
+    );
+    assert_eq!([float(44), float(45), float(46)], [0.0, 1.0, 0.0]);
+    let half_fov = (camera.fov_y_deg.to_radians() * 0.5).tan();
+    assert!((float(48) - half_fov).abs() < 1e-6 && float(49) == 2.0);
+    assert!(
+        float(50) > 0.0 && float(51) > float(50),
+        "haze starts before it ends"
+    );
+    assert!(float(51) >= 160.0, "a small model keeps its colors");
+}
+
+#[test]
+fn the_haze_distance_grows_with_big_scenes() {
+    let camera = Camera::default();
+    let small = Globals::new(&camera, 1.0, 10.0);
+    let big = Globals::new(&camera, 1.0, 500.0);
+    assert!(big.fog[1] > small.fog[1]);
+}
