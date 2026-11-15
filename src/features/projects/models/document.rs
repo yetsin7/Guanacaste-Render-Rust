@@ -300,4 +300,7 @@ pub struct ModelLinkDoc {
     pub modified_ms: u64,
     /// Size in bytes of the model when its geometry was last read.
     pub length: u64,
+    /// Meters the model was moved in this application (resting it on the ground, moving it by hand); applied again
+    /// to every newer geometry so a reload does not sink or shift the model.
+    pub offset: [f32; 3],
 }

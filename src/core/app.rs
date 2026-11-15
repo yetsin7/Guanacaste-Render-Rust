@@ -168,6 +168,12 @@ impl eframe::App for StudioApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.measure_frame(ui.ctx());
         self.prepare_scene();
+        // egui draws only on input; a project linked to Guanacaste 3D needs a frame now and then so the live link
+        // notices a save there even while nobody touches this window.
+        if self.app.model_watch.is_watching(&self.app) {
+            ui.ctx()
+                .request_repaint_after(crate::commands::model_link::CHECK_EVERY);
+        }
         let bar = egui::Frame::NONE
             .fill(colors::SURFACE_LOW)
             .stroke(egui::Stroke::new(1.0, colors::SURFACE_HIGHEST));

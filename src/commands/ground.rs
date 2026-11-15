@@ -27,6 +27,12 @@ pub fn shift(project: &mut Project, delta: [f32; 3]) -> bool {
             }
         }
     }
+    // A model linked to Guanacaste 3D remembers the move, so its next reload lands in the same place.
+    if let Some(link) = project.document.model_link.as_mut() {
+        for axis in 0..3 {
+            link.offset[axis] += delta[axis];
+        }
+    }
     true
 }
 

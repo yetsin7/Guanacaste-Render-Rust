@@ -19,7 +19,7 @@ use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::time::{Duration, Instant, UNIX_EPOCH};
 
 /// How often the linked file is looked at.
-const CHECK_EVERY: Duration = Duration::from_millis(1000);
+pub const CHECK_EVERY: Duration = Duration::from_millis(1000);
 /// Largest sidecar read (it holds a whole baseline model as JSON, gzip-compressed).
 const MAX_SIDECAR: u64 = 128 << 20;
 
@@ -88,12 +88,14 @@ pub fn link_for(path: &Path) -> Option<ModelLinkDoc> {
             .to_owned(),
         modified_ms,
         length,
+        offset: [0.0; 3],
     })
 }
 
 /// Replaces the model geometry of `project` with `outcome`, keeping the render work. Materials the person edited
 /// survive by name; new materials of the model take their imported look.
 pub fn adopt_geometry(project: &mut Project, outcome: &ImportOutcome) {
+    let rested = super::ground::lowest_z(&project.meshes).is_some_and(|z| z.abs() <= 0.005);
     let doc = &mut project.document;
     let file_name = doc
         .origin
@@ -118,7 +120,19 @@ pub fn adopt_geometry(project: &mut Project, outcome: &ImportOutcome) {
     doc.nodes = fresh.nodes;
     doc.meshes = fresh.meshes;
     doc.materials = materials;
+    let offset = doc.model_link.as_ref().map_or([0.0; 3], |l| l.offset);
     project.meshes = meshes;
+    for mesh in &mut project.meshes {
+        for position in &mut mesh.positions {
+            for axis in 0..3 {
+                position[axis] += offset[axis];
+            }
+        }
+    }
+    // Projects saved before the offset was recorded: a model that stood on the ground keeps standing on it.
+    if rested {
+        super::ground::settle(project);
+    }
     project.dirty = true;
 }
 
@@ -138,6 +152,16 @@ pub struct ModelWatch {
 }
 
 impl ModelWatch {
+    /// Whether the open project follows a Guanacaste 3D model (or a reload is in flight), so frames are needed.
+    pub fn is_watching(&self, app: &AppState) -> bool {
+        self.reading.is_some()
+            || app
+                .workspace
+                .project
+                .as_ref()
+                .is_some_and(|p| !p.read_only && p.document.model_link.is_some())
+    }
+
     /// Call once per frame: looks at the linked file every second and swaps in a new geometry when one is read.
     pub fn step(&mut self, app: &mut AppState) {
         self.finish(app);
@@ -294,6 +318,16 @@ mod tests {
         assert_eq!(project.document.cameras.len(), 1, "render cameras survive");
         assert_eq!(project.document.materials[0].color, [0.9, 0.1, 0.1, 1.0]);
         assert!(project.dirty);
+
+        // A model moved in Render (lifted 0.25 m to rest on the ground) lands in the same place after a reload.
+        project.document.model_link = Some(ModelLinkDoc::default());
+        super::super::ground::shift(&mut project, [0.0, 0.0, 0.25]);
+        assert_eq!(
+            project.document.model_link.as_ref().unwrap().offset,
+            [0.0, 0.0, 0.25]
+        );
+        adopt_geometry(&mut project, &import(&model));
+        assert_eq!(super::super::ground::lowest_z(&project.meshes), Some(0.25));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

@@ -39,6 +39,7 @@ pub struct SceneComposer {
     revision: u64,
     framed: usize,
     id: [u8; 16],
+    averages: super::display_color::TextureAverages,
 }
 
 /// Fingerprint of the placed objects: changes whenever one is added, removed, moved, rotated or scaled.
@@ -98,8 +99,13 @@ impl SceneComposer {
             self.base_len = self.meshes.len();
             self.extras_key = None;
         }
+        let averages = &mut self.averages;
         self.base_colors = project.map_or_else(Vec::new, |p| {
-            p.document.materials.iter().map(|m| m.color).collect()
+            p.document
+                .materials
+                .iter()
+                .map(|m| averages.display_color(m))
+                .collect()
         });
         let key = (
             landscape.revision,

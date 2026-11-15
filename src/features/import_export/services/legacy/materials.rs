@@ -34,7 +34,8 @@ fn builtin_pattern(name: &str) -> Option<(ProceduralKind, [f32; 4])> {
     let name = name.to_lowercase();
     let white = [1.0, 1.0, 1.0, 1.0];
     if name.contains("brick") {
-        Some((ProceduralKind::Brick, white))
+        // Weathered clay: street pavers and exposed brick carry dust and wear, never the pure kiln color.
+        Some((ProceduralKind::Brick, [0.86, 0.80, 0.76, 1.0]))
     } else if name.contains("wood") || name.contains("timber") || name.contains("plank") {
         Some((ProceduralKind::Wood, [1.0, 0.92, 0.82, 1.0]))
     } else if name.contains("marble") || name.contains("tile") {
