@@ -98,7 +98,11 @@ fn render_pixel(
     y: u32,
     scratch: &mut Vec<Incoming>,
 ) -> Pixel {
-    let samples = request.settings.samples.max(1);
+    // A dim room is brightened a lot afterwards (auto exposure), so noise is judged as it will look after that, and
+    // the dark parts get more samples.
+    let interior = request.post.auto_exposure;
+    let samples = request.settings.samples.max(1) * if interior { INTERIOR_SAMPLES } else { 1 };
+    let view_gain = if interior { INTERIOR_VIEW_GAIN } else { 1.0 };
     let mut sum = Vec3::ZERO;
     let mut covered = 0u32;
     let mut depth = 0.0f32;
@@ -123,7 +127,7 @@ fn render_pixel(
             scratch,
         );
         taken += 1;
-        let luma = display_luma(sample.color);
+        let luma = display_luma(sample.color * view_gain);
         luma_sum += luma;
         luma_squares += luma * luma;
         if sample.covered || !request.transparent_background {
@@ -162,6 +166,11 @@ fn render_pixel(
         normal: [n.x, n.y, n.z],
     }
 }
+
+/// Sample budget multiplier of interiors (they converge slowly: little light, much of it indirect).
+const INTERIOR_SAMPLES: u32 = 1;
+/// Brightening assumed when judging the noise of an interior pixel.
+const INTERIOR_VIEW_GAIN: f32 = 8.0;
 
 /// Fewest samples a pixel takes before it may stop early: half of its budget, between 4 and 16.
 fn min_samples(budget: u32) -> u32 {

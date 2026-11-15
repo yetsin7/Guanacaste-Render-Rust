@@ -11,7 +11,7 @@ use crate::services::texture_cache::Bitmap;
 pub use noise::{fbm, value_noise};
 
 /// Side in pixels of a baked procedural texture.
-pub const BAKE_SIZE: usize = 256;
+pub const BAKE_SIZE: usize = 512;
 
 /// The color (sRGB, 0..1) of the pattern at `(u, v)`; the pattern repeats every 1.0 in both directions.
 pub fn color_at(procedural: &Procedural, u: f32, v: f32) -> [f32; 3] {

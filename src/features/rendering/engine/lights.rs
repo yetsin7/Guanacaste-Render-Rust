@@ -8,6 +8,7 @@ use super::sampling::Rng;
 use super::vec3::Vec3;
 use crate::features::lighting::logic::{light_samples, LightSample};
 use crate::features::lighting::models::Light;
+use std::borrow::Cow;
 
 /// Most lights that get a shadow ray at one surface point; more are picked in proportion to their light.
 const MAX_LIGHT_RAYS: usize = 6;
@@ -37,15 +38,16 @@ pub struct Incoming {
 
 /// The enabled lights of a render.
 pub struct SceneLights<'a> {
-    lights: &'a [Light],
+    lights: Cow<'a, [Light]>,
     unit: f32,
 }
 
 impl<'a> SceneLights<'a> {
-    /// Lights whose illuminance in lux is divided by `reference_lux` to get render units.
-    pub fn new(lights: &'a [Light], reference_lux: f32) -> Self {
+    /// Lights whose illuminance in lux is divided by `reference_lux` to get render units. Owned lights (the lamps
+    /// the renderer adds to a room by itself) work as well as borrowed ones.
+    pub fn new(lights: impl Into<Cow<'a, [Light]>>, reference_lux: f32) -> Self {
         Self {
-            lights,
+            lights: lights.into(),
             unit: 1.0 / reference_lux.max(1e-3),
         }
     }
@@ -61,7 +63,7 @@ impl<'a> SceneLights<'a> {
         let p = to_lighting(point);
         let n = to_lighting(normal);
         let mut weights: Vec<f32> = Vec::new();
-        for light in self.lights {
+        for light in self.lights.iter() {
             let samples = light_samples(light, p, n, AREA_SAMPLES_PER_AXIS);
             if samples.is_empty() {
                 continue;

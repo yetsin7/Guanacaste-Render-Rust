@@ -86,10 +86,31 @@ fn asset_scene(project: &Project, asset: AssetRef) -> Option<ImportedScene> {
     }
 }
 
-/// Places every object instance of the project. Each distinct asset adds its materials once.
-fn add_objects(builder: &mut Builder, project: &Project) {
+/// Whether `asset` is a plant (a tree, palm, conifer or bush).
+fn is_plant(asset: &AssetRef) -> bool {
+    matches!(
+        asset,
+        AssetRef::Procedural {
+            kind: ProceduralKind::Tree
+                | ProceduralKind::Palm
+                | ProceduralKind::Bush
+                | ProceduralKind::Conifer,
+            ..
+        }
+    )
+}
+
+/// Places the object instances of the project that are plants (`plants`) or not. Each distinct asset adds its
+/// materials once.
+fn add_objects(builder: &mut Builder, project: &Project, plants: bool) {
     let mut bases: HashMap<AssetRef, Option<(ImportedScene, usize)>> = HashMap::new();
-    for instance in &project.document.objects.instances {
+    for instance in project
+        .document
+        .objects
+        .instances
+        .iter()
+        .filter(|i| is_plant(&i.asset) == plants)
+    {
         let entry = bases.entry(instance.asset).or_insert_with(|| {
             asset_scene(project, instance.asset).map(|scene| {
                 let base = builder.add_materials(&scene.materials);
@@ -229,8 +250,11 @@ pub fn build_world(project: &Project) -> World {
         project_site(project).ground_z
     };
     let mut builder = Builder { scene: model };
-    add_objects(&mut builder, project);
+    add_objects(&mut builder, project, false);
+    // Cameras frame the building and its objects, but not the garden: tall palms around the house must not push
+    // them back until the house is small in the picture.
     let model_meshes = builder.scene.meshes.len();
+    add_objects(&mut builder, project, true);
     let landscape = document.landscape.clone().unwrap_or_default();
     if landscape.visible {
         let (meshes, materials) = landscape_meshes(&landscape, 0.0);
