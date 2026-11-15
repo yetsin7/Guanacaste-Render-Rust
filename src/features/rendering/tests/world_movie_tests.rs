@@ -189,7 +189,12 @@ fn movie_frames_follow_the_pose_and_the_animated_channels() {
         .render(&frame(1, 1.0, vec![("hora_del_dia".into(), 0.5)]))
         .expect("frame");
     assert_eq!((noon.width(), noon.height()), (48, 27));
-    assert!(brightness(&noon) > brightness(&midnight) * 2);
+    assert!(
+        brightness(&noon) * 4 > brightness(&midnight) * 7,
+        "noon: {}, midnight: {}",
+        brightness(&noon),
+        brightness(&midnight)
+    );
     let cloudy = source.environment_at(&frame(2, 0.0, vec![("nubosidad".into(), 1.0)]));
     assert_eq!(cloudy.sky.clouds.coverage, 1.0);
     let mut turned = frame(3, 0.0, Vec::new());

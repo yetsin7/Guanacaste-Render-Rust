@@ -33,6 +33,7 @@ pub use framing::{frame_bounds, frame_facing, ViewPreset, SOUTH};
 pub use geometry::RenderScene;
 pub use interior::{interior_camera, room_lamps};
 pub use renderer::{render_prepared, render_scene, TILE};
+pub use sampling::agx;
 pub use site::{measure as measure_site, Site};
 pub use types::*;
 pub use world::World;

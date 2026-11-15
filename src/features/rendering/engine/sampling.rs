@@ -59,28 +59,69 @@ pub fn cosine_hemisphere(n: Vec3, rng: &mut Rng) -> Vec3 {
         .normalized()
 }
 
-/// ACES filmic curve followed by the sRGB transfer function, per channel, 0..=1.
+/// The AgX filmic curve followed by the sRGB transfer function, 0..=1 (the live preview's finish, so it matches
+/// the final picture).
 pub fn tone_map(linear: Vec3) -> [f32; 3] {
-    let map = |x: f32| {
-        let x = x.max(0.0);
-        let aces = (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14);
-        let v = aces.clamp(0.0, 1.0);
+    let encode = |v: f32| {
         if v <= 0.003_130_8 {
             v * 12.92
         } else {
             1.055 * v.powf(1.0 / 2.4) - 0.055
         }
     };
-    [map(linear.x), map(linear.y), map(linear.z)]
+    agx([linear.x, linear.y, linear.z]).map(encode)
+}
+
+/// The AgX view transform (Troy Sobotka's design with Wrensch's polynomial fit), as the original Guanacaste 3D
+/// renderer used it: light is first mixed a little toward the other primaries so over-bright colors bleach to white
+/// instead of clipping one channel, the log-encoded result is shaped by a gentle filmic curve and mixed back. Shadows
+/// stay open and saturated colors stay calm, which is what makes a picture read as a photograph rather than a
+/// graphic. The "punchy" finish (30 % more color, a 1.25 power) gives back the depth the plain curve lifts, and a
+/// gain of 2 puts mid grey where the ACES curve put it, so exposure keeps its calibration. Returns display-linear
+/// light, 0..=1, ready for the sRGB encoding.
+pub fn agx(color: [f32; 3]) -> [f32; 3] {
+    const MIN_EV: f32 = -12.473_93;
+    const MAX_EV: f32 = 4.026_069;
+    const PUNCH: f32 = 2.2 * 1.25;
+    let c = color.map(|v| (v * 2.0).max(0.0));
+    let mixed = [
+        0.842_479_06 * c[0] + 0.078_433_6 * c[1] + 0.079_223_745 * c[2],
+        0.042_328_242 * c[0] + 0.878_468_64 * c[1] + 0.079_166_13 * c[2],
+        0.042_375_655 * c[0] + 0.078_433_6 * c[1] + 0.879_142_97 * c[2],
+    ];
+    let curve = |value: f32| {
+        let log = value.max(1e-10).log2().clamp(MIN_EV, MAX_EV);
+        let x = (log - MIN_EV) / (MAX_EV - MIN_EV);
+        let x2 = x * x;
+        let x4 = x2 * x2;
+        15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x + 0.4298 * x2 + 0.1191 * x
+            - 0.00232
+    };
+    let shaped = mixed.map(curve);
+    let grey = 0.2126 * shaped[0] + 0.7152 * shaped[1] + 0.0722 * shaped[2];
+    let shaped = shaped.map(|v| (grey + (v - grey) * 1.3).max(0.0));
+    let display = [
+        1.196_879 * shaped[0] - 0.098_020_88 * shaped[1] - 0.099_029_74 * shaped[2],
+        -0.052_896_85 * shaped[0] + 1.151_903_1 * shaped[1] - 0.098_961_18 * shaped[2],
+        -0.052_971_635 * shaped[0] - 0.098_043_45 * shaped[1] + 1.151_073_7 * shaped[2],
+    ];
+    grade(display.map(|v| v.clamp(0.0, 1.0).powf(PUNCH)))
+}
+
+/// Highlight and shadow recovery of the original Guanacaste 3D "natural" look (+22 % shadows, −22 % highlights),
+/// on display values and weighted by luminance as a photographer expects: shadows open up under trees and
+/// carports, bright walls keep their shading instead of burning to white.
+fn grade(color: [f32; 3]) -> [f32; 3] {
+    const SHADOWS: f32 = 0.22;
+    const HIGHLIGHTS: f32 = -0.22;
+    let luminance = (0.2126 * color[0] + 0.7152 * color[1] + 0.0722 * color[2]).clamp(0.0, 1.0);
+    let dark = 1.0 - luminance;
+    let gain = (1.0 + HIGHLIGHTS * 0.45 * luminance * luminance)
+        * (1.0 + SHADOWS * 0.9 * dark * dark * dark);
+    color.map(|v| (v * gain).clamp(0.0, 1.0))
 }
 
 /// Quantizes a 0..=1 value to a byte.
 pub fn to_byte(value: f32) -> u8 {
     (value.clamp(0.0, 1.0) * 255.0 + 0.5) as u8
-}
-
-/// The ACES filmic curve on one linear channel; the result is display-linear, 0..=1.
-pub fn aces(x: f32) -> f32 {
-    let x = x.max(0.0);
-    ((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14)).clamp(0.0, 1.0)
 }

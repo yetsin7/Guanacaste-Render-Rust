@@ -141,15 +141,66 @@ pub fn show(ui: &mut Ui, app: &mut AppState, mode: Mode) {
         _ => {}
     }
     let places = layout(rect, &slots, app);
-    app.thumbs.view = Some(places.free);
-    viewport::panel(ui, rect, app);
+    let view = if mode == Mode::Photo {
+        places.free
+    } else {
+        rect
+    };
+    let frame = if mode == Mode::Photo {
+        let aspect = crate::commands::camera_link::output_aspect(app);
+        let size = vec2(
+            view.width().min(view.height() * aspect),
+            view.height().min(view.width() / aspect),
+        );
+        Rect::from_center_size(view.center(), size)
+    } else {
+        places.free
+    };
+    app.thumbs.view = Some(frame);
+    viewport::panel(ui, view, app);
+    if mode == Mode::Photo && !app.thumbs.capturing() {
+        let painter = ui.painter();
+        let shade = eframe::egui::Color32::from_black_alpha(130);
+        painter.rect_filled(
+            Rect::from_min_max(view.min, pos2(view.right(), frame.top())),
+            0.0,
+            shade,
+        );
+        painter.rect_filled(
+            Rect::from_min_max(pos2(view.left(), frame.bottom()), view.max),
+            0.0,
+            shade,
+        );
+        painter.rect_filled(
+            Rect::from_min_max(
+                pos2(view.left(), frame.top()),
+                pos2(frame.left(), frame.bottom()),
+            ),
+            0.0,
+            shade,
+        );
+        painter.rect_filled(
+            Rect::from_min_max(
+                pos2(frame.right(), frame.top()),
+                pos2(view.right(), frame.bottom()),
+            ),
+            0.0,
+            shade,
+        );
+        painter.rect_stroke(
+            frame,
+            0.0,
+            eframe::egui::Stroke::new(1.5, eframe::egui::Color32::WHITE),
+            eframe::egui::StrokeKind::Inside,
+        );
+    }
     photo_panorama::poll(app);
     crate::features::rendering::components::panorama_viewer::show(
         ui.ctx(),
         &mut app.studio.panorama.viewer,
     );
     if !app.thumbs.capturing() {
-        selection_overlay::show(ui, rect, app);
+        selection_overlay::show(ui, view, app);
     }
     (slots.overlay)(ui, rect, app);
     if !app.thumbs.capturing() {

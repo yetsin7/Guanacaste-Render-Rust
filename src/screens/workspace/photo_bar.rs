@@ -7,7 +7,7 @@ use crate::commands::camera_link;
 use crate::components::button::{Button, ButtonStyle};
 use crate::components::{checkbox, text};
 use crate::config::theme::{colors, typography};
-use crate::models::navigation::{Mode, PhotoSection, Screen};
+use crate::models::navigation::PhotoSection;
 use crate::models::AppState;
 use crate::services::localization::{tr, trf};
 use eframe::egui::{
@@ -81,7 +81,7 @@ pub fn actions(ui: &mut Ui, app: &mut AppState) {
             .show(ui)
             .clicked()
         {
-            app.navigate(Screen::Workspace(Mode::Export));
+            export::preview_photo(app);
         }
         if Button::new(tr("photo.image_button"), ButtonStyle::Container)
             .show(ui)

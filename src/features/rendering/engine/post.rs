@@ -4,7 +4,7 @@
 use super::buffers::FrameBuffers;
 use super::denoise::denoise;
 use super::parallel::for_each_row;
-use super::sampling::aces;
+use super::sampling::agx;
 use super::types::{PostSettings, RenderRequest};
 use crate::features::camera::models::camera::PhotoCamera;
 use crate::features::camera::models::exposure::PREVIEW_SCENE_EV100;
@@ -136,9 +136,8 @@ pub fn finish(mut frame: FrameBuffers, request: &RenderRequest) -> RgbaImage {
         .any(|e| e.enabled && matches!(e.filter.kind, FilterKind::Aces | FilterKind::Reinhard));
     if !tone_mapped_by_filter {
         for px in frame.color.chunks_exact_mut(4) {
-            for c in &mut px[..3] {
-                *c = aces(*c);
-            }
+            let mapped = agx([px[0], px[1], px[2]]);
+            px[..3].copy_from_slice(&mapped);
         }
     }
     let (w, h) = (frame.width, frame.height);

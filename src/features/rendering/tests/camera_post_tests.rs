@@ -158,21 +158,23 @@ fn depth_of_field_blurs_what_is_out_of_focus() {
         vec![wall_quad([-60.0, 0.0], [-60.0, 60.0], 0.0, 0)],
         vec![paint(1.0, 0.0, 0.0)],
     );
-    let transitions = |image: &RgbaImage| {
+    // Compare the width of the red contribution instead of fixed brightness thresholds: the tone curve may
+    // change the sky's brightness, but out-of-focus red should spread across more pixels.
+    let red_width = |image: &RgbaImage| {
         (0..320)
             .filter(|x| {
-                let g = px(image, *x, 6)[1];
-                g > 60 && g < 235
+                let pixel = px(image, *x, 6);
+                pixel[0] > pixel[2] + 4
             })
             .count()
     };
     let sharp = render_scene(&wall, &far_edge_request(false));
     let blurred = render_scene(&wall, &far_edge_request(true));
     assert!(
-        transitions(&blurred) > transitions(&sharp) + 2,
+        red_width(&blurred) > red_width(&sharp) + 1,
         "{} vs {}",
-        transitions(&blurred),
-        transitions(&sharp)
+        red_width(&blurred),
+        red_width(&sharp)
     );
 }
 

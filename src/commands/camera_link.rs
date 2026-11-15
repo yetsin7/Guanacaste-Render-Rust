@@ -94,11 +94,41 @@ pub fn follow_movie(app: &mut AppState) {
     app.baselines.link.time = Some(time);
 }
 
+/// Aspect ratio selected for the output image.
+pub fn output_aspect(app: &AppState) -> f32 {
+    let (width, height) =
+        crate::features::rendering::models::output_size(0, app.studio.state.aspect);
+    width as f32 / height as f32
+}
+
+/// Fraction of the viewport height occupied by a centered output frame.
+fn frame_height_fraction(view_aspect: f32, output_aspect: f32) -> f32 {
+    (view_aspect / output_aspect.max(0.01)).min(1.0).max(0.01)
+}
+
+/// Adjusts the vertical field of view to the centered output frame without moving the camera.
+pub fn framed_camera(camera: &Camera, view_aspect: f32, output_aspect: f32) -> Camera {
+    let fraction = frame_height_fraction(view_aspect, output_aspect);
+    let half = (camera.fov_y_deg.to_radians() * 0.5).tan() * fraction;
+    Camera {
+        fov_y_deg: (2.0 * half.atan()).to_degrees(),
+        ..*camera
+    }
+}
+
+/// Restores the viewport field of view around a saved output frame.
+fn unframed_vertical_fov(frame_fov: f32, view_aspect: f32, output_aspect: f32) -> f32 {
+    let half =
+        (frame_fov.to_radians() * 0.5).tan() / frame_height_fraction(view_aspect, output_aspect);
+    (2.0 * half.atan()).to_degrees().clamp(1.0, 170.0)
+}
+
 /// Saves the 3D view's camera as a new camera of the photo strip; returns its index.
 pub fn save_current(app: &mut AppState) -> usize {
     let camera = *app.viewport.camera();
     let aspect = app.viewport.aspect();
-    let hfov = horizontal_fov(camera.fov_y_deg, aspect);
+    let frame_camera = framed_camera(&camera, aspect, output_aspect(app));
+    let hfov = horizontal_fov(frame_camera.fov_y_deg, output_aspect(app));
     let focal = (SENSOR_WIDTH_MM / 2.0 / (hfov.to_radians() / 2.0).tan()) as f32;
     let name = trf(
         "strip.default_name",
@@ -189,7 +219,11 @@ pub fn recall(app: &mut AppState, index: usize) {
     let camera = Camera {
         position: saved.position.map(|v| v as f32),
         target: saved.target.map(|v| v as f32),
-        fov_y_deg: vertical_fov(hfov, aspect).clamp(1.0, 170.0),
+        fov_y_deg: unframed_vertical_fov(
+            vertical_fov(hfov, output_aspect(app)),
+            aspect,
+            output_aspect(app),
+        ),
         near: like.near,
         far: like.far,
     };
@@ -217,6 +251,24 @@ mod tests {
         assert!((yaw - yaw2).abs() < 1e-3 && (pitch - pitch2).abs() < 1e-3);
         assert!((camera.fov_y_deg - back.fov_y_deg).abs() < 0.01);
         assert!((camera.position[1] - back.position[1]).abs() < 1e-4);
+    }
+
+    /// The saved lens reproduces the marked frame for both portrait and landscape outputs.
+    #[test]
+    fn output_frame_lens_round_trips_across_aspect_ratios() {
+        let camera = Camera::default();
+        for view_aspect in [0.8, 1.5, 2.2] {
+            for output_aspect in [0.5625, 1.0, 1.7778, 2.3333] {
+                let framed = framed_camera(&camera, view_aspect, output_aspect);
+                let hfov = horizontal_fov(framed.fov_y_deg, output_aspect);
+                let restored = unframed_vertical_fov(
+                    vertical_fov(hfov, output_aspect),
+                    view_aspect,
+                    output_aspect,
+                );
+                assert!((restored - camera.fov_y_deg).abs() < 0.001);
+            }
+        }
     }
 
     #[test]

@@ -114,7 +114,11 @@ pub fn render_photos(app: &mut AppState) {
         app.studio.state.file_name = safe_stem(&plan.output.file_name);
     }
     let plan = plan_from_studio(&app.studio.state);
-    let camera = *app.viewport.camera();
+    let camera = crate::commands::camera_link::framed_camera(
+        app.viewport.camera(),
+        app.viewport.aspect(),
+        crate::commands::camera_link::output_aspect(app),
+    );
     let result = if app.cameras.is_empty() {
         app.render.enqueue_viewport(&app.workspace, &plan, &camera)
     } else {
@@ -126,6 +130,27 @@ pub fn render_photos(app: &mut AppState) {
     };
     app.workspace.notify(text.clone(), error);
     app.studio.state.notice = Some((text, error));
+}
+
+/// Queues a low-resolution render of the current frame and displays its progressive result.
+pub fn preview_photo(app: &mut AppState) {
+    let mut plan = plan_from_studio(&app.studio.state);
+    plan.resolution = 0;
+    plan.quality = 0;
+    plan.depth_of_field = false;
+    plan.output.folder = std::env::temp_dir().join("guanacaste-render-previews");
+    plan.output.file_name = "preview".to_owned();
+    let camera = crate::commands::camera_link::framed_camera(
+        app.viewport.camera(),
+        app.viewport.aspect(),
+        crate::commands::camera_link::output_aspect(app),
+    );
+    match app.render.enqueue_viewport(&app.workspace, &plan, &camera) {
+        Ok(_) => app.navigate(crate::models::navigation::Screen::Workspace(
+            crate::models::navigation::Mode::Export,
+        )),
+        Err(reason) => app.workspace.notify(tr(reason).to_owned(), true),
+    }
 }
 
 pub(super) fn start(app: &mut AppState, action: HeaderAction) {
