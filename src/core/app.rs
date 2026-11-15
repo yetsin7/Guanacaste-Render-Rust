@@ -151,6 +151,9 @@ impl StudioApp {
     /// Brings the project, the domain states and the 3D view's scene up to date for this frame.
     fn prepare_scene(&mut self) {
         sync::step(&mut self.app);
+        let mut watch = std::mem::take(&mut self.app.model_watch);
+        watch.step(&mut self.app);
+        self.app.model_watch = watch;
         let app = &mut self.app;
         let source = app.composer.compose(
             app.workspace.project.as_ref(),

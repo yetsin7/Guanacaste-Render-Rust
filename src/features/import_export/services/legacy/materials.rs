@@ -118,13 +118,14 @@ impl MaterialBook {
                 material.base_color = tint;
                 let size = number(entry, "TextureSize");
                 let tile = if size > 0.0 { size as f32 } else { 1.0 };
-                // `TextureSize` is the size in meters of one tile of the picture, a brick course for instance.
-                let meters = if kind == ProceduralKind::Brick {
-                    tile * 4.0
+                // `TextureSize` scales the pattern (1 = natural size). The procedural brick holds 4 × 8 bricks per
+                // tile, so a 0.9 × 0.6 m tile gives real 225 × 75 mm bricks or pavers; other patterns repeat
+                // every 2 m.
+                material.uv.scale = if kind == ProceduralKind::Brick {
+                    [1.0 / (0.9 * tile), 1.0 / (0.6 * tile)]
                 } else {
-                    tile * 2.0
+                    [1.0 / (tile * 2.0), 1.0 / (tile * 2.0)]
                 };
-                material.uv.scale = [1.0 / meters, 1.0 / meters];
                 let relief = number(entry, "Relief") as f32;
                 if relief > 0.0 {
                     let mut bump = TextureRef::procedural(procedural);

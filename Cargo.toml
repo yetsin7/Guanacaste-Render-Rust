@@ -10,7 +10,9 @@ name = "guanacaste_render_rust"
 path = "src/lib.rs"
 
 [[bin]]
-name = "guanacaste-render-rust"
+# Guanacaste 3D looks for `GuanacasteRender.exe` to hand models over; keep this name in step with
+# `RenderApplication.ExecutableName` there.
+name = "GuanacasteRender"
 path = "src/main.rs"
 
 [dependencies]

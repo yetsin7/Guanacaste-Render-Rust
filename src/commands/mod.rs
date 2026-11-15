@@ -2,6 +2,7 @@
 
 pub mod camera_link;
 pub mod ground;
+pub mod model_link;
 pub mod pointer;
 pub mod render_watch;
 pub mod rendering;

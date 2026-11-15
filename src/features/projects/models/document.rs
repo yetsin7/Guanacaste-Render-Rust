@@ -284,4 +284,20 @@ pub struct ProjectDocument {
     /// Quality and output choices of the photo mode; absent in older files.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub studio: Option<StudioDoc>,
+    /// Live link to the Guanacaste 3D model the geometry comes from; absent when the project is not linked.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_link: Option<ModelLinkDoc>,
+}
+
+/// The Guanacaste 3D model a project follows: when that file changes, its geometry is read again while cameras,
+/// lighting, landscape, objects and edited materials stay as they are.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ModelLinkDoc {
+    /// Absolute path of the model file.
+    pub path: String,
+    /// Last write time of the model (milliseconds since the Unix epoch) when its geometry was last read.
+    pub modified_ms: u64,
+    /// Size in bytes of the model when its geometry was last read.
+    pub length: u64,
 }

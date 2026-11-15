@@ -307,12 +307,18 @@ mod tests {
     #[test]
     fn a_box_has_twelve_triangles_and_textured_surfaces_get_uvs() {
         let mut part = Part::new();
-        part.cuboid(Surface::Wall, [0.0; 3], [1.0, 2.0, 3.0]);
+        part.cuboid(Surface::Metal, [0.0; 3], [1.0, 2.0, 3.0]);
         part.cuboid(Surface::WallBrick, [0.0; 3], [1.0, 2.0, 3.0]);
-        assert_eq!(part.triangle_count(), 24);
+        part.cuboid(Surface::Wall, [0.0; 3], [1.0, 2.0, 3.0]);
+        assert_eq!(part.triangle_count(), 36);
         let groups = part.into_groups();
-        assert!(groups[0].1.uvs.is_empty(), "plaster is plain");
+        assert!(groups[0].1.uvs.is_empty(), "brushed metal is plain");
         assert_eq!(groups[1].1.uvs.len(), groups[1].1.positions.len());
+        assert_eq!(
+            groups[2].1.uvs.len(),
+            groups[2].1.positions.len(),
+            "painted plaster carries its sand finish"
+        );
     }
 
     #[test]

@@ -10,6 +10,7 @@ use super::part::{Key, Part, P3};
 use super::surface::Surface;
 use super::textures;
 use crate::features::import_export::models::Severity;
+use crate::features::library::models::ProceduralKind;
 use crate::features::materials::models::{Material as Pbr, TextureRef};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -108,6 +109,29 @@ impl<'a> Families<'a> {
             loaded: HashMap::new(),
             dir: textures::texture_dir(),
         }
+    }
+
+    /// A detailed family of the document that can stand in for a generated plant of `kind` (a shrub family for a
+    /// bush, a tree family for a tree), so plants placed without a family still look real. `None` when the
+    /// document has no family of that kind with a mesh.
+    pub fn stand_in(&self, kind: ProceduralKind) -> Option<&'a str> {
+        let (wanted, avoid): (&[&str], &[&str]) = match kind {
+            ProceduralKind::Bush => (&["shrub", "bush", "arbust"], &["grass", "fern", "helecho"]),
+            ProceduralKind::Tree => (&["tree", "arbol"], &["palm", "money", "pachira", "pine"]),
+            _ => return None,
+        };
+        let mut found: Vec<(&'a str, String)> = self
+            .docs
+            .iter()
+            .filter(|(_, doc)| doc.get("Mesh").is_some_and(|m| !m.is_null()))
+            .map(|(id, doc)| (*id, text(doc, "Name").to_lowercase()))
+            .filter(|(_, name)| {
+                wanted.iter().any(|w| name.contains(w)) && !avoid.iter().any(|a| name.contains(a))
+            })
+            .collect();
+        // Stable choice across imports: the most detailed-sounding name first, then by id.
+        found.sort_by_key(|(id, name)| (!name.contains("detailed"), !name.contains("dense"), *id));
+        found.first().map(|(id, _)| *id)
     }
 
     fn load(&mut self, ctx: &mut Context, id: &'a str) -> Option<&Family> {

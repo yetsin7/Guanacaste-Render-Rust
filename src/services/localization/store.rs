@@ -45,6 +45,14 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ),
     ("workspace.opened", "Proyecto «{0}» abierto."),
     (
+        "workspace.model_updated",
+        "Modelo actualizado desde Guanacaste 3D ({0}). Cámaras, luces y materiales editados se conservaron.",
+    ),
+    (
+        "workspace.model_update_failed",
+        "No se pudo leer el modelo actualizado ({0}): {1}",
+    ),
+    (
         "workspace.opened_legacy",
         "Proyecto de Guanacaste 3D importado en solo lectura: al guardar se creará un .gr nuevo.",
     ),

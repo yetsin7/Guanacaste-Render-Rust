@@ -69,7 +69,10 @@ pub fn open(path: &Path) -> Result<Opened, OpenError> {
             })
         }
         Signature::Legacy => {
-            let outcome = legacy::import(path, &Progress::default()).map_err(OpenError::Legacy)?;
+            let mut outcome =
+                legacy::import(path, &Progress::default()).map_err(OpenError::Legacy)?;
+            // Same realistic materials as the import dialog gives (wood, glass, concrete... by name).
+            crate::features::materials::logic::derive::enrich_scene(&mut outcome.scene);
             let file_name = path
                 .file_name()
                 .and_then(|n| n.to_str())
@@ -81,8 +84,9 @@ pub fn open(path: &Path) -> Result<Opened, OpenError> {
                 .map(|n| n.name.clone())
                 .filter(|n| !n.is_empty())
                 .unwrap_or_else(|| file_name.to_owned());
-            let (document, meshes) =
+            let (mut document, meshes) =
                 convert::from_scene(&outcome.scene, &name, file_name, util::now_unix());
+            document.model_link = crate::commands::model_link::link_for(path);
             let project = Project {
                 id: util::new_document_id(),
                 document,

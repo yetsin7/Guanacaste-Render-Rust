@@ -104,6 +104,22 @@ pub fn planting<'a>(
         12 => ProceduralKind::Bush,
         _ => ProceduralKind::Tree,
     };
+    // A plant without a family borrows a detailed one of its kind from the same project (scanned models with
+    // real leaves) instead of the low-detail generated shape, which reads as a green blob in a render.
+    if let Some(id) = families.stand_in(kind) {
+        if let Some(found) = families.place(
+            ctx,
+            id,
+            at,
+            number(element, "Rotation"),
+            [width, width, height],
+            true,
+            z - 0.08,
+        ) {
+            part.absorb(found);
+            return;
+        }
+    }
     let placement = Placement {
         at,
         z,

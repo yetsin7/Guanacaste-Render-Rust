@@ -112,6 +112,8 @@ pub struct AppState {
     pub baselines: Baselines,
     /// Global undo and redo of objects and landscape.
     pub undo: UndoHub,
+    /// Live link with the Guanacaste 3D model of the open project.
+    pub model_watch: crate::commands::model_link::ModelWatch,
 }
 
 impl AppState {
@@ -145,6 +147,7 @@ impl AppState {
             render: RenderHub::default(),
             baselines: Baselines::default(),
             undo: UndoHub::default(),
+            model_watch: Default::default(),
         }
     }
 

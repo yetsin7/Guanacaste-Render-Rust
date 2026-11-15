@@ -27,6 +27,12 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let (model, out) = (&args[1], std::path::PathBuf::from(&args[2]));
     let width: u32 = args.get(3).and_then(|w| w.parse().ok()).unwrap_or(960);
+    let quality = match args.get(4).map(String::as_str) {
+        Some("low") => RayTracingQuality::Low,
+        Some("high") => RayTracingQuality::High,
+        Some("ultra") => RayTracingQuality::Ultra,
+        _ => RayTracingQuality::Medium,
+    };
     std::fs::create_dir_all(&out).unwrap();
     let started = Instant::now();
     let outcome = job::run(
@@ -79,7 +85,7 @@ fn main() {
                 (width, width * 9 / 16),
             )
             .expect("camera");
-        let request = inputs.request(camera, photo, false, RayTracingQuality::Medium);
+        let request = inputs.request(camera, photo, false, quality);
         let t = Instant::now();
         let image =
             render_prepared(&scene, &request, &RenderControl::new(), &|_| {}).expect("render");

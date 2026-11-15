@@ -180,11 +180,14 @@ impl Workspace {
             .file_stem()
             .and_then(|n| n.to_str())
             .unwrap_or("Proyecto");
-        let (document, meshes) =
+        let (mut document, meshes) =
             convert::from_scene(&outcome.scene, name, file_name, util::now_unix());
         let legacy_source = (outcome.scene.source.format
             == crate::features::import_export::models::SourceFormat::Legacy)
             .then(|| source.to_path_buf());
+        if legacy_source.is_some() {
+            document.model_link = super::model_link::link_for(source);
+        }
         self.replace(Project {
             id: util::new_document_id(),
             document,

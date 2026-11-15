@@ -113,8 +113,10 @@ impl Surface {
     /// The procedural pattern that textures this surface, if any (the original draws these as procedural patterns).
     pub fn pattern(self) -> Option<Pattern> {
         match self {
+            // Painted plaster is never a perfectly flat color: a fine sand finish breaks up the light.
+            Wall | InteriorWall => Some((ProceduralKind::Stucco, 1.5, 0.0)),
             Floor => Some((ProceduralKind::Marble, 2.0, 0.0)),
-            Ground => Some((ProceduralKind::Grass, 2.5, 0.0)),
+            Ground => Some((ProceduralKind::Lawn, 2.5, 0.0)),
             DoorLeaf => Some((ProceduralKind::Wood, 1.0, 0.0)),
             WallBrick => Some((ProceduralKind::Brick, 1.0, 0.0)),
             WallBlock => Some((ProceduralKind::Concrete, 2.4, 0.0)),
@@ -216,7 +218,10 @@ impl Surface {
 fn tint(surface: Surface) -> [f32; 4] {
     match surface {
         Asphalt => [0.62, 0.62, 0.64, 1.0],
-        Ground => [0.95, 1.0, 0.9, 1.0],
+        // White paint reflects about 70 %, not 90 %: brighter walls glare and lose every shade in sunlight.
+        Wall | InteriorWall => [0.84, 0.83, 0.80, 1.0],
+        // Real lawn under the tropical sun is olive and uneven, not a saturated toy green.
+        Ground => [0.80, 0.84, 0.70, 1.0],
         Floor => [0.97, 0.96, 0.94, 1.0],
         DoorLeaf | WallWood => [1.0, 0.92, 0.82, 1.0],
         WallConcrete | Structure => [1.0, 1.0, 1.0, 1.0],
