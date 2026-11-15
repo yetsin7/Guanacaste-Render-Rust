@@ -5,7 +5,7 @@ use super::rng::Rng;
 use crate::features::import_export::models::ImportedScene;
 use std::f32::consts::TAU;
 
-const LEAF_GREENS: [u32; 6] = [0x3f7a2e, 0x4d8a34, 0x2f6b3a, 0x5a8f2c, 0x6b9a3a, 0x356b2a];
+const LEAF_GREENS: [u32; 6] = [0x3a6b2b, 0x45762f, 0x2f5e30, 0x517a2a, 0x5a7d32, 0x335e29];
 const BARKS: [u32; 4] = [0x5b4030, 0x6a4a33, 0x4e3a2c, 0x75553c];
 
 /// A broadleaf tree: a tapered trunk and a crown of overlapping low-poly blobs.
@@ -13,20 +13,24 @@ pub fn tree(seed: u64) -> ImportedScene {
     let mut rng = Rng::new(seed);
     let mut shapes = ShapeBuilder::default();
     let bark = shapes.material("Corteza", rng.pick(&BARKS));
-    let leaves = shapes.material("Follaje", rng.pick(&LEAF_GREENS));
+    let base_green = rng.pick(&LEAF_GREENS);
+    let leaves = shapes.material("Follaje", base_green);
+    let lighter = shapes.material("Follaje claro", lighten(base_green, 1.12));
     let height = rng.range(2.2, 4.0);
     let radius = rng.range(0.12, 0.24);
     let top = [rng.range(-0.2, 0.2), rng.range(-0.2, 0.2), height];
-    shapes.frustum(bark, [0.0; 3], top, radius, radius * 0.6, 7);
+    shapes.frustum(bark, [0.0; 3], top, radius, radius * 0.6, 12);
     let crown = rng.range(1.4, 2.6);
     let blobs = rng.int(3, 5);
     let center_z = height + crown * 0.55;
-    shapes.ellipsoid(
+    shapes.lumpy_ellipsoid(
         leaves,
         [top[0], top[1], center_z],
         [crown, crown, crown * rng.range(0.7, 0.95)],
-        4,
-        7,
+        16,
+        30,
+        0.2,
+        rng.range(0.0, 6.0),
     );
     for index in 0..blobs {
         let angle = TAU * index as f32 / blobs as f32 + rng.range(0.0, 0.8);
@@ -37,7 +41,16 @@ pub fn tree(seed: u64) -> ImportedScene {
             top[1] + angle.sin() * reach,
             center_z + rng.range(-0.4, 0.5) * crown,
         ];
-        shapes.ellipsoid(leaves, center, [size, size, size * 0.85], 3, 6);
+        let material = if index % 2 == 0 { lighter } else { leaves };
+        shapes.lumpy_ellipsoid(
+            material,
+            center,
+            [size, size, size * 0.85],
+            12,
+            22,
+            0.24,
+            rng.range(0.0, 6.0),
+        );
     }
     shapes.finish("Árbol")
 }
@@ -75,7 +88,7 @@ pub fn bush(seed: u64) -> ImportedScene {
     let mut shapes = ShapeBuilder::default();
     let base = rng.pick(&LEAF_GREENS);
     let leaves = shapes.material("Follaje", base);
-    let lighter = shapes.material("Follaje claro", lighten(base, 1.22));
+    let lighter = shapes.material("Follaje claro", lighten(base, 1.12));
     let blobs = rng.int(6, 9);
     for index in 0..blobs {
         let angle = TAU * index as f32 / blobs as f32 + rng.range(0.0, 0.8);
@@ -88,7 +101,15 @@ pub fn bush(seed: u64) -> ImportedScene {
         let lift = if index % 3 == 0 { 1.05 } else { 0.9 };
         let center = [angle.cos() * reach, angle.sin() * reach, size * lift];
         let material = if index % 2 == 0 { leaves } else { lighter };
-        shapes.ellipsoid(material, center, [size, size, size * 0.85], 5, 10);
+        shapes.lumpy_ellipsoid(
+            material,
+            center,
+            [size, size, size * 0.85],
+            14,
+            26,
+            0.26,
+            rng.range(0.0, 6.0),
+        );
     }
     shapes.finish("Arbusto")
 }
@@ -111,12 +132,14 @@ fn frond(
 ) {
     let (dx, dy) = (azimuth.cos(), azimuth.sin());
     let side = (-dy, dx);
-    let segments = 8;
-    let at = |t: f32| -> ([f32; 3], f32) {
+    let segments = 16;
+    let at = |t: f32, vertex: usize| -> ([f32; 3], f32) {
         let out = length * t;
         let rise =
             length * 0.42 * (t * std::f32::consts::PI * 0.8).sin() - droop * t * t * length * 0.55;
-        let width = 0.34 * (length / 3.0) * (t * (1.0 - t) * 4.0).max(0.0).powf(0.7);
+        // Every other vertex pulls its edge in: the serrated outline of a frond made of leaflets.
+        let serration = if vertex.is_multiple_of(2) { 1.0 } else { 0.62 };
+        let width = 0.44 * (length / 3.0) * (t * (1.0 - t) * 4.0).max(0.0).powf(0.7) * serration;
         (
             [crown[0] + dx * out, crown[1] + dy * out, crown[2] + rise],
             width,
@@ -127,8 +150,8 @@ fn frond(
             step as f32 / segments as f32,
             (step + 1) as f32 / segments as f32,
         );
-        let (a, wa) = at(t0);
-        let (b, wb) = at(t1);
+        let (a, wa) = at(t0, step);
+        let (b, wb) = at(t1, step + 1);
         let corner = |p: [f32; 3], w: f32, sign: f32| {
             [
                 p[0] + side.0 * w * sign,
@@ -153,7 +176,7 @@ pub fn palm(seed: u64) -> ImportedScene {
     let mut rng = Rng::new(seed);
     let mut shapes = ShapeBuilder::default();
     let bark = shapes.material("Tronco de palma", rng.pick(&[0x8a7355, 0x7d6649, 0x947b5a]));
-    let fronds = shapes.material("Hojas de palma", rng.pick(&[0x4f8f34, 0x5c9a3a, 0x43802e]));
+    let fronds = shapes.material("Hojas de palma", rng.pick(&[0x4a8431, 0x55903a, 0x3f7a2c]));
     let height = rng.range(5.0, 8.0);
     let lean = rng.range(0.4, 1.4);
     let heading = rng.range(0.0, TAU);
@@ -164,7 +187,7 @@ pub fn palm(seed: u64) -> ImportedScene {
         let t = step as f32 / segments as f32;
         let offset = lean * t * t;
         let point = [heading.cos() * offset, heading.sin() * offset, height * t];
-        shapes.frustum(bark, previous, point, radius, radius * 0.94, 7);
+        shapes.frustum(bark, previous, point, radius, radius * 0.94, 12);
         previous = point;
         radius *= 0.94;
     }
@@ -172,10 +195,10 @@ pub fn palm(seed: u64) -> ImportedScene {
         bark,
         [previous[0], previous[1], previous[2] - 0.1],
         [0.3, 0.3, 0.28],
-        3,
-        7,
+        6,
+        12,
     );
-    let count = rng.int(11, 14);
+    let count = rng.int(14, 18);
     for index in 0..count {
         let angle = TAU * index as f32 / count as f32 + rng.range(-0.15, 0.15);
         let length = rng.range(2.4, 3.4);

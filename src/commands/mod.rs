@@ -1,6 +1,7 @@
 //! Application use cases that coordinate several domains: requests that any screen can raise and the shell serves.
 
 pub mod camera_link;
+pub mod garden;
 pub mod ground;
 pub mod model_link;
 pub mod pointer;

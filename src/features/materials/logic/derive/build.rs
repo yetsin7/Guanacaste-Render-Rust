@@ -37,7 +37,8 @@ fn pattern(kind: SurfaceKind, class: &str) -> Option<Pattern> {
         SurfaceKind::Stone => pat(ProceduralKind::StoneBlock, 1.8, 1.2),
         SurfaceKind::Brick => pat(ProceduralKind::Brick, 1.0, 1.0),
         SurfaceKind::Concrete => pat(ProceduralKind::Concrete, 2.0, 0.5),
-        SurfaceKind::Grass => pat(ProceduralKind::Lawn, 1.2, 0.5),
+        // A wide tile, so the mowing patches and dry spots are meters across and the repeat is hard to spot.
+        SurfaceKind::Grass => pat(ProceduralKind::Lawn, 8.0, 0.6),
         SurfaceKind::Ceramic if matches!(class, "IFCSLAB" | "IFCCOVERING") => {
             pat(ProceduralKind::StoneBlock, 3.0, 0.5)
         }
@@ -59,7 +60,7 @@ fn tint(kind: SurfaceKind, rgb: [f32; 3], class: &str) -> [f32; 3] {
         SurfaceKind::Brick => [1.0, 1.0, 1.0],
         SurfaceKind::Concrete => mix(rgb, [0.80, 0.79, 0.77], 0.5),
         SurfaceKind::Metal if saturation(rgb) > 0.25 => [0.30, 0.31, 0.33],
-        SurfaceKind::Grass => [0.86, 0.88, 0.78],
+        SurfaceKind::Grass => [0.92, 0.93, 0.84],
         SurfaceKind::Paint | SurfaceKind::Plastic | SurfaceKind::Metal if class == "IFCWINDOW" => {
             FRAME_TINT
         }

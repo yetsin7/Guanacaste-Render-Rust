@@ -31,7 +31,7 @@ mod world;
 pub use camera::saved_photo;
 pub use framing::{frame_bounds, frame_facing, ViewPreset, SOUTH};
 pub use geometry::RenderScene;
-pub use interior::interior_camera;
+pub use interior::{interior_camera, room_lamps};
 pub use renderer::{render_prepared, render_scene, TILE};
 pub use site::{measure as measure_site, Site};
 pub use types::*;

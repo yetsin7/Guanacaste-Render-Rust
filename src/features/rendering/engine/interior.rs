@@ -7,6 +7,7 @@ use super::geometry::RenderScene;
 use super::types::RenderCamera;
 use super::vec3::Vec3;
 use crate::features::import_export::models::Bounds;
+use crate::features::lighting::models::{Light, Power};
 
 const STEP: f32 = 0.75;
 const DIRECTIONS: usize = 16;
@@ -43,6 +44,66 @@ fn sight_lines(bvh: &Bvh, eye: Vec3) -> ([f32; DIRECTIONS], usize) {
         }
     }
     (lines, enclosed)
+}
+
+/// Color temperature of the lamps a room gets by itself: warm white.
+const LAMP_KELVIN: f32 = 3000.0;
+/// Luminous flux of one such lamp, in multiples of the reference illuminance (lux per render unit): it lights a
+/// surface 2.5 m away with about a fortieth of a render unit, so a handful of them lift a room that daylight
+/// leaves dim without washing out the light from the windows.
+const LAMP_FLUX: f32 = 0.55;
+/// Most lamps a room gets (each costs a shadow ray per surface point).
+const MAX_LAMPS: usize = 4;
+
+/// Warm ceiling lamps for the room around `eye`: one above the viewer and others spread toward the walls, each
+/// hanging 30 cm under the ceiling with a clear path to it. Empty when `eye` is not under a ceiling (outdoors).
+/// `reference_lux` is the illuminance that renders as one unit. Positions are in the lighting domain's Y-up world.
+pub fn room_lamps(scene: &RenderScene, eye: [f32; 3], reference_lux: f32) -> Vec<Light> {
+    let bvh = &scene.bvh;
+    let eye = Vec3::from_array(eye);
+    let up = Vec3::new(0.0, 0.0, 1.0);
+    // A ray that runs exactly along the seam between two triangles of the ceiling can slip through: try a few
+    // points a hand's width apart.
+    let ceiling = [(0.0, 0.0), (0.07, 0.05), (-0.06, 0.04), (0.03, -0.08)]
+        .into_iter()
+        .find_map(|(dx, dy)| bvh.closest(eye + Vec3::new(dx, dy, 0.0), up, 0.0, 6.0));
+    let Some(ceiling) = ceiling else {
+        return Vec::new();
+    };
+    let lamp_z = eye.z + ceiling.t - 0.3;
+    if lamp_z < eye.z + 0.4 {
+        return Vec::new();
+    }
+    let under = Vec3::new(eye.x, eye.y, lamp_z);
+    let mut spots = vec![under];
+    for i in 0..DIRECTIONS {
+        let angle = std::f32::consts::TAU * (i as f32 + 0.5) / DIRECTIONS as f32;
+        let dir = Vec3::new(angle.cos(), angle.sin(), 0.0);
+        let reach = bvh.closest(under, dir, 0.05, SIGHT).map_or(SIGHT, |h| h.t);
+        let offset = (reach * 0.55).min(3.5);
+        if offset < 0.9 || spots.len() >= MAX_LAMPS {
+            continue;
+        }
+        let spot = under + dir * offset;
+        let roofed = bvh.closest(spot, up, 0.0, 0.6).is_some();
+        // Keep lamps apart so they do not pile up in a corner.
+        let apart = spots.iter().all(|s| (*s - spot).length() > 1.8);
+        if roofed && apart {
+            spots.push(spot);
+        }
+    }
+    spots
+        .into_iter()
+        .map(|p| Light {
+            position: [p.x, p.z, -p.y],
+            power: Power::Lumens {
+                value: LAMP_FLUX * reference_lux,
+            },
+            kelvin: LAMP_KELVIN,
+            cutoff_radius: 40.0,
+            ..Light::default()
+        })
+        .collect()
 }
 
 /// Whether there is a ceiling over `eye` and over a ring of points 1.3 m around it, so the spot is inside a room

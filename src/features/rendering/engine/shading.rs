@@ -2,6 +2,7 @@
 
 use super::atmosphere::Atmosphere;
 use super::geometry::RenderScene;
+use super::interior::room_lamps;
 use super::lights::{Incoming, SceneLights};
 use super::sampling::{basis, cosine_hemisphere, Rng};
 use super::surface::{evaluate, Surf};
@@ -16,6 +17,16 @@ const FIREFLY_LIMIT: f32 = 12.0;
 const SUN_RADIUS: f32 = 0.0047;
 /// How far outside a window the sky must be reachable for its light to count, meters.
 const PORTAL_REACH: f32 = 40.0;
+
+/// Surfaces more transparent than this (opacity below it) are glass: light and view pass through deterministically.
+const GLASS_ALPHA: f32 = 0.5;
+/// Tint of the sky light that reaches a surface by a diffuse bounce: the sky is blue, but the light that fills the
+/// shade of a house also bounces off warm ground and walls, so shaded stucco must not turn gray-blue.
+const WARM_BOUNCE: Vec3 = Vec3 {
+    x: 1.06,
+    y: 1.0,
+    z: 0.88,
+};
 
 /// What one camera ray brought back.
 #[derive(Debug, Clone, Copy)]
@@ -37,6 +48,8 @@ pub struct Shader<'a> {
     lights: SceneLights<'a>,
     bounces: u32,
     far: f32,
+    /// The picture is taken inside a room (interior mode).
+    indoor: bool,
     /// Angle covered by one pixel, radians.
     pixel_angle: f32,
 }
@@ -45,7 +58,17 @@ impl<'a> Shader<'a> {
     /// Prepares the atmosphere and lights of `request` for `scene`.
     pub fn new(scene: &'a RenderScene, request: &'a RenderRequest) -> Self {
         let atmosphere = Atmosphere::new(&request.environment);
-        let lights = SceneLights::new(&request.lights, atmosphere.reference_lux);
+        // A room lit only through its windows gets warm ceiling lamps, unless the project has lights of its own.
+        let lamps = if request.post.auto_exposure && request.lights.is_empty() {
+            room_lamps(scene, request.camera.position, atmosphere.reference_lux)
+        } else {
+            Vec::new()
+        };
+        let lights = if lamps.is_empty() {
+            SceneLights::new(request.lights.as_slice(), atmosphere.reference_lux)
+        } else {
+            SceneLights::new(lamps, atmosphere.reference_lux)
+        };
         let camera = &request.camera;
         let half = (camera.fov_y_degrees.clamp(1.0, 170.0).to_radians() * 0.5).tan();
         Self {
@@ -54,6 +77,7 @@ impl<'a> Shader<'a> {
             lights,
             bounces: request.settings.bounces,
             far: camera.far,
+            indoor: request.post.auto_exposure,
             pixel_angle: 2.0 * half / camera.height.max(1) as f32,
         }
     }
@@ -67,7 +91,9 @@ impl<'a> Shader<'a> {
             };
             let material =
                 &self.scene.materials[self.scene.bvh.triangles[hit.triangle].material as usize];
-            if rng.next_f32() >= material.transparency {
+            // Glass lets light through for sure (a random block made the light patches behind windows speckled).
+            if material.transparency < 1.0 - GLASS_ALPHA && rng.next_f32() >= material.transparency
+            {
                 return false;
             }
             origin += dir * (hit.t + BIAS);
@@ -185,7 +211,12 @@ impl<'a> Shader<'a> {
         for _ in 0..self.bounces + 24 {
             let Some(hit) = self.scene.bvh.closest(origin, dir, t_min, t_max) else {
                 if !(via_pane && !self.scene.portals.is_empty()) {
-                    color += throughput.mul_v(self.atmosphere.sky(dir, mirror_chain));
+                    let sky = self.atmosphere.sky(dir, mirror_chain);
+                    color += throughput.mul_v(if mirror_chain {
+                        sky
+                    } else {
+                        sky.mul_v(WARM_BOUNCE)
+                    });
                 }
                 break;
             };
@@ -205,18 +236,22 @@ impl<'a> Shader<'a> {
             );
             let point = origin + dir * hit.t;
             let view = -dir;
-            if rng.next_f32() > s.alpha {
-                let reflect = s.roughness < 0.5
-                    && s.ior > 1.05
-                    && rng.next_f32() < schlick(s.ior, normal.dot(view));
-                if reflect {
-                    origin = point + normal * BIAS;
-                    dir = glossy_reflection(dir, normal, s.roughness, rng);
-                    t_min = 1e-4;
-                    t_max = f32::INFINITY;
-                    continue;
+            if s.alpha < GLASS_ALPHA || rng.next_f32() > s.alpha {
+                // A pane always lets the view through, tinted, and adds a smooth reflection of the sky: picking
+                // between the two (or treating a few samples as an opaque surface) at random speckled the glass.
+                let fresnel = if s.roughness < 0.5 && s.ior > 1.05 {
+                    schlick(s.ior, normal.dot(view))
+                } else {
+                    0.0
+                };
+                // Outdoors only: from inside a room, glass would mirror the blue sky onto lamps and furniture.
+                if fresnel > 0.0 && !self.indoor {
+                    let mirror = dir.reflect(normal);
+                    let upward = (mirror.z * 2.0).clamp(0.0, 1.0);
+                    color +=
+                        throughput.mul_v(self.atmosphere.sky(mirror, false)) * (fresnel * upward);
                 }
-                throughput = throughput.mul_v(Vec3::ONE.lerp(s.albedo, 0.5));
+                throughput = throughput.mul_v(Vec3::ONE.lerp(s.albedo, 0.5)) * (1.0 - fresnel);
                 via_pane |= !mirror_chain;
                 origin = point + dir * BIAS;
                 t_min = 0.0;

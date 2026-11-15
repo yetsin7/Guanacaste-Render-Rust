@@ -18,7 +18,9 @@ struct PanelMemory {
 
 /// The landscape panel: terrain tools, generation, soil, water and vegetation. Edits `state` in place and bumps
 /// `state.revision` whenever geometry changes; the 3D view calls `logic::actions::apply_stroke` for brush strokes.
-pub fn panel(ui: &mut Ui, state: &mut LandscapeState) {
+/// Returns true when the "Plantar jardín" button was pressed: the garden goes around the open project's model,
+/// which the shell knows and this panel does not.
+pub fn panel(ui: &mut Ui, state: &mut LandscapeState) -> bool {
     let id = ui.id().with("landscape_panel");
     let mut memory = ui.data_mut(|data| {
         data.get_temp::<PanelMemory>(id).unwrap_or(PanelMemory {
@@ -38,9 +40,11 @@ pub fn panel(ui: &mut Ui, state: &mut LandscapeState) {
     egui::CollapsingHeader::new(tr("landscape.section.water"))
         .default_open(true)
         .show(ui, |ui| water_section::water_section(ui, state));
-    egui::CollapsingHeader::new(tr("landscape.section.vegetation"))
+    let plant_garden = egui::CollapsingHeader::new(tr("landscape.section.vegetation"))
         .default_open(true)
-        .show(ui, |ui| water_section::vegetation_section(ui, state));
+        .show(ui, |ui| water_section::vegetation_section(ui, state))
+        .body_returned
+        .unwrap_or(false);
     match &state.status {
         Some(Status::Info(text)) => {
             ui.label(text);
@@ -51,4 +55,5 @@ pub fn panel(ui: &mut Ui, state: &mut LandscapeState) {
         None => {}
     }
     ui.data_mut(|data| data.insert_temp(id, memory));
+    plant_garden
 }

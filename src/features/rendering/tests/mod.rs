@@ -5,6 +5,7 @@ mod engine_tests;
 mod export_tests;
 mod framing_tests;
 mod interior_tests;
+mod interior_tests_lamps;
 mod light_material_tests;
 mod output_tests;
 mod queue_tests;

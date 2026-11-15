@@ -65,8 +65,9 @@ pub fn water_section(ui: &mut Ui, state: &mut LandscapeState) {
     }
 }
 
-/// Scatter settings and whole-terrain actions.
-pub fn vegetation_section(ui: &mut Ui, state: &mut LandscapeState) {
+/// Scatter settings and whole-terrain actions. Returns true when the user asked to plant the garden around the
+/// model (the panel does not know the project: the shell serves the request).
+pub fn vegetation_section(ui: &mut Ui, state: &mut LandscapeState) -> bool {
     let settings = &mut state.scatter;
     ui.horizontal(|ui| {
         ui.label(tr("landscape.veg.asset"));
@@ -91,4 +92,7 @@ pub fn vegetation_section(ui: &mut Ui, state: &mut LandscapeState) {
             actions::clear_vegetation(state);
         }
     });
+    ui.separator();
+    ui.label(tr("landscape.garden.hint"));
+    ui.button(tr("landscape.garden.plant")).clicked()
 }
