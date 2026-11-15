@@ -198,6 +198,55 @@ impl ShapeBuilder {
         }
     }
 
+    /// Like [`ShapeBuilder::ellipsoid`] but with a lumpy surface, as a clump of foliage has: the radius swells and
+    /// shrinks by up to `lump` (a fraction, 0.2 = 20 %) along smooth waves that depend on `seed`. With many rings and
+    /// segments it reads as soft leafy volume instead of a faceted ball. Nothing goes below Z = 0.
+    #[allow(clippy::too_many_arguments)]
+    pub fn lumpy_ellipsoid(
+        &mut self,
+        material: usize,
+        center: V3,
+        radii: V3,
+        rings: u32,
+        segments: u32,
+        lump: f32,
+        seed: f32,
+    ) {
+        let point = |ring: u32, segment: u32| {
+            let polar = std::f32::consts::PI * ring as f32 / rings as f32;
+            let azimuth = TAU * (segment % segments) as f32 / segments as f32;
+            let d = [
+                polar.sin() * azimuth.cos(),
+                polar.sin() * azimuth.sin(),
+                polar.cos(),
+            ];
+            let wave = (d[0] * 4.1 + seed).sin() * (d[1] * 3.7 - seed * 0.7).sin()
+                + 0.6 * (d[2] * 5.3 + d[0] * 2.9 + seed * 1.3).sin();
+            let swell = 1.0 + lump * wave * 0.62;
+            [
+                center[0] + radii[0] * d[0] * swell,
+                center[1] + radii[1] * d[1] * swell,
+                // A bulge never goes under the ground: the clump flattens against it.
+                (center[2] + radii[2] * d[2] * swell).max(0.0),
+            ]
+        };
+        for ring in 0..rings {
+            for segment in 0..segments {
+                let a = point(ring, segment);
+                let b = point(ring + 1, segment);
+                let c = point(ring + 1, segment + 1);
+                let d = point(ring, segment + 1);
+                if ring == 0 {
+                    self.polygon(material, &[a, b, c]);
+                } else if ring + 1 == rings {
+                    self.polygon(material, &[a, b, d]);
+                } else {
+                    self.polygon(material, &[a, b, c, d]);
+                }
+            }
+        }
+    }
+
     /// Packs the shapes into a scene with one element node named `name`; empty meshes are dropped.
     pub fn finish(self, name: &str) -> ImportedScene {
         let mut meshes = Vec::new();

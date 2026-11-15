@@ -2,6 +2,7 @@
 //! panel opens wide here). Right: the panel of the selected category over the ground section.
 
 use super::{ground_section, ModeSlots, Panel, Slot};
+use crate::commands::garden;
 use crate::components::button::{Button, ButtonStyle};
 use crate::components::choice_row::{self, Choice};
 use crate::components::{icons, text};
@@ -125,7 +126,9 @@ fn side(ui: &mut Ui, app: &mut AppState) {
                 .auto_shrink([false, false])
                 .show(&mut body, |ui| match app.category {
                     BuildCategory::Nature | BuildCategory::WaterTerrain => {
-                        landscape_panel(ui, &mut app.landscape)
+                        if landscape_panel(ui, &mut app.landscape) {
+                            garden::plant_garden(app);
+                        }
                     }
                     BuildCategory::Materials => materials(ui, app),
                     _ => {

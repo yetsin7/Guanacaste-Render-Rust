@@ -65,6 +65,24 @@ pub const ENTRIES: &[(&str, &str)] = &[
     ("landscape.veg.count", "{0} plantas colocadas"),
     ("landscape.veg.scatter_all", "Plantar en todo el terreno"),
     ("landscape.veg.clear", "Quitar todas"),
+    ("landscape.garden.plant", "Plantar jardín"),
+    (
+        "landscape.garden.hint",
+        "Rodea la casa con setos, palmeras y árboles; cada planta se puede mover o borrar después.",
+    ),
+    ("landscape.garden.planted", "Jardín plantado: {0} plantas."),
+    (
+        "landscape.garden.no_project",
+        "Abre un proyecto para plantar su jardín.",
+    ),
+    (
+        "landscape.garden.read_only",
+        "El proyecto es de solo lectura: guárdalo como copia para plantar el jardín.",
+    ),
+    (
+        "landscape.garden.no_building",
+        "No hay una construcción alrededor de la cual plantar el jardín.",
+    ),
     ("landscape.status.flat", "Terreno plano creado."),
     ("landscape.status.generated", "Relieve generado."),
     (

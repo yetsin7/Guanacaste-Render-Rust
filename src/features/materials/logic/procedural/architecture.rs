@@ -68,18 +68,24 @@ pub fn stone_block(u: f32, v: f32, n: i32, seed: u32) -> [f32; 3] {
 
 /// A calm, well-kept lawn: soft green with mowing patches and a few dry spots, much paler than a saturated grass.
 pub fn lawn(u: f32, v: f32, n: i32, seed: u32) -> [f32; 3] {
-    let blades = value_noise(u, v, 140 * n, 140 * n, seed);
-    let fine = value_noise(u, v, 260 * n, 260 * n, seed ^ 0x2);
-    let patches = fbm(u, v, 3 * n, 4, seed ^ 0x9);
-    let dry = smoothstep(0.6, 0.85, fbm(u, v, 5 * n, 3, seed ^ 0x44));
+    // The tile is meant to cover about 8 m: the patches (a few meters across) come from several octaves, so the
+    // repeat does not read as a grid.
+    let blades = value_noise(u, v, 300 * n, 300 * n, seed);
+    let fine = value_noise(u, v, 520 * n, 520 * n, seed ^ 0x2);
+    let patches = 0.65 * fbm(u, v, 6 * n, 5, seed ^ 0x9) + 0.35 * fbm(u, v, 17 * n, 3, seed ^ 0x13);
+    let dry = smoothstep(0.58, 0.82, fbm(u, v, 9 * n, 4, seed ^ 0x44));
+    // Two greens (a fresh one and an olive one) mixed by the patches, so the lawn is never one flat tone.
+    let mix = smoothstep(0.35, 0.65, patches);
+    let fresh = [0.22, 0.36, 0.14];
+    let olive = [0.30, 0.38, 0.17];
     let green = [
-        0.30 + 0.10 * blades + 0.04 * fine,
-        0.39 + 0.09 * blades + 0.05 * fine,
-        0.19 + 0.06 * blades,
+        fresh[0] + (olive[0] - fresh[0]) * mix + 0.12 * blades + 0.05 * fine,
+        fresh[1] + (olive[1] - fresh[1]) * mix + 0.10 * blades + 0.05 * fine,
+        fresh[2] + (olive[2] - fresh[2]) * mix + 0.06 * blades,
     ];
-    let shade = 0.78 + 0.44 * patches;
-    let dried = [0.55, 0.55, 0.32];
+    let shade = 0.66 + 0.68 * patches;
+    let dried = [0.50, 0.47, 0.27];
     std::array::from_fn(|i| {
-        ((green[i] + (dried[i] - green[i]) * dry * 0.65) * shade).clamp(0.0, 1.0)
+        ((green[i] + (dried[i] - green[i]) * dry * 0.7) * shade).clamp(0.0, 1.0)
     })
 }

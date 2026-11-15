@@ -28,6 +28,8 @@ pub fn exposure_gain(post: &PostSettings) -> f32 {
 
 /// Mid-gray the automatic exposure aims for (linear, before tone mapping).
 const AUTO_KEY: f32 = 0.22;
+/// Per-channel gain (red, green, blue) of the warm interior white balance.
+const INTERIOR_BALANCE: [f32; 3] = [1.05, 1.0, 0.90];
 /// The most the automatic exposure brightens a picture (about 3.5 stops).
 const AUTO_MAX_GAIN: f32 = 20.0;
 
@@ -111,10 +113,16 @@ pub fn finish(mut frame: FrameBuffers, request: &RenderRequest) -> RgbaImage {
     if post.auto_exposure {
         gain *= auto_gain(&frame);
     }
-    if (gain - 1.0).abs() > 1e-6 {
+    // Rooms read warm: the white balance of an interior is set for the lamps, not for the blue daylight.
+    let balance = if post.auto_exposure {
+        INTERIOR_BALANCE
+    } else {
+        [1.0; 3]
+    };
+    if (gain - 1.0).abs() > 1e-6 || post.auto_exposure {
         for px in frame.color.chunks_exact_mut(4) {
-            for c in &mut px[..3] {
-                *c *= gain;
+            for (c, b) in px[..3].iter_mut().zip(balance) {
+                *c *= gain * b;
             }
         }
     }
