@@ -132,6 +132,24 @@ pub fn render_photos(app: &mut AppState) {
     app.studio.state.notice = Some((text, error));
 }
 
+/// Renders the framed live view, including changes made after recalling a saved camera.
+pub fn render_current_photo(app: &mut AppState) {
+    let mut plan = plan_from_studio(&app.studio.state);
+    plan.output.file_name = safe_stem(&plan.output.file_name);
+    app.studio.state.file_name = plan.output.file_name.clone();
+    let camera = crate::commands::camera_link::framed_camera(
+        app.viewport.camera(),
+        app.viewport.aspect(),
+        crate::commands::camera_link::output_aspect(app),
+    );
+    let (message, error) = match app.render.enqueue_viewport(&app.workspace, &plan, &camera) {
+        Ok(count) => (trf("render.queued_n", &[&count.to_string()]), false),
+        Err(reason) => (tr(reason).to_owned(), true),
+    };
+    app.workspace.notify(message.clone(), error);
+    app.studio.state.notice = Some((message, error));
+}
+
 /// Queues a low-resolution render of the current frame and displays its progressive result.
 pub fn preview_photo(app: &mut AppState) {
     let mut plan = plan_from_studio(&app.studio.state);

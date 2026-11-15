@@ -4,6 +4,7 @@ pub mod color;
 pub mod convert;
 pub mod derive;
 pub mod editor;
+pub mod legacy_catalog;
 pub mod maps;
 pub mod presets;
 pub mod preview;
@@ -25,3 +26,6 @@ pub fn matches_filter(name: &str, filter: &str) -> bool {
     let needle = filter.trim().to_lowercase();
     needle.is_empty() || name.to_lowercase().contains(&needle)
 }
+
+/// Built-in image maps shared with Guanacaste 3D.
+pub mod bundled_textures;

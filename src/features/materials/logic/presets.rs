@@ -160,6 +160,13 @@ pub fn all() -> Vec<Material> {
     ]
 }
 
+/// Combines the local presets with the original Guanacaste 3D material catalog for the picker.
+pub fn available() -> Vec<Material> {
+    let mut materials = all();
+    materials.extend(super::legacy_catalog::all());
+    materials
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

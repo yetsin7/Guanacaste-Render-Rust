@@ -96,7 +96,14 @@ fn resolve_one(
 ) -> Result<Arc<MipChain>, LoadError> {
     let usage = usage_for(kind, texture);
     match &texture.source {
-        TextureSource::File { path } => cache.get_file(Path::new(path), usage),
+        TextureSource::File { path } => {
+            if let Some(key) = path.strip_prefix("builtin:") {
+                let bytes = super::bundled_textures::image(key).ok_or(LoadError::NotFound)?;
+                cache.get_embedded(key, bytes, usage)
+            } else {
+                cache.get_file(Path::new(path), usage)
+            }
+        }
         TextureSource::Procedural(procedural) => {
             let key = texture.source.cache_key();
             let grayscale = usage != Usage::Color;

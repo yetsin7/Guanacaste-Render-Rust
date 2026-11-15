@@ -8,6 +8,7 @@ use crate::features::import_export::models::Material;
 use crate::features::materials::models::{Material as Pbr, Procedural, ProceduralKind, TextureRef};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::path::Path;
 
 /// The materials of the scene being built, shared by every element.
 #[derive(Debug, Default)]
@@ -93,15 +94,12 @@ impl MaterialBook {
     }
 
     /// Reads the `RenderMaterials` of the document: each assigns a texture to one surface category of one element.
-    pub fn read_overrides(&mut self, document: &Value) {
+    pub fn read_overrides(&mut self, document: &Value, source_folder: Option<&Path>) {
         for entry in list(document, "RenderMaterials") {
             let (category, element) = (int(entry, "Category"), text(entry, "ElementId"));
             let Some(surface) = Surface::from_category(category) else {
                 continue;
             };
-            if element.is_empty() {
-                continue;
-            }
             let path = text(entry, "TexturePath");
             let mut material = surface.material();
             material.name = format!(
@@ -113,7 +111,46 @@ impl MaterialBook {
                 .strip_prefix("builtin:")
                 .and_then(builtin_pattern)
                 .or_else(|| builtin_pattern(path));
-            if let Some((kind, tint)) = pattern {
+            let bundled = path
+                .strip_prefix("builtin:")
+                .and_then(crate::features::materials::logic::bundled_textures::image)
+                .is_some();
+            let external = if !path.contains(':') || Path::new(path).is_absolute() {
+                let location = Path::new(path);
+                let location = if location.is_absolute() {
+                    location.to_path_buf()
+                } else {
+                    source_folder.unwrap_or(Path::new(".")).join(location)
+                };
+                location.is_file().then_some(location)
+            } else {
+                None
+            };
+            if let Some(preset) = path
+                .strip_prefix("material:")
+                .and_then(crate::features::materials::logic::legacy_catalog::find)
+            {
+                material = preset;
+            } else if let Some(package) = super::pbr_package::read(path, source_folder) {
+                material = package;
+            } else if bundled || external.is_some() {
+                let texture = external.map_or_else(
+                    || path.to_owned(),
+                    |location| location.to_string_lossy().into_owned(),
+                );
+                material.maps.albedo = Some(TextureRef::file(texture.clone()));
+                material.base_color = [1.0; 4];
+                let size = number(entry, "TextureSize") as f32;
+                let tile = if size > 0.0 { size } else { 1.0 };
+                material.uv.scale = [1.0 / tile; 2];
+                let relief = number(entry, "Relief") as f32;
+                if relief > 0.0 {
+                    let mut bump = TextureRef::file(texture);
+                    bump.is_height = true;
+                    material.maps.normal = Some(bump);
+                    material.normal_strength = (relief * 1.5).clamp(0.0, 2.0);
+                }
+            } else if let Some((kind, tint)) = pattern {
                 let mut procedural = Procedural::new(kind);
                 procedural.seed = 11;
                 material.maps.albedo = Some(TextureRef::procedural(procedural));
@@ -146,7 +183,11 @@ impl MaterialBook {
                 }
             }
             let index = self.register(material);
-            self.overrides.insert((category, element.to_owned()), index);
+            if element.is_empty() {
+                self.by_surface.insert(surface, index);
+            } else {
+                self.overrides.insert((category, element.to_owned()), index);
+            }
         }
     }
 
@@ -174,6 +215,51 @@ mod tests {
         assert_eq!(book.into_materials().len(), 2);
     }
 
+    /// Global assignments must affect the category while an element override remains specific.
+    #[test]
+    fn global_materials_and_element_materials_are_both_retained() {
+        let document: Value = serde_json::from_str(r#"{"RenderMaterials":[{"Category":0,"ElementId":null,"TexturePath":"builtin:ambientcg-bricks105","TextureSize":2.4},{"Category":0,"ElementId":"w1","TexturePath":"builtin:wood-floor","TextureSize":1.0}]}"#).unwrap();
+        let mut book = MaterialBook::default();
+        book.read_overrides(&document, None);
+        let global = book.surface(Surface::Wall);
+        let specific = book.overrides_of("w1")[0].1;
+        assert_ne!(global, specific);
+        let materials = book.into_materials();
+        let global = materials[global].pbr.as_ref().unwrap();
+        assert_eq!(
+            global.maps.albedo,
+            Some(TextureRef::file("builtin:ambientcg-bricks105"))
+        );
+        assert!((global.uv.scale[0] - 1.0 / 2.4).abs() < 0.001);
+        let mut cache = crate::services::texture_cache::TextureCache::default();
+        let (maps, failures) =
+            crate::features::materials::logic::maps::MaterialMaps::resolve(&mut cache, global);
+        assert!(failures.is_empty());
+        assert!(maps.albedo.is_some());
+    }
+
+    /// Relative image assignments resolve beside the source project instead of the process working directory.
+    #[test]
+    fn relative_texture_paths_resolve_against_the_project() {
+        let folder = std::env::temp_dir().join("guanacaste-render-relative-material-test");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("wall.png"), b"test").unwrap();
+        let document: Value = serde_json::from_str(
+            r#"{"RenderMaterials":[{"Category":0,"ElementId":"w1","TexturePath":"wall.png"}]}"#,
+        )
+        .unwrap();
+        let mut book = MaterialBook::default();
+        book.read_overrides(&document, Some(&folder));
+        let index = book.overrides_of("w1")[0].1;
+        let materials = book.into_materials();
+        assert_eq!(
+            materials[index].pbr.as_ref().unwrap().maps.albedo,
+            Some(TextureRef::file(
+                folder.join("wall.png").to_string_lossy().into_owned()
+            ))
+        );
+    }
+
     #[test]
     fn a_builtin_texture_assignment_overrides_one_surface_of_one_element() {
         let document: Value = serde_json::from_str(
@@ -181,7 +267,7 @@ mod tests {
         )
         .unwrap();
         let mut book = MaterialBook::default();
-        book.read_overrides(&document);
+        book.read_overrides(&document, None);
         let found = book.overrides_of("w1");
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].0, Surface::Wall);

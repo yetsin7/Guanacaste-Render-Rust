@@ -87,7 +87,7 @@ pub fn actions(ui: &mut Ui, app: &mut AppState) {
             .show(ui)
             .clicked()
         {
-            export::render_photos(app);
+            export::render_current_photo(app);
         }
         if Button::new(tr("photo.save"), ButtonStyle::Container)
             .show(ui)

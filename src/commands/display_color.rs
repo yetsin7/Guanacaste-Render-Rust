@@ -61,7 +61,14 @@ fn average_of(source: &TextureSource) -> Option<[f32; 3]> {
             Some(sum.map(|s| s / n))
         }
         TextureSource::File { path } => {
-            let image = image::open(path).ok()?.thumbnail(64, 64).to_rgba8();
+            let image = if let Some(key) = path.strip_prefix("builtin:") {
+                let bytes = crate::features::materials::logic::bundled_textures::image(key)?;
+                image::load_from_memory(bytes).ok()?
+            } else {
+                image::open(path).ok()?
+            }
+            .thumbnail(64, 64)
+            .to_rgba8();
             let (mut sum, mut weight) = ([0.0f32; 3], 0.0f32);
             for pixel in image.pixels() {
                 let alpha = f32::from(pixel[3]) / 255.0;
@@ -91,6 +98,14 @@ mod tests {
             color: [1.0, 1.0, 1.0, 1.0],
             pbr: Some(pbr),
         }
+    }
+
+    /// Embedded textures retain their representative color in the interactive viewport.
+    #[test]
+    fn bundled_texture_is_visible_in_the_viewport() {
+        let color = TextureAverages::default()
+            .display_color(&textured(TextureRef::file("builtin:ambientcg-bricks105")));
+        assert!(color[0] > color[1] && color[0] < 0.95, "{color:?}");
     }
 
     #[test]

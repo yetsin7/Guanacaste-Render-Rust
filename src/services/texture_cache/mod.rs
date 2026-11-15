@@ -86,6 +86,22 @@ impl TextureCache {
         }
     }
 
+    /// Decodes immutable embedded bytes once per key and usage, retaining the same mip and budget policy as files.
+    pub fn get_embedded(
+        &mut self,
+        key: &str,
+        bytes: &[u8],
+        usage: Usage,
+    ) -> Result<Arc<MipChain>, LoadError> {
+        let origin = format!("embedded:{key}");
+        let cache_key = format!("{origin}|{usage:?}");
+        if let Some(found) = self.touch(&cache_key) {
+            return Ok(found);
+        }
+        let bitmap = decode(bytes)?;
+        Ok(self.insert(cache_key, origin, finish(bitmap, usage)))
+    }
+
     /// The texture stored under `key`, generating it with `make` on first use.
     pub fn get_generated(
         &mut self,

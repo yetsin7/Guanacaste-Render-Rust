@@ -20,6 +20,7 @@ mod leaves;
 mod materials;
 mod openings;
 mod part;
+mod pbr_package;
 mod placed;
 mod roofs;
 mod slabs;
@@ -54,7 +55,17 @@ const IGNORED_LISTS: [&str; 6] = [
 
 /// Builds the scene and its report from a parsed Guanacaste 3D document.
 pub fn build(document: &Value, schema: i32, file_size: u64) -> (ImportedScene, ImportReport) {
-    let mut ctx = Context::new(document);
+    build_with_source(document, schema, file_size, None)
+}
+
+/// Builds a scene while resolving relative texture paths against the source project folder.
+fn build_with_source(
+    document: &Value,
+    schema: i32,
+    file_size: u64,
+    source_folder: Option<&Path>,
+) -> (ImportedScene, ImportReport) {
+    let mut ctx = Context::new(document, source_folder);
     let levels = ctx.add_levels(document);
     let mut families = families::Families::new(document);
     walls::build(&mut ctx, document);
@@ -119,7 +130,7 @@ pub fn import(path: &Path, progress: &Progress) -> Result<ImportOutcome, ImportE
             "El proyecto declara más de un millón de elementos: parece dañado.",
         ));
     }
-    let (scene, mut report) = build(&document, schema, size);
+    let (scene, mut report) = build_with_source(&document, schema, size, path.parent());
     report.duration_ms = started.elapsed().as_millis();
     progress.set(1.0);
     Ok(ImportOutcome { scene, report })

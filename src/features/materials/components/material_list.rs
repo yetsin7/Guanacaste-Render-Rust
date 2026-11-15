@@ -176,7 +176,7 @@ fn actions(ui: &mut Ui, state: &mut MaterialState) {
         }
         ui.menu_button(tr("material.add_preset"), |ui| {
             ScrollArea::vertical().max_height(320.0).show(ui, |ui| {
-                for (index, preset) in presets::all().iter().enumerate() {
+                for (index, preset) in presets::available().iter().enumerate() {
                     if ui.button(&preset.name).clicked() {
                         editor::add_preset(state, index);
                         ui.close();

@@ -37,7 +37,7 @@ fn sane(mesh: &Mesh) -> bool {
 
 impl Context {
     /// An empty scene whose root is the project named in `document`.
-    pub fn new(document: &Value) -> Self {
+    pub fn new(document: &Value, source_folder: Option<&std::path::Path>) -> Self {
         let root = SceneNode {
             name: text(document, "Name").to_owned(),
             class: "G3D".into(),
@@ -49,7 +49,7 @@ impl Context {
             level: None,
         };
         let mut book = MaterialBook::default();
-        book.read_overrides(document);
+        book.read_overrides(document, source_folder);
         Self {
             nodes: vec![root],
             meshes: Vec::new(),

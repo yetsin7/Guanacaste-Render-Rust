@@ -49,7 +49,7 @@ pub fn add_new(state: &mut MaterialState, name: &str) {
 
 /// Adds a copy of preset number `index` (see [`presets::all`]) and selects it.
 pub fn add_preset(state: &mut MaterialState, index: usize) {
-    if let Some(material) = presets::all().into_iter().nth(index) {
+    if let Some(material) = presets::available().into_iter().nth(index) {
         append(state, material);
     }
 }
